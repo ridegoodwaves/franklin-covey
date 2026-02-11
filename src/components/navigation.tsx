@@ -1,0 +1,176 @@
+"use client";
+
+import React, { useState } from "react";
+import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+
+interface NavItem {
+  label: string;
+  href: string;
+  icon: React.ReactNode;
+  badge?: number;
+  active?: boolean;
+}
+
+interface PortalShellProps {
+  portalName: string;
+  portalIcon: React.ReactNode;
+  userName: string;
+  userRole: string;
+  userAvatar?: string;
+  navItems: NavItem[];
+  activeItem?: string;
+  children: React.ReactNode;
+}
+
+export function PortalShell({
+  portalName,
+  portalIcon,
+  userName,
+  userRole,
+  userAvatar,
+  navItems,
+  activeItem,
+  children,
+}: PortalShellProps) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-background">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-navy-950/20 backdrop-blur-sm lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col border-r border-border/40 bg-white transition-transform duration-300 ease-out lg:relative lg:translate-x-0",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        {/* Logo */}
+        <div className="flex h-16 items-center gap-3 px-6">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-navy-800 text-white">
+            {portalIcon}
+          </div>
+          <div>
+            <p className="font-display text-base font-semibold text-navy-900">
+              FranklinCovey
+            </p>
+            <p className="text-xs text-muted-foreground">{portalName}</p>
+          </div>
+        </div>
+
+        <Separator className="opacity-50" />
+
+        {/* Navigation */}
+        <nav className="flex-1 space-y-1 px-3 py-4">
+          {navItems.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                item.active || item.href === activeItem
+                  ? "bg-navy-50 text-navy-900"
+                  : "text-muted-foreground hover:bg-muted/60 hover:text-navy-800"
+              )}
+            >
+              <span
+                className={cn(
+                  "flex h-8 w-8 items-center justify-center rounded-md transition-colors",
+                  item.active || item.href === activeItem
+                    ? "bg-navy-800 text-white"
+                    : "bg-muted/60 text-muted-foreground group-hover:bg-navy-100 group-hover:text-navy-700"
+                )}
+              >
+                {item.icon}
+              </span>
+              <span className="flex-1">{item.label}</span>
+              {item.badge !== undefined && item.badge > 0 && (
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-gold-600 px-1.5 text-[10px] font-semibold text-white">
+                  {item.badge}
+                </span>
+              )}
+            </a>
+          ))}
+        </nav>
+
+        <Separator className="opacity-50" />
+
+        {/* User */}
+        <div className="flex items-center gap-3 p-4">
+          <Avatar className="h-9 w-9">
+            {userAvatar && <AvatarImage src={userAvatar} alt={userName} />}
+            <AvatarFallback>
+              {userName
+                .split(" ")
+                .map((n) => n[0])
+                .join("")}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="truncate text-sm font-medium text-navy-900">
+              {userName}
+            </p>
+            <p className="truncate text-xs text-muted-foreground">{userRole}</p>
+          </div>
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </Button>
+        </div>
+      </aside>
+
+      {/* Main content */}
+      <main className="flex-1 overflow-auto">
+        {/* Top bar (mobile) */}
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border/40 bg-white/80 px-6 backdrop-blur-md lg:hidden">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="4" y1="12" x2="20" y2="12" />
+              <line x1="4" y1="6" x2="20" y2="6" />
+              <line x1="4" y1="18" x2="20" y2="18" />
+            </svg>
+          </Button>
+          <span className="font-display text-lg font-semibold text-navy-900">
+            {portalName}
+          </span>
+        </header>
+
+        <div className="px-6 py-8 lg:px-10 lg:py-10">{children}</div>
+      </main>
+    </div>
+  );
+}
