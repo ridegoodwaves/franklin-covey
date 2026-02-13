@@ -80,6 +80,20 @@ const config: Config = {
           800: "#314831",
           900: "#2a3c2a",
         },
+        // FranklinCovey brand blue
+        fc: {
+          50: "#eef1ff",
+          100: "#dfe4ff",
+          200: "#c6ccff",
+          300: "#a3a8ff",
+          400: "#7e79ff",
+          500: "#6357fa",
+          600: "#3253FF", // Primary brand — Blue Ribbon
+          700: "#2a42d4",
+          800: "#2336ab",
+          900: "#1e2f87",
+          950: "#141928", // Mirage — FC dark
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

@@ -54,21 +54,28 @@ Icons are inline SVGs throughout — no icon library is imported at the componen
 - `src/lib/utils.ts` — `cn()` merge helper, `formatDate()`, `formatRelativeTime()`, `getStatusColor()`, `getStatusLabel()`, `getInitials()`.
 - `src/lib/config.ts` — Domain constants: `SESSION_TOPICS`, `SESSION_OUTCOMES`, `DURATION_OPTIONS`, `NUDGE_THRESHOLDS`, `PROGRAM_TRACK_SESSIONS`. These match the PRD spec.
 - `src/app/globals.css` — CSS variables (HSL values without `hsl()` wrapper), custom utility classes, status colors.
+- `docs/solutions/` — Documented solutions knowledge base. **Check here first** before investigating issues — past root causes, fixes, and prevention strategies are indexed by category and tags. See `docs/solutions/README.md` for the full index.
 
 ## Architecture Decisions
 
-**Scheduling: Option B — Coach-managed, no built-in scheduler (decided 2026-02-10)**
+**Scheduling: Link-based, no API integration (decided 2026-02-10, client-confirmed 2026-02-11)**
 
-The original PRD specified Calendly for session booking. A 3-reviewer technical analysis (DHH-style, Kieran-style, Simplicity) unanimously recommended removing Calendly. The Simplicity reviewer's "Option B" was selected:
+The original PRD specified full Calendly API integration (webhooks, embeds, session auto-sync). A 3-reviewer technical analysis unanimously recommended removing the API layer. Client confirmed (2026-02-11) that the MVP requirement is "take each coach's scheduling link and hide it behind a button" — which is exactly what this approach delivers.
 
-- **No Calendly integration.** Eliminates webhooks, iframe embeds, FedRAMP blocker, DPA requirement, $80-160/month cost, and all Calendly-specific infrastructure (health check cron, reconciliation polling, reschedule detection).
-- **No built-in scheduler.** Building a slot picker for 5-10 coaches is over-engineered (same logic as the PRD's coach matching simplification). Estimated 8-12 days of work for race conditions, DST, cancellation flows, timezone handling — disproportionate to scale.
-- **Coach-managed scheduling.** Add `meetingBookingUrl` field to `CoachProfile`. Coaches use their existing booking tool (Calendly, Acuity, or any link). Coach enters session date/time when logging the session.
-- **Video meetings are coach-managed.** No Google Meet API integration at launch. Coaches paste their own meeting link. Revisit only if coaches request calendar sync post-launch.
+**What ships:**
+- Each coach's Calendly scheduling link (or Acuity, Teams Bookings, etc.) stored as `meetingBookingUrl` on `CoachProfile`
+- Participant sees a **"Book Next Session" button** that opens the coach's Calendly page directly
+- Participant books on Calendly as normal — coaches' existing workflow is unchanged
+- Coach logs the completed session in our platform afterward (date/time + structured notes)
 
-**Schema impact:** Remove `calendlyUrl` from `CoachProfile`, remove `calendlyEventUri` from `Session`, add `meetingBookingUrl: String?` to `CoachProfile`. No new models needed.
+**What was removed (Calendly API plumbing only):**
+- Webhook handler, iframe embeds, session auto-sync, reconciliation cron
+- FedRAMP blocker, Calendly DPA, $80-160/month Professional plan cost
+- `react-calendly` dependency, CSP rules for Calendly domains
 
-**What this means for the frontend:** The participant engagement page shows a "Book Next Session" button that links to the coach's `meetingBookingUrl` (external link). Sessions appear in the timeline when the coach logs them.
+**Schema impact:** Rename `calendlyUrl` to `meetingBookingUrl` on `CoachProfile` (tool-agnostic name). Remove `calendlyEventUri` from `Session` (no webhook sync). No new models needed.
+
+**What this means for the frontend:** The participant engagement page shows a "Book Next Session" button that opens the coach's `meetingBookingUrl` (external link, new tab). Sessions appear in the timeline when the coach logs them.
 
 ## Engagement Status Values
 

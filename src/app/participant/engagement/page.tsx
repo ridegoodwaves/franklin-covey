@@ -35,7 +35,11 @@ interface CoachInfo {
   initials: string;
   photo?: string;
   specialties: string[];
+  credentials: string[];
+  languages: string[];
+  location: string;
   email: string;
+  meetingBookingUrl: string;
 }
 
 interface EngagementData {
@@ -61,7 +65,11 @@ const ENGAGEMENT: EngagementData = {
       "Change Leadership",
       "Strategic Thinking",
     ],
+    credentials: ["PCC", "PhD"],
+    languages: ["English"],
+    location: "Washington, DC",
     email: "e.whitfield@franklincovey.com",
+    meetingBookingUrl: "https://calendly.com/dr-whitfield/30min",
   },
   totalSessions: 5,
   sessions: [
@@ -260,7 +268,7 @@ export default function EngagementPage() {
     <div className="relative min-h-screen bg-background">
       {/* Subtle ambient background */}
       <div className="pointer-events-none fixed inset-0">
-        <div className="absolute -top-40 right-1/4 h-[400px] w-[400px] rounded-full bg-gold-100/30 blur-[120px]" />
+        <div className="absolute -top-40 right-1/4 h-[400px] w-[400px] rounded-full bg-fc-100/30 blur-[120px]" />
         <div className="absolute bottom-0 left-1/3 h-[350px] w-[350px] rounded-full bg-navy-50/40 blur-[100px]" />
       </div>
 
@@ -268,7 +276,7 @@ export default function EngagementPage() {
       <header className="sticky top-0 z-40 border-b border-border/40 bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-navy-800">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-fc-600">
               <svg
                 width="18"
                 height="18"
@@ -319,7 +327,7 @@ export default function EngagementPage() {
               : "opacity-0 translate-y-4"
           )}
         >
-          <p className="text-sm font-medium text-gold-600">
+          <p className="text-sm font-medium text-fc-600">
             Welcome back, {data.participantName.split(" ")[0]}
           </p>
           <h1 className="mt-1 font-display text-3xl font-light tracking-tight text-navy-900 sm:text-4xl">
@@ -342,13 +350,13 @@ export default function EngagementPage() {
           >
             <Card className="relative overflow-hidden">
               {/* Gold shimmer accent */}
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-400 via-gold-600 to-gold-400" />
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-fc-500 via-fc-600 to-fc-500" />
 
               <CardContent className="px-7 pb-8 pt-8">
                 {/* Congratulatory message when nearing completion */}
                 {nearingCompletion && !isComplete && (
-                  <div className="mb-6 flex items-center gap-3 rounded-lg bg-gold-50 px-4 py-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gold-100">
+                  <div className="mb-6 flex items-center gap-3 rounded-lg bg-fc-50 px-4 py-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-fc-100">
                       <svg
                         width="16"
                         height="16"
@@ -358,7 +366,7 @@ export default function EngagementPage() {
                         strokeWidth="2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className="text-gold-600"
+                        className="text-fc-600"
                       >
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                       </svg>
@@ -475,7 +483,7 @@ export default function EngagementPage() {
                           className={cn(
                             "h-1.5 w-1.5 rounded-full transition-colors duration-500",
                             i < completedCount
-                              ? "bg-gold-500"
+                              ? "bg-fc-500"
                               : "bg-navy-200"
                           )}
                         />
@@ -507,7 +515,7 @@ export default function EngagementPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center px-7 pb-7 text-center">
-                <Avatar className="h-20 w-20 ring-4 ring-gold-100 ring-offset-4 ring-offset-white">
+                <Avatar className="h-20 w-20 ring-4 ring-fc-100 ring-offset-4 ring-offset-white">
                   {data.coach.photo && (
                     <AvatarImage
                       src={data.coach.photo}
@@ -566,10 +574,10 @@ export default function EngagementPage() {
             style={{ transitionDelay: mounted ? "350ms" : "0ms" }}
           >
             <Card className="relative overflow-hidden border-gold-200/60 bg-gradient-to-r from-gold-50/50 via-white to-white">
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-gold-500" />
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-fc-500" />
               <CardContent className="flex flex-col items-start gap-4 px-7 py-6 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gold-100">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-fc-100">
                     <svg
                       width="20"
                       height="20"
@@ -605,13 +613,13 @@ export default function EngagementPage() {
                       <p className="mt-0.5 text-sm text-muted-foreground">
                         {nextSession.time}
                         {nextDays > 0 && (
-                          <span className="ml-2 text-gold-600">
+                          <span className="ml-2 text-fc-600">
                             &middot; in {nextDays}{" "}
                             {nextDays === 1 ? "day" : "days"}
                           </span>
                         )}
                         {nextDays === 0 && (
-                          <span className="ml-2 font-medium text-gold-600">
+                          <span className="ml-2 font-medium text-fc-600">
                             &middot; Today
                           </span>
                         )}
@@ -711,7 +719,7 @@ export default function EngagementPage() {
                         session.status === "COMPLETED"
                           ? "border-sage-300 bg-sage-50 text-sage-600"
                           : session.isNext
-                            ? "border-gold-400 bg-gold-50 text-gold-600 ring-4 ring-gold-100"
+                            ? "border-fc-400 bg-fc-50 text-fc-600 ring-4 ring-fc-100"
                             : "border-navy-200 bg-white text-navy-400"
                       )}
                     >
@@ -735,7 +743,7 @@ export default function EngagementPage() {
                       "flex-1 rounded-xl border px-5 py-4 transition-all duration-200",
                       isLast ? "mb-0" : "mb-3",
                       session.isNext
-                        ? "border-gold-200/80 bg-gold-50/30 shadow-sm"
+                        ? "border-gold-200/80 bg-fc-50/30 shadow-sm"
                         : "border-border/40 bg-white hover:border-border hover:shadow-sm"
                     )}
                   >
@@ -779,7 +787,7 @@ export default function EngagementPage() {
                           session.status === "COMPLETED"
                             ? "bg-sage-50"
                             : session.isNext
-                              ? "bg-gold-100"
+                              ? "bg-fc-100"
                               : "bg-navy-50"
                         )}
                       >

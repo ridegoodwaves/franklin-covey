@@ -2,11 +2,11 @@ import { Button } from "@/components/ui/button";
 
 export default function LandingPage() {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-navy-950">
+    <div className="relative min-h-screen overflow-hidden bg-fc-950">
       {/* Ambient background */}
       <div className="absolute inset-0">
-        <div className="absolute top-0 left-1/4 h-[600px] w-[600px] rounded-full bg-navy-800/30 blur-[120px]" />
-        <div className="absolute bottom-0 right-1/4 h-[500px] w-[500px] rounded-full bg-gold-600/10 blur-[100px]" />
+        <div className="absolute top-0 left-1/4 h-[600px] w-[600px] rounded-full bg-fc-900/40 blur-[120px]" />
+        <div className="absolute bottom-0 right-1/4 h-[500px] w-[500px] rounded-full bg-fc-600/8 blur-[100px]" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[800px] w-[800px] rounded-full bg-navy-900/20 blur-[150px]" />
       </div>
 
@@ -18,7 +18,7 @@ export default function LandingPage() {
         {/* Header */}
         <header className="flex items-center justify-between px-8 py-6 lg:px-16">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold-600">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-fc-600">
               <svg
                 width="22"
                 height="22"
@@ -47,16 +47,16 @@ export default function LandingPage() {
         {/* Hero */}
         <div className="flex flex-1 items-center justify-center px-8">
           <div className="w-full max-w-4xl text-center">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-gold-600/30 bg-gold-600/10 px-4 py-1.5">
-              <div className="h-1.5 w-1.5 rounded-full bg-gold-400 animate-pulse-subtle" />
-              <span className="text-sm font-medium text-gold-300">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-fc-600/30 bg-fc-600/10 px-4 py-1.5">
+              <div className="h-1.5 w-1.5 rounded-full bg-fc-400 animate-pulse-subtle" />
+              <span className="text-sm font-medium text-fc-200">
                 Government Leadership Coaching Program
               </span>
             </div>
 
             <h1 className="font-display text-5xl font-light leading-[1.1] tracking-tight text-white sm:text-6xl lg:text-7xl opacity-0 animate-fade-in-up">
               Your Path to{" "}
-              <span className="font-medium italic text-gold-400">
+              <span className="font-medium italic text-fc-400">
                 Exceptional
               </span>
               <br />
@@ -73,11 +73,11 @@ export default function LandingPage() {
               {/* Participant */}
               <a
                 href="/participant/select-coach"
-                className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-8 text-left backdrop-blur-sm transition-all duration-500 hover:border-gold-500/30 hover:bg-white/10 hover:shadow-2xl hover:shadow-gold-500/5 opacity-0 animate-fade-in-up stagger-3"
+                className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-8 text-left backdrop-blur-sm transition-all duration-500 hover:border-fc-500/30 hover:bg-white/10 hover:shadow-2xl hover:shadow-fc-500/5 opacity-0 animate-fade-in-up stagger-3"
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-gold-500/5 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                <div className="absolute inset-0 bg-gradient-to-br from-fc-500/5 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
                 <div className="relative">
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gold-600/20 text-gold-400 transition-colors group-hover:bg-gold-600/30">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-fc-600/20 text-fc-300 transition-colors group-hover:bg-fc-600/30">
                     <svg
                       width="24"
                       height="24"
@@ -99,7 +99,7 @@ export default function LandingPage() {
                     Select your coach, book sessions, and track your coaching
                     journey.
                   </p>
-                  <div className="mt-6 flex items-center gap-2 text-sm font-medium text-gold-400 transition-all group-hover:gap-3">
+                  <div className="mt-6 flex items-center gap-2 text-sm font-medium text-fc-300 transition-all group-hover:gap-3 group-hover:text-fc-200">
                     Enter Portal
                     <svg
                       width="16"
