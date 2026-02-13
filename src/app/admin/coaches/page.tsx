@@ -147,7 +147,7 @@ const coachData: Coach[] = [
     activeEngagements: 18,
     maxCapacity: 20,
     status: "Active",
-    avatarColor: "bg-navy-200 text-navy-800",
+    avatarColor: "bg-fc-200 text-fc-800",
   },
   {
     id: "C-002",
@@ -157,7 +157,7 @@ const coachData: Coach[] = [
     activeEngagements: 12,
     maxCapacity: 18,
     status: "Active",
-    avatarColor: "bg-gold-100 text-gold-800",
+    avatarColor: "bg-fc-100 text-fc-800",
   },
   {
     id: "C-003",
@@ -167,7 +167,7 @@ const coachData: Coach[] = [
     activeEngagements: 15,
     maxCapacity: 16,
     status: "Active",
-    avatarColor: "bg-sage-100 text-sage-800",
+    avatarColor: "bg-emerald-100 text-emerald-800",
   },
   {
     id: "C-004",
@@ -222,7 +222,7 @@ function getCapacityPercent(active: number, max: number) {
 function getCapacityColor(percent: number) {
   if (percent >= 90) return { bar: "bg-red-500", text: "text-red-700", bg: "bg-red-50", badge: "destructive" as const };
   if (percent >= 70) return { bar: "bg-amber-500", text: "text-amber-700", bg: "bg-amber-50", badge: "warning" as const };
-  return { bar: "bg-sage-500", text: "text-sage-700", bg: "bg-sage-50", badge: "sage" as const };
+  return { bar: "bg-emerald-500", text: "text-emerald-700", bg: "bg-emerald-50", badge: "info" as const };
 }
 
 // ---------------------------------------------------------------------------
@@ -258,7 +258,7 @@ export default function CoachesPage() {
       {/* Page header */}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-navy-900">
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-fc-900">
             Coach Roster
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -278,21 +278,21 @@ export default function CoachesPage() {
         <Card className="opacity-0 animate-fade-in stagger-1">
           <CardContent className="p-5">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Active Coaches</p>
-            <p className="mt-2 font-display text-3xl font-semibold text-navy-900">{activeCoaches.length}</p>
+            <p className="mt-2 font-display text-3xl font-semibold text-fc-900">{activeCoaches.length}</p>
             <p className="mt-1 text-xs text-muted-foreground">of {coachData.length} total</p>
           </CardContent>
         </Card>
         <Card className="opacity-0 animate-fade-in stagger-2">
           <CardContent className="p-5">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Engagements</p>
-            <p className="mt-2 font-display text-3xl font-semibold text-navy-900">{totalActive}</p>
+            <p className="mt-2 font-display text-3xl font-semibold text-fc-900">{totalActive}</p>
             <p className="mt-1 text-xs text-muted-foreground">across all coaches</p>
           </CardContent>
         </Card>
         <Card className="opacity-0 animate-fade-in stagger-3">
           <CardContent className="p-5">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Overall Utilization</p>
-            <p className="mt-2 font-display text-3xl font-semibold text-navy-900">{getCapacityPercent(totalActive, totalCapacity)}%</p>
+            <p className="mt-2 font-display text-3xl font-semibold text-fc-900">{getCapacityPercent(totalActive, totalCapacity)}%</p>
             <div className="mt-2">
               <Progress value={getCapacityPercent(totalActive, totalCapacity)} className="h-1.5" />
             </div>
@@ -332,7 +332,7 @@ export default function CoachesPage() {
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-navy-900 truncate">{coach.name}</p>
+                      <p className="text-sm font-medium text-fc-900 truncate">{coach.name}</p>
                       <p className="text-[11px] text-muted-foreground">
                         {isOnLeave ? (
                           <span className="text-amber-600 font-medium">On Leave</span>
@@ -353,7 +353,7 @@ export default function CoachesPage() {
                         {isOnLeave ? "--" : `${percent}%`}
                       </span>
                     </div>
-                    <div className="relative h-3 w-full overflow-hidden rounded-full bg-navy-100/60">
+                    <div className="relative h-3 w-full overflow-hidden rounded-full bg-fc-100/60">
                       <div
                         className={cn(
                           "h-full rounded-full transition-all duration-700 ease-out",
@@ -380,8 +380,8 @@ export default function CoachesPage() {
                   )}
                   {!isOnLeave && percent < 70 && (
                     <div className="mt-3 flex items-center gap-1.5">
-                      <div className="h-1.5 w-1.5 rounded-full bg-sage-500" />
-                      <span className="text-[11px] font-medium text-sage-600">Available</span>
+                      <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      <span className="text-[11px] font-medium text-emerald-600">Available</span>
                     </div>
                   )}
                 </div>
@@ -435,7 +435,7 @@ export default function CoachesPage() {
                     <tr
                       key={coach.id}
                       className={cn(
-                        "group border-b border-border/30 transition-colors hover:bg-navy-50/50",
+                        "group border-b border-border/30 transition-colors hover:bg-fc-50/50",
                         isOnLeave && "opacity-60"
                       )}
                     >
@@ -448,7 +448,7 @@ export default function CoachesPage() {
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="text-sm font-medium text-navy-900">{coach.name}</p>
+                            <p className="text-sm font-medium text-fc-900">{coach.name}</p>
                             <p className="text-[11px] text-muted-foreground">{coach.id}</p>
                           </div>
                         </div>
@@ -456,7 +456,7 @@ export default function CoachesPage() {
 
                       {/* Email */}
                       <td className="px-4 py-4">
-                        <div className="flex items-center gap-1.5 text-sm text-navy-600">
+                        <div className="flex items-center gap-1.5 text-sm text-fc-600">
                           <MailIcon />
                           <span className="text-xs">{coach.email}</span>
                         </div>
@@ -480,7 +480,7 @@ export default function CoachesPage() {
 
                       {/* Active */}
                       <td className="px-4 py-4 text-center">
-                        <span className="text-sm font-semibold text-navy-800">
+                        <span className="text-sm font-semibold text-fc-800">
                           {coach.activeEngagements}
                         </span>
                       </td>
@@ -493,7 +493,7 @@ export default function CoachesPage() {
                       {/* Capacity bar in table */}
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-2 justify-center">
-                          <div className="relative h-2 w-20 overflow-hidden rounded-full bg-navy-100/60">
+                          <div className="relative h-2 w-20 overflow-hidden rounded-full bg-fc-100/60">
                             <div
                               className={cn("h-full rounded-full transition-all duration-500", colors.bar, isOnLeave && "bg-gray-300")}
                               style={{ width: isOnLeave ? "0%" : `${percent}%` }}
@@ -509,7 +509,7 @@ export default function CoachesPage() {
                       <td className="px-4 py-4 text-center">
                         <Badge
                           variant={
-                            coach.status === "Active" ? "sage" :
+                            coach.status === "Active" ? "default" :
                             coach.status === "On Leave" ? "warning" : "secondary"
                           }
                           className="text-[11px]"
@@ -541,12 +541,12 @@ export default function CoachesPage() {
           <Separator className="my-4 opacity-50" />
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground">
-              Showing <span className="font-medium text-navy-800">{filteredCoaches.length}</span> of{" "}
-              <span className="font-medium text-navy-800">{coachData.length}</span> coaches
+              Showing <span className="font-medium text-fc-800">{filteredCoaches.length}</span> of{" "}
+              <span className="font-medium text-fc-800">{coachData.length}</span> coaches
             </p>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                <div className="h-2 w-2 rounded-full bg-sage-500" />
+                <div className="h-2 w-2 rounded-full bg-emerald-500" />
                 <span>&lt;70%</span>
               </div>
               <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">

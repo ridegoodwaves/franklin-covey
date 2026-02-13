@@ -260,9 +260,9 @@ function StylishCheckbox({
         "group flex items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition-all duration-200 text-left",
         checked
           ? variant === "outcome"
-            ? "border-sage-300 bg-sage-50/80 text-sage-800"
-            : "border-navy-300 bg-navy-50/80 text-navy-800"
-          : "border-border/60 bg-white text-muted-foreground hover:border-navy-200 hover:bg-navy-50/30 hover:text-navy-700"
+            ? "border-emerald-300 bg-emerald-50/80 text-emerald-800"
+            : "border-fc-300 bg-fc-50/80 text-fc-800"
+          : "border-border/60 bg-white text-muted-foreground hover:border-fc-200 hover:bg-fc-50/30 hover:text-fc-700"
       )}
     >
       <span
@@ -270,9 +270,9 @@ function StylishCheckbox({
           "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all duration-200",
           checked
             ? variant === "outcome"
-              ? "border-sage-500 bg-sage-500 text-white"
-              : "border-navy-700 bg-navy-700 text-white"
-            : "border-border group-hover:border-navy-300"
+              ? "border-emerald-500 bg-emerald-500 text-white"
+              : "border-fc-700 bg-fc-700 text-white"
+            : "border-border group-hover:border-fc-300"
         )}
       >
         {checked && <CheckIcon />}
@@ -301,8 +301,8 @@ function DurationSelector({
           className={cn(
             "rounded-lg border px-4 py-2 text-sm font-medium transition-all duration-200",
             value === mins
-              ? "border-navy-700 bg-navy-800 text-white shadow-sm"
-              : "border-border/60 bg-white text-muted-foreground hover:border-navy-200 hover:bg-navy-50/30 hover:text-navy-700"
+              ? "border-fc-700 bg-fc-800 text-white shadow-sm"
+              : "border-border/60 bg-white text-muted-foreground hover:border-fc-200 hover:bg-fc-50/30 hover:text-fc-700"
           )}
         >
           {mins} min
@@ -332,20 +332,20 @@ function TimelineItem({
     >
       {/* Timeline line */}
       <div className="flex flex-col items-center">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sage-100 text-sage-700 ring-4 ring-white">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 ring-4 ring-white">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>
         {!isLast && (
-          <div className="w-px flex-1 bg-gradient-to-b from-sage-200 to-border/30" />
+          <div className="w-px flex-1 bg-gradient-to-b from-emerald-200 to-border/30" />
         )}
       </div>
 
       {/* Content */}
       <div className={cn("flex-1 pb-8", isLast && "pb-0")}>
         <div className="flex items-center gap-2 mb-1">
-          <p className="text-sm font-medium text-navy-900">
+          <p className="text-sm font-medium text-fc-900">
             Session {session.sessionNumber}
           </p>
           <span className="text-xs text-muted-foreground">&middot;</span>
@@ -380,7 +380,7 @@ function TimelineItem({
               {session.outcomes.map((outcome) => (
                 <Badge
                   key={outcome}
-                  variant="sage"
+                  variant="info"
                   className="text-[10px] font-normal"
                 >
                   {outcome}
@@ -392,7 +392,7 @@ function TimelineItem({
 
         <button
           onClick={() => setExpanded(!expanded)}
-          className="mt-2 text-xs font-medium text-navy-600 hover:text-navy-800 transition-colors"
+          className="mt-2 text-xs font-medium text-fc-600 hover:text-fc-800 transition-colors"
         >
           {expanded ? "Show less" : "Show more"}
         </button>
@@ -409,7 +409,7 @@ function PreviousSessionPanel({ delay }: { delay: number }) {
 
   return (
     <Card
-      className="border-navy-100/80 bg-navy-50/30 opacity-0 animate-fade-in"
+      className="border-fc-100/80 bg-fc-50/30 opacity-0 animate-fade-in"
       style={{ animationDelay: `${delay}ms` }}
     >
       <CardHeader className="pb-3">
@@ -448,7 +448,7 @@ function PreviousSessionPanel({ delay }: { delay: number }) {
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
             Session Notes
           </p>
-          <p className="text-xs leading-relaxed text-navy-700">
+          <p className="text-xs leading-relaxed text-fc-700">
             {prevSession.notesPreview}
           </p>
         </div>
@@ -463,7 +463,7 @@ function PreviousSessionPanel({ delay }: { delay: number }) {
             {prevSession.outcomes.map((outcome) => (
               <Badge
                 key={outcome}
-                variant="sage"
+                variant="info"
                 className="text-[10px] font-normal"
               >
                 {outcome}
@@ -473,14 +473,14 @@ function PreviousSessionPanel({ delay }: { delay: number }) {
         </div>
 
         {/* Private notes from previous session */}
-        <div className="rounded-lg border border-dashed border-navy-200/60 bg-white/60 p-3">
+        <div className="rounded-lg border border-dashed border-fc-200/60 bg-white/60 p-3">
           <div className="flex items-center gap-1.5 mb-1.5">
             <LockIcon />
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Your Private Notes
             </p>
           </div>
-          <p className="text-xs leading-relaxed text-navy-600 italic">
+          <p className="text-xs leading-relaxed text-fc-600 italic">
             {prevSession.privateNotes}
           </p>
         </div>
@@ -502,9 +502,9 @@ function AutoSaveIndicator({
     <div
       className={cn(
         "flex items-center gap-1.5 text-xs font-medium transition-all duration-300",
-        status === "saving" && "text-navy-500",
-        status === "saved" && "text-sage-600",
-        status === "draft" && "text-gold-700"
+        status === "saving" && "text-fc-500",
+        status === "saved" && "text-emerald-600",
+        status === "draft" && "text-fc-700"
       )}
     >
       {status === "saving" && (
@@ -521,7 +521,7 @@ function AutoSaveIndicator({
       )}
       {status === "draft" && (
         <>
-          <div className="h-1.5 w-1.5 rounded-full bg-gold-500 animate-pulse-subtle" />
+          <div className="h-1.5 w-1.5 rounded-full bg-fc-500 animate-pulse-subtle" />
           <span>Draft</span>
         </>
       )}
@@ -622,7 +622,7 @@ export default function CoachEngagementDetail() {
       >
         <a
           href="/coach/dashboard"
-          className="group inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-navy-800 transition-colors"
+          className="group inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-fc-800 transition-colors"
         >
           <span className="transition-transform duration-200 group-hover:-translate-x-0.5">
             <ArrowLeftIcon />
@@ -641,12 +641,12 @@ export default function CoachEngagementDetail() {
             {/* Avatar + name */}
             <div className="flex items-center gap-4 flex-1 min-w-0">
               <Avatar className="h-14 w-14 shrink-0">
-                <AvatarFallback className="bg-navy-100 text-navy-700 font-display font-semibold text-lg">
+                <AvatarFallback className="bg-fc-100 text-fc-700 font-display font-semibold text-lg">
                   {getInitials(participant.name)}
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <h1 className="font-display text-xl sm:text-2xl font-semibold text-navy-900 truncate">
+                <h1 className="font-display text-xl sm:text-2xl font-semibold text-fc-900 truncate">
                   {participant.name}
                 </h1>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -695,10 +695,10 @@ export default function CoachEngagementDetail() {
           {/* Progress bar */}
           <div className="mt-5 pt-5 border-t border-border/40">
             <div className="flex items-center justify-between mb-2.5">
-              <span className="text-xs font-medium text-navy-700">
+              <span className="text-xs font-medium text-fc-700">
                 Engagement Progress
               </span>
-              <span className="text-xs font-medium text-navy-700">
+              <span className="text-xs font-medium text-fc-700">
                 Session {participant.currentSession} of{" "}
                 {participant.totalSessions}
               </span>
@@ -718,10 +718,10 @@ export default function CoachEngagementDetail() {
                         className={cn(
                           "absolute h-3 w-3 rounded-full border-2 transition-all duration-300",
                           isCompleted
-                            ? "border-gold-600 bg-gold-600"
+                            ? "border-fc-600 bg-fc-600"
                             : isCurrent
-                            ? "border-gold-600 bg-white ring-2 ring-gold-200"
-                            : "border-navy-200 bg-white"
+                            ? "border-fc-600 bg-white ring-2 ring-fc-200"
+                            : "border-fc-200 bg-white"
                         )}
                         style={{ left: `${dotPos}%`, transform: "translateX(-50%)" }}
                       />
@@ -737,9 +737,9 @@ export default function CoachEngagementDetail() {
                   className={cn(
                     "text-[10px] font-medium",
                     i < participant.currentSession - 1
-                      ? "text-gold-700"
+                      ? "text-fc-700"
                       : i === participant.currentSession - 1
-                      ? "text-navy-800 font-semibold"
+                      ? "text-fc-800 font-semibold"
                       : "text-muted-foreground"
                   )}
                 >
@@ -764,7 +764,7 @@ export default function CoachEngagementDetail() {
           </TabsTrigger>
           <TabsTrigger value="history">
             Session History
-            <span className="ml-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-navy-100 px-1 text-[9px] font-semibold text-navy-700">
+            <span className="ml-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-fc-100 px-1 text-[9px] font-semibold text-fc-700">
               {sessionHistory.length}
             </span>
           </TabsTrigger>
@@ -776,12 +776,12 @@ export default function CoachEngagementDetail() {
             /* Submitted confirmation */
             <Card className="animate-scale-in">
               <CardContent className="py-16 text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-sage-100">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-sage-700">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-700">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 </div>
-                <h3 className="font-display text-xl font-semibold text-navy-900 mb-2">
+                <h3 className="font-display text-xl font-semibold text-fc-900 mb-2">
                   Session Logged Successfully
                 </h3>
                 <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-6">
@@ -855,7 +855,7 @@ export default function CoachEngagementDetail() {
                         </CardDescription>
                       </div>
                       {selectedOutcomes.length > 0 && (
-                        <Badge variant="sage" className="text-[10px]">
+                        <Badge variant="info" className="text-[10px]">
                           {selectedOutcomes.length} selected
                         </Badge>
                       )}
@@ -893,13 +893,13 @@ export default function CoachEngagementDetail() {
 
                 {/* Private Notes */}
                 <Card
-                  className="opacity-0 animate-fade-in border-dashed border-navy-200/80 bg-gradient-to-br from-white to-navy-50/20"
+                  className="opacity-0 animate-fade-in border-dashed border-fc-200/80 bg-gradient-to-br from-white to-fc-50/20"
                   style={{ animationDelay: "400ms" }}
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="flex h-6 w-6 items-center justify-center rounded bg-navy-100 text-navy-600">
+                        <div className="flex h-6 w-6 items-center justify-center rounded bg-fc-100 text-fc-600">
                           <LockIcon />
                         </div>
                         <div>
@@ -921,7 +921,7 @@ export default function CoachEngagementDetail() {
                       onChange={(e) => setPrivateNotes(e.target.value)}
                       placeholder="Observations, follow-up ideas, notes for next session..."
                       rows={5}
-                      className="w-full rounded-lg border border-navy-200/60 bg-white/80 px-4 py-3 text-sm font-body text-navy-800 placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-navy-300 focus:border-navy-300 transition-all duration-200 resize-none leading-relaxed"
+                      className="w-full rounded-lg border border-fc-200/60 bg-white/80 px-4 py-3 text-sm font-body text-fc-800 placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-fc-300 focus:border-fc-300 transition-all duration-200 resize-none leading-relaxed"
                     />
                     <p className="mt-2 text-[11px] text-muted-foreground flex items-center gap-1">
                       <LockIcon />
@@ -938,7 +938,7 @@ export default function CoachEngagementDetail() {
                   <CardContent className="p-5">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <div className="space-y-1">
-                        <p className="text-sm font-medium text-navy-800">
+                        <p className="text-sm font-medium text-fc-800">
                           Ready to submit?
                         </p>
                         <p className="text-xs text-muted-foreground">
@@ -976,7 +976,7 @@ export default function CoachEngagementDetail() {
                     {(selectedTopics.length === 0 ||
                       selectedOutcomes.length === 0 ||
                       duration === null) && (
-                      <div className="mt-4 rounded-lg bg-navy-50/50 px-4 py-2.5 text-xs text-muted-foreground">
+                      <div className="mt-4 rounded-lg bg-fc-50/50 px-4 py-2.5 text-xs text-muted-foreground">
                         <span className="font-medium">To submit:</span>{" "}
                         {selectedTopics.length === 0 && "Select at least one topic. "}
                         {selectedOutcomes.length === 0 && "Select at least one outcome. "}
@@ -1019,7 +1019,7 @@ export default function CoachEngagementDetail() {
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-navy-50 text-navy-300 mb-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-fc-50 text-fc-300 mb-3">
                     <ClockIcon />
                   </div>
                   <p className="text-sm text-muted-foreground">

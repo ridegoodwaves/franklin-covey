@@ -21,30 +21,31 @@ FranklinCovey Coaching Platform frontend — Next.js 15 App Router with three po
 
 All page components are `"use client"` with hardcoded demo data (no backend yet). The PRD for the full platform is at `prd_for_apps/franklincovey-coaching-platform-prd.md` in the parent `.cursor` directory.
 
-## Design System: "Quiet Luxury"
+## Design System: FranklinCovey Brand
 
 **Typography** — two font families, loaded via Google Fonts in `globals.css`:
 - `font-display` → Cormorant Garamond (serif) — all headings (`h1`-`h6` apply it automatically)
-- `font-body` → Plus Jakarta Sans (sans-serif) — body text, buttons, labels
+- `font-body` → Inter (sans-serif) — body text, buttons, labels
 
-**Color palette** — three custom scales in `tailwind.config.ts` beyond the shadcn HSL variables:
-- `navy-*` (50–950) — primary brand color, text, sidebar, dark backgrounds
-- `gold-*` (50–900) — accent, CTAs, attention states, "Needs Attention" indicators
-- `sage-*` (50–900) — success, completion, positive states
+**Color palette** — one primary brand scale + Tailwind defaults in `tailwind.config.ts`:
+- `fc-*` (50–950) — primary FranklinCovey brand color (#3253FF Blue Ribbon at fc-600, #141928 Mirage at fc-950)
+- `gold-*` (50–900) — ONLY used for `.status-coach-selected` badge
+- Tailwind `emerald-*` — success/completion states (replaced former sage scale)
+- Tailwind `amber-*` — warning/attention states (replaced former gold attention usage)
 
 **Status colors** — utility classes in `globals.css` (`.status-invited`, `.status-completed`, etc.) and corresponding functions in `src/lib/utils.ts` (`getStatusColor()`, `getStatusLabel()`).
 
-**Animations** — staggered entrance animations are a core pattern. Use `opacity-0 animate-fade-in` with `stagger-1` through `stagger-6` classes for sequential reveals. Additional animations: `animate-fade-in-up`, `animate-slide-in-right`, `animate-scale-in`, `animate-pulse-subtle`. The `gold-shimmer` class creates an animated highlight effect.
+**Animations** — staggered entrance animations are a core pattern. Use `opacity-0 animate-fade-in` with `stagger-1` through `stagger-6` classes for sequential reveals. Additional animations: `animate-fade-in-up`, `animate-slide-in-right`, `animate-scale-in`, `animate-pulse-subtle`.
 
-**Textures** — Cards use `paper-texture` class (subtle gradient). Dark pages use `grain` class (noise overlay via SVG filter).
+**Logo** — Official FC logo SVGs in `public/`: `fc-logo.svg` (full horizontal), `fc-logomark.svg` (icon only), `fc-logo-white.svg` and `fc-logomark-white.svg` (white variants for dark backgrounds).
 
 ## Component Conventions
 
 UI primitives live in `src/components/ui/` following **shadcn/ui new-york style** with project-specific additions:
 
-- **Button** has custom variants: `gold`, `gold-outline` (in addition to standard `default`, `outline`, `ghost`, `secondary`, `destructive`, `link`). Sizes include `xl`.
-- **Badge** has custom variants: `gold`, `sage`, `warning`, `info` (in addition to standard ones).
-- **Card** automatically applies `paper-texture` class.
+- **Button** uses pill shape (`rounded-full`). Variants: `default` (fc-600 brand blue), `outline`, `ghost`, `secondary`, `destructive`, `link`. Sizes include `xl`.
+- **Badge** variants: `default` (fc-600), `outline`, `warning`, `info` (in addition to standard `secondary`, `destructive`).
+- **Card** uses clean border style (no textures).
 
 Icons are inline SVGs throughout — no icon library is imported at the component level. Use `width/height` of 16–24, `strokeWidth="2"`, `strokeLinecap="round"`, `strokeLinejoin="round"`.
 

@@ -7,38 +7,18 @@ export default function LandingPage() {
       <div className="absolute inset-0">
         <div className="absolute top-0 left-1/4 h-[600px] w-[600px] rounded-full bg-fc-900/40 blur-[120px]" />
         <div className="absolute bottom-0 right-1/4 h-[500px] w-[500px] rounded-full bg-fc-600/8 blur-[100px]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[800px] w-[800px] rounded-full bg-navy-900/20 blur-[150px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[800px] w-[800px] rounded-full bg-fc-900/20 blur-[150px]" />
       </div>
-
-      {/* Grain overlay */}
-      <div className="grain absolute inset-0" />
 
       {/* Content */}
       <div className="relative z-10 flex min-h-screen flex-col">
         {/* Header */}
         <header className="flex items-center justify-between px-8 py-6 lg:px-16">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-fc-600">
-              <svg
-                width="22"
-                height="22"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="white"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-              </svg>
-            </div>
-            <span className="font-display text-xl font-semibold text-white">
-              FranklinCovey
-            </span>
+            <img src="/fc-logo-white.svg" alt="FranklinCovey" className="h-7" />
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" className="text-navy-200 hover:text-white hover:bg-white/10">
+            <Button variant="ghost" className="text-fc-200 hover:text-white hover:bg-white/10">
               Help
             </Button>
           </div>
@@ -63,7 +43,7 @@ export default function LandingPage() {
               Leadership
             </h1>
 
-            <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-navy-300 opacity-0 animate-fade-in-up stagger-2">
+            <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-fc-300 opacity-0 animate-fade-in-up stagger-2">
               Connect with world-class coaches. Build the habits that drive
               lasting change. Transform your leadership, one session at a time.
             </p>
@@ -95,7 +75,7 @@ export default function LandingPage() {
                   <h3 className="font-display text-xl font-semibold text-white">
                     Participant
                   </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-navy-300">
+                  <p className="mt-2 text-sm leading-relaxed text-fc-300">
                     Select your coach, book sessions, and track your coaching
                     journey.
                   </p>
@@ -121,11 +101,11 @@ export default function LandingPage() {
               {/* Coach */}
               <a
                 href="/coach/dashboard"
-                className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-8 text-left backdrop-blur-sm transition-all duration-500 hover:border-navy-400/30 hover:bg-white/10 hover:shadow-2xl hover:shadow-navy-400/5 opacity-0 animate-fade-in-up stagger-4"
+                className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-8 text-left backdrop-blur-sm transition-all duration-500 hover:border-fc-400/30 hover:bg-white/10 hover:shadow-2xl hover:shadow-fc-400/5 opacity-0 animate-fade-in-up stagger-4"
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-navy-400/5 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                <div className="absolute inset-0 bg-gradient-to-br from-fc-400/5 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
                 <div className="relative">
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-navy-600/20 text-navy-300 transition-colors group-hover:bg-navy-600/30">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-fc-600/20 text-fc-300 transition-colors group-hover:bg-fc-600/30">
                     <svg
                       width="24"
                       height="24"
@@ -142,11 +122,11 @@ export default function LandingPage() {
                   <h3 className="font-display text-xl font-semibold text-white">
                     Coach
                   </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-navy-300">
+                  <p className="mt-2 text-sm leading-relaxed text-fc-300">
                     Manage engagements, log sessions, and guide your
                     participants.
                   </p>
-                  <div className="mt-6 flex items-center gap-2 text-sm font-medium text-navy-300 transition-all group-hover:gap-3 group-hover:text-white">
+                  <div className="mt-6 flex items-center gap-2 text-sm font-medium text-fc-300 transition-all group-hover:gap-3 group-hover:text-white">
                     Sign In
                     <svg
                       width="16"
@@ -168,11 +148,11 @@ export default function LandingPage() {
               {/* Admin */}
               <a
                 href="/admin/dashboard"
-                className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-8 text-left backdrop-blur-sm transition-all duration-500 hover:border-sage-400/30 hover:bg-white/10 hover:shadow-2xl hover:shadow-sage-400/5 opacity-0 animate-fade-in-up stagger-5"
+                className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-8 text-left backdrop-blur-sm transition-all duration-500 hover:border-emerald-400/30 hover:bg-white/10 hover:shadow-2xl hover:shadow-emerald-400/5 opacity-0 animate-fade-in-up stagger-5"
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-sage-500/5 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
                 <div className="relative">
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-sage-600/20 text-sage-300 transition-colors group-hover:bg-sage-600/30">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-600/20 text-emerald-300 transition-colors group-hover:bg-emerald-600/30">
                     <svg
                       width="24"
                       height="24"
@@ -192,11 +172,11 @@ export default function LandingPage() {
                   <h3 className="font-display text-xl font-semibold text-white">
                     Operations
                   </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-navy-300">
+                  <p className="mt-2 text-sm leading-relaxed text-fc-300">
                     Monitor all engagements, manage coaches, and track program
                     health.
                   </p>
-                  <div className="mt-6 flex items-center gap-2 text-sm font-medium text-sage-300 transition-all group-hover:gap-3 group-hover:text-white">
+                  <div className="mt-6 flex items-center gap-2 text-sm font-medium text-emerald-300 transition-all group-hover:gap-3 group-hover:text-white">
                     Sign In
                     <svg
                       width="16"
@@ -220,12 +200,12 @@ export default function LandingPage() {
 
         {/* Footer */}
         <footer className="flex items-center justify-between px-8 py-6 lg:px-16">
-          <p className="text-xs text-navy-500">
+          <p className="text-xs text-fc-500">
             &copy; 2026 FranklinCovey. All rights reserved.
           </p>
           <div className="flex items-center gap-1">
-            <div className="h-1 w-1 rounded-full bg-sage-500" />
-            <span className="text-xs text-navy-500">System Operational</span>
+            <div className="h-1 w-1 rounded-full bg-emerald-500" />
+            <span className="text-xs text-fc-500">System Operational</span>
           </div>
         </footer>
       </div>

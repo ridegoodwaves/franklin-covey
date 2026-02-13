@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Plus+Jakarta+Sans:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:ital,wght@0,100..900;1,100..900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -12,19 +12,19 @@
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 222 47% 20%;
-    --primary-foreground: 30 25% 97%;
+    --primary: 233 100% 60%;
+    --primary-foreground: 0 0% 100%;
     --secondary: 30 15% 92%;
     --secondary-foreground: 222 47% 15%;
     --muted: 30 12% 93%;
     --muted-foreground: 222 15% 45%;
-    --accent: 38 40% 54%;
+    --accent: 233 100% 55%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
     --border: 30 15% 88%;
     --input: 30 15% 85%;
-    --ring: 222 47% 20%;
+    --ring: 233 100% 60%;
     --radius: 0.625rem;
   }
 }
@@ -52,36 +52,6 @@
     text-wrap: balance;
   }
 
-  /* Grain texture overlay */
-  .grain::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 1;
-    opacity: 0.5;
-  }
-
-  /* Subtle paper texture for cards */
-  .paper-texture {
-    background-image:
-      radial-gradient(ellipse at 20% 50%, rgba(184, 150, 90, 0.03) 0%, transparent 60%),
-      radial-gradient(ellipse at 80% 20%, rgba(30, 58, 95, 0.02) 0%, transparent 50%);
-  }
-
-  /* Gold shimmer effect */
-  .gold-shimmer {
-    background: linear-gradient(
-      110deg,
-      transparent 25%,
-      rgba(184, 150, 90, 0.1) 37%,
-      transparent 63%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 3s ease-in-out infinite;
-  }
-
   /* Stagger animation delays */
   .stagger-1 { animation-delay: 0.1s; }
   .stagger-2 { animation-delay: 0.2s; }
@@ -91,10 +61,10 @@
   .stagger-6 { animation-delay: 0.6s; }
 
   /* Status colors */
-  .status-invited { @apply bg-navy-100 text-navy-700; }
+  .status-invited { @apply bg-fc-100 text-fc-700; }
   .status-coach-selected { @apply bg-gold-100 text-gold-800; }
   .status-in-progress { @apply bg-blue-50 text-blue-700; }
-  .status-completed { @apply bg-sage-100 text-sage-700; }
+  .status-completed { @apply bg-emerald-100 text-emerald-700; }
   .status-canceled { @apply bg-red-50 text-red-700; }
   .status-on-hold { @apply bg-amber-50 text-amber-700; }
 }
@@ -127,7 +97,7 @@
 
 /* Selection */
 ::selection {
-  background: hsl(38 40% 54% / 0.2);
+  background: hsl(233 100% 60% / 0.15);
   color: hsl(222 47% 11%);
 }
 

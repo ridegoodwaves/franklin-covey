@@ -149,8 +149,8 @@ function getStatusConfig(status: SessionStatus) {
     case "COMPLETED":
       return {
         label: "Completed",
-        badgeVariant: "sage" as const,
-        dotColor: "bg-sage-500",
+        badgeVariant: "default" as const,
+        dotColor: "bg-emerald-500",
         icon: (
           <svg
             width="14"
@@ -269,30 +269,16 @@ export default function EngagementPage() {
       {/* Subtle ambient background */}
       <div className="pointer-events-none fixed inset-0">
         <div className="absolute -top-40 right-1/4 h-[400px] w-[400px] rounded-full bg-fc-100/30 blur-[120px]" />
-        <div className="absolute bottom-0 left-1/3 h-[350px] w-[350px] rounded-full bg-navy-50/40 blur-[100px]" />
+        <div className="absolute bottom-0 left-1/3 h-[350px] w-[350px] rounded-full bg-fc-50/40 blur-[100px]" />
       </div>
 
       {/* Top header bar */}
       <header className="sticky top-0 z-40 border-b border-border/40 bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-fc-600">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="white"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-              </svg>
-            </div>
+            <img src="/fc-logomark.svg" alt="FranklinCovey" className="h-8 w-8" />
             <div className="hidden sm:block">
-              <span className="font-display text-lg font-semibold text-navy-900">
+              <span className="font-display text-lg font-semibold text-fc-900">
                 FranklinCovey
               </span>
               <span className="ml-2 text-xs text-muted-foreground">
@@ -330,7 +316,7 @@ export default function EngagementPage() {
           <p className="text-sm font-medium text-fc-600">
             Welcome back, {data.participantName.split(" ")[0]}
           </p>
-          <h1 className="mt-1 font-display text-3xl font-light tracking-tight text-navy-900 sm:text-4xl">
+          <h1 className="mt-1 font-display text-3xl font-light tracking-tight text-fc-900 sm:text-4xl">
             Your Coaching{" "}
             <span className="font-medium italic">Journey</span>
           </h1>
@@ -372,10 +358,10 @@ export default function EngagementPage() {
                       </svg>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gold-800">
+                      <p className="text-sm font-medium text-fc-800">
                         Almost there!
                       </p>
-                      <p className="text-xs text-gold-700">
+                      <p className="text-xs text-fc-700">
                         You are one session away from completing your coaching
                         program. Outstanding commitment.
                       </p>
@@ -384,8 +370,8 @@ export default function EngagementPage() {
                 )}
 
                 {isComplete && (
-                  <div className="mb-6 flex items-center gap-3 rounded-lg bg-sage-50 px-4 py-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sage-100">
+                  <div className="mb-6 flex items-center gap-3 rounded-lg bg-emerald-50 px-4 py-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100">
                       <svg
                         width="16"
                         height="16"
@@ -395,17 +381,17 @@ export default function EngagementPage() {
                         strokeWidth="2.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className="text-sage-600"
+                        className="text-emerald-600"
                       >
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                         <polyline points="22 4 12 14.01 9 11.01" />
                       </svg>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-sage-800">
+                      <p className="text-sm font-medium text-emerald-800">
                         Congratulations!
                       </p>
-                      <p className="text-xs text-sage-700">
+                      <p className="text-xs text-emerald-700">
                         You have completed all {data.totalSessions} coaching
                         sessions. Your growth has been remarkable.
                       </p>
@@ -420,7 +406,7 @@ export default function EngagementPage() {
                       Session Progress
                     </p>
                     <div className="mt-1 flex items-baseline gap-1.5">
-                      <span className="font-display text-5xl font-semibold text-navy-900">
+                      <span className="font-display text-5xl font-semibold text-fc-900">
                         {completedCount}
                       </span>
                       <span className="text-lg text-muted-foreground">
@@ -447,7 +433,7 @@ export default function EngagementPage() {
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="6"
-                        className="text-navy-100"
+                        className="text-fc-100"
                       />
                       <circle
                         cx="40"
@@ -457,14 +443,14 @@ export default function EngagementPage() {
                         stroke="currentColor"
                         strokeWidth="6"
                         strokeLinecap="round"
-                        className="text-gold-500 transition-all duration-1000 ease-out"
+                        className="text-fc-500 transition-all duration-1000 ease-out"
                         strokeDasharray={`${2 * Math.PI * 34}`}
                         strokeDashoffset={`${
                           2 * Math.PI * 34 * (1 - animatedProgress / 100)
                         }`}
                       />
                     </svg>
-                    <span className="absolute font-display text-lg font-semibold text-navy-900">
+                    <span className="absolute font-display text-lg font-semibold text-fc-900">
                       {Math.round(progressPercent)}%
                     </span>
                   </div>
@@ -484,7 +470,7 @@ export default function EngagementPage() {
                             "h-1.5 w-1.5 rounded-full transition-colors duration-500",
                             i < completedCount
                               ? "bg-fc-500"
-                              : "bg-navy-200"
+                              : "bg-fc-200"
                           )}
                         />
                         <span className="mt-1 text-[10px] text-muted-foreground">
@@ -510,7 +496,7 @@ export default function EngagementPage() {
           >
             <Card className="h-full">
               <CardHeader className="pb-4">
-                <CardTitle className="text-base text-navy-900">
+                <CardTitle className="text-base text-fc-900">
                   Your Coach
                 </CardTitle>
               </CardHeader>
@@ -522,18 +508,18 @@ export default function EngagementPage() {
                       alt={data.coach.name}
                     />
                   )}
-                  <AvatarFallback className="bg-gradient-to-br from-navy-100 to-navy-50 text-lg font-display font-semibold text-navy-700">
+                  <AvatarFallback className="bg-gradient-to-br from-fc-100 to-fc-50 text-lg font-display font-semibold text-fc-700">
                     {data.coach.initials}
                   </AvatarFallback>
                 </Avatar>
 
-                <h3 className="mt-4 font-display text-lg font-semibold text-navy-900">
+                <h3 className="mt-4 font-display text-lg font-semibold text-fc-900">
                   {data.coach.name}
                 </h3>
 
                 <div className="mt-3 flex flex-wrap justify-center gap-1.5">
                   {data.coach.specialties.map((s) => (
-                    <Badge key={s} variant="gold" className="text-[11px]">
+                    <Badge key={s} variant="default" className="text-[11px]">
                       {s}
                     </Badge>
                   ))}
@@ -573,7 +559,7 @@ export default function EngagementPage() {
             )}
             style={{ transitionDelay: mounted ? "350ms" : "0ms" }}
           >
-            <Card className="relative overflow-hidden border-gold-200/60 bg-gradient-to-r from-gold-50/50 via-white to-white">
+            <Card className="relative overflow-hidden border-fc-200/60 bg-gradient-to-r from-fc-50/50 via-white to-white">
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-fc-500" />
               <CardContent className="flex flex-col items-start gap-4 px-7 py-6 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
@@ -587,7 +573,7 @@ export default function EngagementPage() {
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      className="text-gold-700"
+                      className="text-fc-700"
                     >
                       <rect
                         x="3"
@@ -603,10 +589,10 @@ export default function EngagementPage() {
                     </svg>
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-gold-700">
+                    <p className="text-xs font-medium text-fc-700">
                       Next Session &middot; Session {nextSession.number}
                     </p>
-                    <p className="mt-0.5 font-display text-lg font-semibold text-navy-900">
+                    <p className="mt-0.5 font-display text-lg font-semibold text-fc-900">
                       {formatSessionDate(nextSession.date)}
                     </p>
                     {nextSession.time && (
@@ -627,7 +613,7 @@ export default function EngagementPage() {
                     )}
                   </div>
                 </div>
-                <Button variant="gold" size="lg" className="gap-2 shrink-0">
+                <Button variant="default" size="lg" className="gap-2 shrink-0">
                   <svg
                     width="16"
                     height="16"
@@ -659,10 +645,10 @@ export default function EngagementPage() {
           style={{ transitionDelay: mounted ? "450ms" : "0ms" }}
         >
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-xl font-semibold text-navy-900">
+            <h2 className="font-display text-xl font-semibold text-fc-900">
               Session Timeline
             </h2>
-            <Button variant="gold-outline" className="gap-2">
+            <Button variant="outline" className="gap-2">
               <svg
                 width="14"
                 height="14"
@@ -717,10 +703,10 @@ export default function EngagementPage() {
                       className={cn(
                         "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
                         session.status === "COMPLETED"
-                          ? "border-sage-300 bg-sage-50 text-sage-600"
+                          ? "border-emerald-300 bg-emerald-50 text-emerald-600"
                           : session.isNext
                             ? "border-fc-400 bg-fc-50 text-fc-600 ring-4 ring-fc-100"
-                            : "border-navy-200 bg-white text-navy-400"
+                            : "border-fc-200 bg-white text-fc-400"
                       )}
                     >
                       {config.icon}
@@ -730,8 +716,8 @@ export default function EngagementPage() {
                         className={cn(
                           "w-[2px] flex-1 min-h-[24px]",
                           session.status === "COMPLETED"
-                            ? "bg-sage-200"
-                            : "bg-navy-100"
+                            ? "bg-emerald-200"
+                            : "bg-fc-100"
                         )}
                       />
                     )}
@@ -743,14 +729,14 @@ export default function EngagementPage() {
                       "flex-1 rounded-xl border px-5 py-4 transition-all duration-200",
                       isLast ? "mb-0" : "mb-3",
                       session.isNext
-                        ? "border-gold-200/80 bg-fc-50/30 shadow-sm"
+                        ? "border-fc-200/80 bg-fc-50/30 shadow-sm"
                         : "border-border/40 bg-white hover:border-border hover:shadow-sm"
                     )}
                   >
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <div className="flex items-center gap-2.5">
-                          <span className="font-display text-base font-semibold text-navy-900">
+                          <span className="font-display text-base font-semibold text-fc-900">
                             Session {session.number}
                           </span>
                           <Badge
@@ -761,7 +747,7 @@ export default function EngagementPage() {
                           </Badge>
                           {session.isNext && (
                             <Badge
-                              variant="gold"
+                              variant="default"
                               className="text-[11px] animate-pulse-subtle"
                             >
                               Up Next
@@ -773,7 +759,7 @@ export default function EngagementPage() {
                             ? formatSessionDate(session.date)
                             : "Date to be determined"}
                           {session.time && (
-                            <span className="ml-1.5 text-navy-500">
+                            <span className="ml-1.5 text-fc-500">
                               at {session.time}
                             </span>
                           )}
@@ -785,20 +771,20 @@ export default function EngagementPage() {
                         className={cn(
                           "flex h-10 w-14 shrink-0 flex-col items-center justify-center rounded-lg",
                           session.status === "COMPLETED"
-                            ? "bg-sage-50"
+                            ? "bg-emerald-50"
                             : session.isNext
                               ? "bg-fc-100"
-                              : "bg-navy-50"
+                              : "bg-fc-50"
                         )}
                       >
                         <span
                           className={cn(
                             "text-[11px] font-semibold leading-none",
                             session.status === "COMPLETED"
-                              ? "text-sage-700"
+                              ? "text-emerald-700"
                               : session.isNext
-                                ? "text-gold-700"
-                                : "text-navy-400"
+                                ? "text-fc-700"
+                                : "text-fc-400"
                           )}
                         >
                           {formatShortDate(session.date)}
@@ -828,12 +814,12 @@ export default function EngagementPage() {
               <p className="text-xs font-medium text-muted-foreground">
                 Program
               </p>
-              <p className="mt-0.5 text-sm text-navy-700">
+              <p className="mt-0.5 text-sm text-fc-700">
                 {data.programName}
               </p>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <div className="h-1.5 w-1.5 rounded-full bg-sage-500" />
+              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               FranklinCovey Coaching Platform
             </div>
           </div>

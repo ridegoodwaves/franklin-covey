@@ -347,7 +347,7 @@ export default function AdminDashboard() {
     >
       {/* Page header */}
       <div className="mb-8">
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-navy-900">
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-fc-900">
           Dashboard
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -367,11 +367,11 @@ export default function AdminDashboard() {
               className={cn(
                 "relative overflow-hidden opacity-0 animate-fade-in",
                 `stagger-${idx + 1}`,
-                isAttention && "border-gold-300 bg-gradient-to-br from-gold-50/80 to-white shadow-gold-100/40 shadow-md"
+                isAttention && "border-amber-300 bg-gradient-to-br from-amber-50/80 to-white shadow-amber-100/40 shadow-md"
               )}
             >
               {/* Gold shimmer on attention card */}
-              {isAttention && <div className="gold-shimmer absolute inset-0 pointer-events-none" />}
+              {isAttention && <div className="hidden absolute inset-0 pointer-events-none" />}
 
               <CardContent className="relative p-5">
                 <div className="flex items-start justify-between">
@@ -379,8 +379,8 @@ export default function AdminDashboard() {
                     className={cn(
                       "flex h-10 w-10 items-center justify-center rounded-lg",
                       isAttention
-                        ? "bg-gold-100 text-gold-700"
-                        : "bg-navy-50 text-navy-600"
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-fc-50 text-fc-600"
                     )}
                   >
                     {kpi.icon}
@@ -391,7 +391,7 @@ export default function AdminDashboard() {
                 <div className="mt-4">
                   <p className={cn(
                     "font-display text-3xl font-semibold tracking-tight",
-                    isAttention ? "text-gold-800" : "text-navy-900"
+                    isAttention ? "text-amber-800" : "text-fc-900"
                   )}>
                     {kpi.value}
                   </p>
@@ -415,8 +415,8 @@ export default function AdminDashboard() {
                   )}
                   <span className={cn(
                     "text-[11px] font-medium",
-                    kpi.changeType === "positive" && "text-sage-600",
-                    kpi.changeType === "attention" && "text-gold-700",
+                    kpi.changeType === "positive" && "text-emerald-600",
+                    kpi.changeType === "attention" && "text-amber-700",
                     kpi.changeType === "neutral" && "text-muted-foreground"
                   )}>
                     {kpi.change}
@@ -452,7 +452,7 @@ export default function AdminDashboard() {
                 </TabsTrigger>
                 <TabsTrigger value="attention" className="gap-1.5">
                   Needs Attention
-                  <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-gold-600 px-1.5 text-[10px] font-semibold text-white">
+                  <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-600 px-1.5 text-[10px] font-semibold text-white">
                     {attentionCount}
                   </span>
                 </TabsTrigger>
@@ -465,7 +465,7 @@ export default function AdminDashboard() {
                   <select
                     value={filterStatus}
                     onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
-                    className="h-9 appearance-none rounded-lg border border-input bg-white pl-3 pr-8 text-xs font-medium text-navy-700 transition-colors hover:border-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-300"
+                    className="h-9 appearance-none rounded-lg border border-input bg-white pl-3 pr-8 text-xs font-medium text-fc-700 transition-colors hover:border-fc-300 focus:outline-none focus:ring-2 focus:ring-fc-300"
                   >
                     {statuses.map((s) => (
                       <option key={s} value={s}>
@@ -481,7 +481,7 @@ export default function AdminDashboard() {
                   <select
                     value={filterCoach}
                     onChange={(e) => { setFilterCoach(e.target.value); setCurrentPage(1); }}
-                    className="h-9 appearance-none rounded-lg border border-input bg-white pl-3 pr-8 text-xs font-medium text-navy-700 transition-colors hover:border-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-300"
+                    className="h-9 appearance-none rounded-lg border border-input bg-white pl-3 pr-8 text-xs font-medium text-fc-700 transition-colors hover:border-fc-300 focus:outline-none focus:ring-2 focus:ring-fc-300"
                   >
                     {coaches.map((c) => (
                       <option key={c} value={c}>{c}</option>
@@ -495,7 +495,7 @@ export default function AdminDashboard() {
                   <select
                     value={filterTrack}
                     onChange={(e) => { setFilterTrack(e.target.value); setCurrentPage(1); }}
-                    className="h-9 appearance-none rounded-lg border border-input bg-white pl-3 pr-8 text-xs font-medium text-navy-700 transition-colors hover:border-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-300"
+                    className="h-9 appearance-none rounded-lg border border-input bg-white pl-3 pr-8 text-xs font-medium text-fc-700 transition-colors hover:border-fc-300 focus:outline-none focus:ring-2 focus:ring-fc-300"
                   >
                     {tracks.map((t) => (
                       <option key={t} value={t}>
@@ -544,15 +544,15 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground">
               Showing{" "}
-              <span className="font-medium text-navy-800">
+              <span className="font-medium text-fc-800">
                 {Math.min((currentPage - 1) * perPage + 1, sorted.length)}
               </span>
               {" "}to{" "}
-              <span className="font-medium text-navy-800">
+              <span className="font-medium text-fc-800">
                 {Math.min(currentPage * perPage, sorted.length)}
               </span>
               {" "}of{" "}
-              <span className="font-medium text-navy-800">{sorted.length}</span>
+              <span className="font-medium text-fc-800">{sorted.length}</span>
               {" "}engagements
             </p>
 
@@ -622,7 +622,7 @@ function SortHeader({
   return (
     <button
       onClick={() => onSort(col)}
-      className="group inline-flex items-center gap-1 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:text-navy-800"
+      className="group inline-flex items-center gap-1 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:text-fc-800"
     >
       {label}
       <span className={cn("transition-opacity", active ? "opacity-100" : "opacity-0 group-hover:opacity-50")}>
@@ -643,7 +643,7 @@ function EngagementTable({ data, sortCol, sortAsc, onSort }: EngagementTableProp
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/80">
           <SearchIcon className="text-muted-foreground" />
         </div>
-        <p className="mt-4 font-display text-lg font-medium text-navy-800">No engagements found</p>
+        <p className="mt-4 font-display text-lg font-medium text-fc-800">No engagements found</p>
         <p className="mt-1 text-sm text-muted-foreground">Try adjusting your filters or search query</p>
       </div>
     );
@@ -681,31 +681,31 @@ function EngagementTable({ data, sortCol, sortAsc, onSort }: EngagementTableProp
             <tr
               key={eng.id}
               className={cn(
-                "group border-b border-border/30 transition-colors hover:bg-navy-50/50",
-                eng.needsAttention && "bg-gold-50/30"
+                "group border-b border-border/30 transition-colors hover:bg-fc-50/50",
+                eng.needsAttention && "bg-amber-50/30"
               )}
             >
               {/* Participant */}
               <td className="px-6 py-3.5">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-navy-100 text-navy-700 text-xs font-medium">
+                    <AvatarFallback className="bg-fc-100 text-fc-700 text-xs font-medium">
                       {getInitials(eng.participant)}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="text-sm font-medium text-navy-900">{eng.participant}</p>
+                    <p className="text-sm font-medium text-fc-900">{eng.participant}</p>
                     <p className="text-[11px] text-muted-foreground">{eng.id}</p>
                   </div>
                   {eng.needsAttention && (
-                    <AlertTriangleIcon className="ml-1 h-3.5 w-3.5 text-gold-600" />
+                    <AlertTriangleIcon className="ml-1 h-3.5 w-3.5 text-amber-600" />
                   )}
                 </div>
               </td>
 
               {/* Coach */}
               <td className="px-4 py-3.5">
-                <span className="text-sm text-navy-700">{eng.coach}</span>
+                <span className="text-sm text-fc-700">{eng.coach}</span>
               </td>
 
               {/* Status */}

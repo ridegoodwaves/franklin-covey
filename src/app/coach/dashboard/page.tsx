@@ -119,7 +119,7 @@ function ActivityIcon() {
 
 function EmptyStateIcon() {
   return (
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-navy-200">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-fc-200">
       <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
       <line x1="3" y1="9" x2="21" y2="9" />
       <line x1="9" y1="21" x2="9" y2="9" />
@@ -333,17 +333,17 @@ function StatCard({
         <div className="flex items-start justify-between">
           <div className="space-y-2">
             <p className="text-sm font-medium text-muted-foreground">{label}</p>
-            <p className="font-display text-3xl font-semibold tracking-tight text-navy-900">
+            <p className="font-display text-3xl font-semibold tracking-tight text-fc-900">
               {value}
             </p>
             {trend && (
-              <p className="flex items-center gap-1 text-xs font-medium text-sage-600">
+              <p className="flex items-center gap-1 text-xs font-medium text-emerald-600">
                 <TrendUpIcon />
                 {trend}
               </p>
             )}
           </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-navy-50 text-navy-600">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-fc-50 text-fc-600">
             {icon}
           </div>
         </div>
@@ -368,29 +368,29 @@ function SessionRow({
     <a
       href={`/coach/engagement?id=${session.engagementId}`}
       className={cn(
-        "group flex items-center gap-4 rounded-xl px-4 py-3.5 transition-all duration-200 hover:bg-navy-50/60 opacity-0 animate-fade-in",
-        isToday && "bg-gold-50/50 hover:bg-gold-50"
+        "group flex items-center gap-4 rounded-xl px-4 py-3.5 transition-all duration-200 hover:bg-fc-50/60 opacity-0 animate-fade-in",
+        isToday && "bg-amber-50/50 hover:bg-amber-50"
       )}
       style={{ animationDelay: `${delay}ms` }}
     >
       <Avatar className="h-10 w-10">
-        <AvatarFallback className="bg-navy-100 text-navy-700 text-xs font-display font-semibold">
+        <AvatarFallback className="bg-fc-100 text-fc-700 text-xs font-display font-semibold">
           {getInitials(session.participantName)}
         </AvatarFallback>
       </Avatar>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-navy-900 truncate">
+          <p className="text-sm font-medium text-fc-900 truncate">
             {session.participantName}
           </p>
           {isToday && (
-            <Badge variant="gold" className="text-[10px] px-1.5 py-0">
+            <Badge variant="default" className="text-[10px] px-1.5 py-0">
               Today
             </Badge>
           )}
           {isTomorrow && (
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-navy-200">
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-fc-200">
               Tomorrow
             </Badge>
           )}
@@ -401,7 +401,7 @@ function SessionRow({
       </div>
 
       <div className="hidden sm:flex flex-col items-end gap-0.5">
-        <div className="flex items-center gap-1.5 text-xs text-navy-700">
+        <div className="flex items-center gap-1.5 text-xs text-fc-700">
           <CalendarIcon />
           <span>{session.date}</span>
         </div>
@@ -436,7 +436,7 @@ function AttentionItem({
   return (
     <a
       href={`/coach/engagement?id=${item.engagementId}`}
-      className="group flex items-center gap-4 rounded-xl border border-gold-200/60 bg-gold-50/30 px-4 py-3.5 transition-all duration-200 hover:border-gold-300/80 hover:bg-gold-50/60 hover:shadow-sm opacity-0 animate-fade-in"
+      className="group flex items-center gap-4 rounded-xl border border-amber-200/60 bg-amber-50/30 px-4 py-3.5 transition-all duration-200 hover:border-amber-300/80 hover:bg-amber-50/60 hover:shadow-sm opacity-0 animate-fade-in"
       style={{ animationDelay: `${delay}ms` }}
     >
       <div
@@ -444,33 +444,33 @@ function AttentionItem({
           "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
           item.severity === "high"
             ? "bg-amber-100 text-amber-700"
-            : "bg-gold-100 text-gold-700"
+            : "bg-amber-100 text-amber-700"
         )}
       >
         <AlertIcon />
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-navy-900">
+        <p className="text-sm font-medium text-fc-900">
           {item.participantName}
         </p>
-        <p className="text-xs text-gold-800 mt-0.5">{item.issue}</p>
+        <p className="text-xs text-amber-800 mt-0.5">{item.issue}</p>
       </div>
 
       <div className="hidden sm:block text-right">
         <p className="text-xs text-muted-foreground">Last activity</p>
-        <p className="text-xs font-medium text-navy-700">{item.lastActivity}</p>
+        <p className="text-xs font-medium text-fc-700">{item.lastActivity}</p>
       </div>
 
       <Button
-        variant="gold-outline"
+        variant="outline"
         size="sm"
         className="hidden md:inline-flex text-xs h-7"
       >
         Review
       </Button>
 
-      <div className="md:hidden text-gold-600 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+      <div className="md:hidden text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
         <ArrowRightIcon />
       </div>
     </a>
@@ -494,7 +494,7 @@ function EngagementCard({
       className="group block opacity-0 animate-fade-in"
       style={{ animationDelay: `${delay}ms` }}
     >
-      <Card className="h-full transition-all duration-300 hover:shadow-md hover:border-navy-200/80 hover:-translate-y-0.5">
+      <Card className="h-full transition-all duration-300 hover:shadow-md hover:border-fc-200/80 hover:-translate-y-0.5">
         <CardContent className="p-5">
           {/* Header row */}
           <div className="flex items-start justify-between gap-3 mb-4">
@@ -504,15 +504,15 @@ function EngagementCard({
                   className={cn(
                     "text-xs font-display font-semibold",
                     isCompleted
-                      ? "bg-sage-100 text-sage-700"
-                      : "bg-navy-100 text-navy-700"
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-fc-100 text-fc-700"
                   )}
                 >
                   {getInitials(engagement.participantName)}
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <p className="text-sm font-medium text-navy-900 truncate group-hover:text-navy-700 transition-colors">
+                <p className="text-sm font-medium text-fc-900 truncate group-hover:text-fc-700 transition-colors">
                   {engagement.participantName}
                 </p>
                 <p className="text-xs text-muted-foreground truncate mt-0.5">
@@ -541,7 +541,7 @@ function EngagementCard({
           <div className="space-y-2 mb-4">
             <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground">Progress</span>
-              <span className="font-medium text-navy-700">
+              <span className="font-medium text-fc-700">
                 {engagement.sessionsCompleted} of {engagement.totalSessions} sessions
               </span>
             </div>
@@ -549,7 +549,7 @@ function EngagementCard({
               value={engagement.progress}
               className={cn(
                 "h-1.5",
-                isCompleted && "[&>[data-state]]:bg-sage-500 bg-sage-100"
+                isCompleted && "[&>[data-state]]:bg-emerald-500 bg-emerald-100"
               )}
             />
           </div>
@@ -561,11 +561,11 @@ function EngagementCard({
               Last: {engagement.lastActivity}
             </span>
             {engagement.nextSession ? (
-              <span className="text-navy-700 font-medium">
+              <span className="text-fc-700 font-medium">
                 Next: {engagement.nextSession}
               </span>
             ) : isCompleted ? (
-              <span className="flex items-center gap-1 text-sage-600 font-medium">
+              <span className="flex items-center gap-1 text-emerald-600 font-medium">
                 <CheckCircleIcon />
                 Complete
               </span>
@@ -603,7 +603,7 @@ function SectionHeader({
 }: {
   title: string;
   count?: number;
-  countVariant?: "default" | "gold";
+  countVariant?: "default" | "attention";
   action?: { label: string; href: string };
   delay: number;
 }) {
@@ -613,16 +613,16 @@ function SectionHeader({
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="flex items-center gap-2.5">
-        <h2 className="font-display text-lg font-semibold text-navy-900">
+        <h2 className="font-display text-lg font-semibold text-fc-900">
           {title}
         </h2>
         {count !== undefined && (
           <span
             className={cn(
               "flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold",
-              countVariant === "gold"
-                ? "bg-gold-100 text-gold-800"
-                : "bg-navy-100 text-navy-700"
+              countVariant === "attention"
+                ? "bg-amber-100 text-amber-800"
+                : "bg-fc-100 text-fc-700"
             )}
           >
             {count}
@@ -632,7 +632,7 @@ function SectionHeader({
       {action && (
         <a
           href={action.href}
-          className="group flex items-center gap-1 text-xs font-medium text-navy-600 hover:text-navy-800 transition-colors"
+          className="group flex items-center gap-1 text-xs font-medium text-fc-600 hover:text-fc-800 transition-colors"
         >
           {action.label}
           <span className="transition-transform duration-200 group-hover:translate-x-0.5">
@@ -681,9 +681,9 @@ export default function CoachDashboard() {
                 day: "numeric",
               })}
             </p>
-            <h1 className="font-display text-2xl sm:text-3xl font-semibold text-navy-900 tracking-tight">
+            <h1 className="font-display text-2xl sm:text-3xl font-semibold text-fc-900 tracking-tight">
               Welcome back,{" "}
-              <span className="text-navy-700">Dr. Sarah Chen</span>
+              <span className="text-fc-700">Dr. Sarah Chen</span>
             </h1>
           </div>
           <Button variant="outline" size="sm" className="self-start sm:self-auto">
@@ -750,7 +750,7 @@ export default function CoachDashboard() {
           <SectionHeader
             title="Needs Attention"
             count={needsAttention.length}
-            countVariant="gold"
+            countVariant="attention"
             delay={500}
           />
           <div className="space-y-2">
@@ -786,13 +786,13 @@ export default function CoachDashboard() {
             <TabsList>
               <TabsTrigger value="active">
                 Active
-                <span className="ml-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-navy-800 px-1 text-[9px] font-semibold text-white data-[state=active]:bg-navy-800">
+                <span className="ml-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-fc-800 px-1 text-[9px] font-semibold text-white data-[state=active]:bg-fc-800">
                   {activeEngagements.length}
                 </span>
               </TabsTrigger>
               <TabsTrigger value="completed">
                 Completed
-                <span className="ml-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-sage-200 px-1 text-[9px] font-semibold text-sage-800">
+                <span className="ml-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-200 px-1 text-[9px] font-semibold text-emerald-800">
                   {completedEngagements.length}
                 </span>
               </TabsTrigger>

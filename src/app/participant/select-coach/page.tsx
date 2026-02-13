@@ -354,7 +354,7 @@ function FilterDropdown({
           "focus:outline-none focus:ring-2 focus:ring-fc-600/20 focus:border-fc-600",
           value
             ? "border-fc-600/40 bg-fc-50 text-fc-700"
-            : "border-navy-200 text-navy-600 hover:border-navy-300"
+            : "border-fc-200 text-fc-600 hover:border-fc-300"
         )}
       >
         <option value="">All {label}</option>
@@ -364,10 +364,10 @@ function FilterDropdown({
           </option>
         ))}
       </select>
-      <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-navy-400">
+      <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fc-400">
         {icon}
       </div>
-      <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-navy-400">
+      <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-fc-400">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="m6 9 6 6 6-6" />
         </svg>
@@ -402,7 +402,7 @@ function ActiveFilterBadges({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs font-medium text-navy-500">Active:</span>
+      <span className="text-xs font-medium text-fc-500">Active:</span>
       {activeFilters.map(([key, value]) => (
         <button
           key={key}
@@ -428,7 +428,7 @@ function ActiveFilterBadges({
       ))}
       <button
         onClick={onClearAll}
-        className="text-xs font-medium text-navy-400 underline-offset-2 hover:text-navy-600 hover:underline"
+        className="text-xs font-medium text-fc-400 underline-offset-2 hover:text-fc-600 hover:underline"
       >
         Clear all
       </button>
@@ -450,20 +450,15 @@ function VideoThumbnail({
         e.stopPropagation();
         onClick();
       }}
-      className="group/video relative w-full overflow-hidden rounded-t-xl bg-gradient-to-br from-navy-100 to-navy-50"
+      className="group/video relative w-full overflow-hidden rounded-t-xl bg-gradient-to-br from-fc-100 to-fc-50"
       style={{ aspectRatio: "16/9" }}
       aria-label={`Watch ${coachName}'s introduction video`}
     >
       {/* Placeholder thumbnail with gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-fc-950/80 via-navy-800/70 to-fc-900/80" />
+      <div className="absolute inset-0 bg-gradient-to-br from-fc-950/80 via-fc-800/70 to-fc-900/80" />
       {/* FC logo watermark */}
       <div className="absolute bottom-3 left-3 flex items-center gap-1.5 opacity-60">
-        <div className="flex h-5 w-5 items-center justify-center rounded bg-white/20">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-          </svg>
-        </div>
+        <img src="/fc-logomark-white.svg" alt="" className="h-4 w-4" />
         <span className="text-[10px] font-medium text-white/80">Introduction</span>
       </div>
       {/* Play button */}
@@ -495,7 +490,7 @@ function VideoPlayerModal({
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-navy-950/60 backdrop-blur-sm animate-fade-in"
+        className="absolute inset-0 bg-fc-950/60 backdrop-blur-sm animate-fade-in"
         style={{ animationDuration: "200ms" }}
         onClick={onClose}
       />
@@ -513,8 +508,8 @@ function VideoPlayerModal({
             <path d="m6 6 12 12" />
           </svg>
         </button>
-        <div className="overflow-hidden rounded-xl bg-navy-950 shadow-2xl">
-          <div className="flex aspect-video items-center justify-center bg-gradient-to-br from-fc-950 via-navy-900 to-navy-950">
+        <div className="overflow-hidden rounded-xl bg-fc-950 shadow-2xl">
+          <div className="flex aspect-video items-center justify-center bg-gradient-to-br from-fc-950 via-fc-900 to-fc-950">
             <div className="text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/10">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -522,8 +517,8 @@ function VideoPlayerModal({
                 </svg>
               </div>
               <p className="font-display text-lg font-medium text-white">{coachName}</p>
-              <p className="mt-1 text-sm text-navy-300">Introduction Video</p>
-              <p className="mt-3 text-xs text-navy-500">Video player will connect to hosted content</p>
+              <p className="mt-1 text-sm text-fc-300">Introduction Video</p>
+              <p className="mt-3 text-xs text-fc-500">Video player will connect to hosted content</p>
             </div>
           </div>
         </div>
@@ -627,29 +622,15 @@ export default function SelectCoachPage() {
       {/* Subtle ambient background */}
       <div className="pointer-events-none fixed inset-0">
         <div className="absolute -top-40 left-1/3 h-[500px] w-[500px] rounded-full bg-fc-100/30 blur-[120px]" />
-        <div className="absolute -bottom-20 right-1/4 h-[400px] w-[400px] rounded-full bg-navy-100/30 blur-[100px]" />
+        <div className="absolute -bottom-20 right-1/4 h-[400px] w-[400px] rounded-full bg-fc-100/30 blur-[100px]" />
       </div>
 
       {/* Top header bar */}
       <header className="sticky top-0 z-40 border-b border-border/40 bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-fc-600">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="white"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-              </svg>
-            </div>
-            <span className="font-display text-lg font-semibold text-navy-900">
+            <img src="/fc-logomark.svg" alt="FranklinCovey" className="h-8 w-8" />
+            <span className="font-display text-lg font-semibold text-fc-900">
               FranklinCovey
             </span>
           </div>
@@ -680,7 +661,7 @@ export default function SelectCoachPage() {
             </span>
           </div>
 
-          <h1 className="font-display text-4xl font-light leading-tight tracking-tight text-navy-900 sm:text-5xl">
+          <h1 className="font-display text-4xl font-light leading-tight tracking-tight text-fc-900 sm:text-5xl">
             Choose Your{" "}
             <span className="font-medium italic text-fc-600">Coach</span>
           </h1>
@@ -712,7 +693,7 @@ export default function SelectCoachPage() {
                 </svg>
                 Filters
                 {hasActiveFilters && (
-                  <Badge variant="gold" className="text-[10px] px-1.5 py-0">
+                  <Badge variant="default" className="text-[10px] px-1.5 py-0">
                     {Object.values(filters).filter(Boolean).length}
                   </Badge>
                 )}
@@ -735,7 +716,7 @@ export default function SelectCoachPage() {
 
           {/* Filter dropdowns */}
           <div className={cn(
-            "rounded-xl border border-navy-100 bg-white/60 p-4 backdrop-blur-sm",
+            "rounded-xl border border-fc-100 bg-white/60 p-4 backdrop-blur-sm",
             "sm:block",
             filtersExpanded ? "block" : "hidden"
           )}>
@@ -789,7 +770,7 @@ export default function SelectCoachPage() {
                 }
               />
               {hasActiveFilters && (
-                <span className="hidden text-xs text-navy-400 sm:inline">
+                <span className="hidden text-xs text-fc-400 sm:inline">
                   {availableCount} coach{availableCount !== 1 ? "es" : ""} available
                 </span>
               )}
@@ -797,7 +778,7 @@ export default function SelectCoachPage() {
 
             {/* Active filter badges */}
             {hasActiveFilters && (
-              <div className="mt-3 border-t border-navy-100 pt-3">
+              <div className="mt-3 border-t border-fc-100 pt-3">
                 <ActiveFilterBadges
                   filters={filters}
                   onRemove={removeFilter}
@@ -816,13 +797,13 @@ export default function SelectCoachPage() {
               mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
             )}
           >
-            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-navy-50">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-navy-400">
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-fc-50">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-fc-400">
                 <circle cx="11" cy="11" r="8" />
                 <path d="m21 21-4.3-4.3" />
               </svg>
             </div>
-            <h2 className="font-display text-2xl font-semibold text-navy-900">
+            <h2 className="font-display text-2xl font-semibold text-fc-900">
               No Coaches Match Your Filters
             </h2>
             <p className="mt-3 text-muted-foreground">
@@ -845,7 +826,7 @@ export default function SelectCoachPage() {
               mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
             )}
           >
-            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-navy-50">
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-fc-50">
               <svg
                 width="32"
                 height="32"
@@ -855,7 +836,7 @@ export default function SelectCoachPage() {
                 strokeWidth="1.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="text-navy-400"
+                className="text-fc-400"
               >
                 <circle cx="12" cy="12" r="10" />
                 <path d="M16 16s-1.5-2-4-2-4 2-4 2" />
@@ -863,7 +844,7 @@ export default function SelectCoachPage() {
                 <line x1="15" y1="9" x2="15.01" y2="9" />
               </svg>
             </div>
-            <h2 className="font-display text-2xl font-semibold text-navy-900">
+            <h2 className="font-display text-2xl font-semibold text-fc-900">
               All Coaches at Capacity
             </h2>
             <p className="mt-3 text-muted-foreground">
@@ -897,7 +878,7 @@ export default function SelectCoachPage() {
                       "group relative flex h-full flex-col overflow-hidden transition-all duration-300",
                       coach.atCapacity
                         ? "opacity-60"
-                        : "hover:shadow-lg hover:shadow-navy-900/5 hover:-translate-y-1 hover:border-fc-200/80"
+                        : "hover:shadow-lg hover:shadow-fc-900/5 hover:-translate-y-1 hover:border-fc-200/80"
                     )}
                   >
                     {/* Video thumbnail (if coach has video) */}
@@ -920,7 +901,7 @@ export default function SelectCoachPage() {
                           className={cn(
                             "h-20 w-20 ring-4 ring-offset-4 ring-offset-white transition-all duration-300",
                             coach.atCapacity
-                              ? "ring-navy-100"
+                              ? "ring-fc-100"
                               : "ring-fc-100 group-hover:ring-fc-200"
                           )}
                         >
@@ -931,21 +912,21 @@ export default function SelectCoachPage() {
                             className={cn(
                               "text-lg font-display font-semibold",
                               coach.atCapacity
-                                ? "bg-navy-50 text-navy-400"
-                                : "bg-gradient-to-br from-fc-100 to-navy-50 text-navy-700"
+                                ? "bg-fc-50 text-fc-400"
+                                : "bg-gradient-to-br from-fc-100 to-fc-50 text-fc-700"
                             )}
                           >
                             {coach.initials}
                           </AvatarFallback>
                         </Avatar>
                         {coach.atCapacity && (
-                          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-navy-100 px-3 py-0.5 text-[11px] font-medium text-navy-600">
+                          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-fc-100 px-3 py-0.5 text-[11px] font-medium text-fc-600">
                             At Capacity
                           </div>
                         )}
                       </div>
 
-                      <CardTitle className="mt-4 text-lg text-navy-900">
+                      <CardTitle className="mt-4 text-lg text-fc-900">
                         {coach.name}
                       </CardTitle>
 
@@ -959,7 +940,7 @@ export default function SelectCoachPage() {
                             {cred}
                           </span>
                         ))}
-                        <span className="text-navy-300">&middot;</span>
+                        <span className="text-fc-300">&middot;</span>
                         <span className="text-xs text-muted-foreground">
                           {coach.yearsExperience} yrs
                         </span>
@@ -974,7 +955,7 @@ export default function SelectCoachPage() {
                         {coach.location}
                         {coach.languages.length > 1 && (
                           <>
-                            <span className="text-navy-300">&middot;</span>
+                            <span className="text-fc-300">&middot;</span>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <circle cx="12" cy="12" r="10" />
                               <path d="M2 12h20" />
@@ -987,7 +968,7 @@ export default function SelectCoachPage() {
                     </CardHeader>
 
                     <CardContent className="relative flex-1 px-6 pb-4">
-                      <p className="text-sm leading-relaxed text-navy-700 line-clamp-3">
+                      <p className="text-sm leading-relaxed text-fc-700 line-clamp-3">
                         {coach.bio}
                       </p>
 
@@ -996,7 +977,7 @@ export default function SelectCoachPage() {
                         {coach.specialties.map((s) => (
                           <Badge
                             key={s}
-                            variant={coach.atCapacity ? "outline" : "gold"}
+                            variant={coach.atCapacity ? "outline" : "default"}
                             className="text-[11px]"
                           >
                             {s}
@@ -1007,7 +988,7 @@ export default function SelectCoachPage() {
 
                     <CardFooter className="relative px-6 pb-6">
                       <Button
-                        variant="gold"
+                        variant="default"
                         size="lg"
                         className="w-full"
                         disabled={coach.atCapacity}
@@ -1087,7 +1068,7 @@ export default function SelectCoachPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
           {/* Backdrop */}
           <div
-            className="absolute inset-0 bg-navy-950/30 backdrop-blur-sm animate-fade-in"
+            className="absolute inset-0 bg-fc-950/30 backdrop-blur-sm animate-fade-in"
             style={{ animationDuration: "200ms" }}
             onClick={() => !selecting && setConfirmCoach(null)}
           />
@@ -1097,7 +1078,7 @@ export default function SelectCoachPage() {
             className="relative w-full max-w-md animate-scale-in"
             style={{ animationDuration: "300ms" }}
           >
-            <Card className="overflow-hidden border-fc-200/50 shadow-2xl shadow-navy-900/10">
+            <Card className="overflow-hidden border-fc-200/50 shadow-2xl shadow-fc-900/10">
               {/* FC blue accent bar */}
               <div className="h-1 w-full bg-gradient-to-r from-fc-600 via-fc-500 to-fc-600" />
 
@@ -1109,17 +1090,17 @@ export default function SelectCoachPage() {
                       alt={confirmCoach.name}
                     />
                   )}
-                  <AvatarFallback className="bg-gradient-to-br from-fc-100 to-navy-50 text-xl font-display font-semibold text-navy-700">
+                  <AvatarFallback className="bg-gradient-to-br from-fc-100 to-fc-50 text-xl font-display font-semibold text-fc-700">
                     {confirmCoach.initials}
                   </AvatarFallback>
                 </Avatar>
 
-                <CardTitle className="text-xl text-navy-900">
+                <CardTitle className="text-xl text-fc-900">
                   Confirm Your Coach
                 </CardTitle>
                 <CardDescription className="mt-1">
                   You are selecting{" "}
-                  <span className="font-medium text-navy-800">
+                  <span className="font-medium text-fc-800">
                     {confirmCoach.name}
                   </span>{" "}
                   as your coaching partner.
@@ -1147,10 +1128,10 @@ export default function SelectCoachPage() {
                       <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
                     </svg>
                     <div>
-                      <p className="text-xs font-medium text-navy-500">
+                      <p className="text-xs font-medium text-fc-500">
                         Credentials
                       </p>
-                      <p className="text-sm text-navy-800">
+                      <p className="text-sm text-fc-800">
                         {confirmCoach.credentials.join(", ")} &middot;{" "}
                         {confirmCoach.yearsExperience} years experience
                       </p>
@@ -1172,14 +1153,14 @@ export default function SelectCoachPage() {
                       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                     </svg>
                     <div>
-                      <p className="text-xs font-medium text-navy-500">
+                      <p className="text-xs font-medium text-fc-500">
                         Specialties
                       </p>
                       <div className="mt-1 flex flex-wrap gap-1.5">
                         {confirmCoach.specialties.map((s) => (
                           <Badge
                             key={s}
-                            variant="gold"
+                            variant="default"
                             className="text-[11px]"
                           >
                             {s}
@@ -1205,10 +1186,10 @@ export default function SelectCoachPage() {
                       <circle cx="12" cy="10" r="3" />
                     </svg>
                     <div>
-                      <p className="text-xs font-medium text-navy-500">
+                      <p className="text-xs font-medium text-fc-500">
                         Location & Languages
                       </p>
-                      <p className="text-sm text-navy-800">
+                      <p className="text-sm text-fc-800">
                         {confirmCoach.location} &middot;{" "}
                         {confirmCoach.languages.join(", ")}
                       </p>
@@ -1237,10 +1218,10 @@ export default function SelectCoachPage() {
                         <line x1="3" y1="10" x2="21" y2="10" />
                       </svg>
                       <div>
-                        <p className="text-sm font-medium text-navy-800">
+                        <p className="text-sm font-medium text-fc-800">
                           Want to meet your coach first?
                         </p>
-                        <p className="mt-1 text-xs leading-relaxed text-navy-600">
+                        <p className="mt-1 text-xs leading-relaxed text-fc-600">
                           Schedule a free 20-minute introductory call to see if
                           it&apos;s the right fit before committing to your 5-session
                           engagement.
@@ -1266,8 +1247,8 @@ export default function SelectCoachPage() {
                   </div>
                 )}
 
-                <div className="mt-5 rounded-lg bg-navy-50/50 p-3.5">
-                  <p className="text-xs leading-relaxed text-navy-600">
+                <div className="mt-5 rounded-lg bg-fc-50/50 p-3.5">
+                  <p className="text-xs leading-relaxed text-fc-600">
                     Once confirmed, your coach will receive a notification and
                     reach out to schedule your first session. You can expect to
                     hear from them within 2 business days.
@@ -1285,7 +1266,7 @@ export default function SelectCoachPage() {
                   Go Back
                 </Button>
                 <Button
-                  variant="gold"
+                  variant="default"
                   className="flex-1 gap-2"
                   onClick={handleConfirmSelection}
                   disabled={selecting}

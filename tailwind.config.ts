@@ -7,7 +7,7 @@ const config: Config = {
     extend: {
       fontFamily: {
         display: ["Cormorant Garamond", "Georgia", "serif"],
-        body: ["Plus Jakarta Sans", "system-ui", "sans-serif"],
+        body: ["Inter", "system-ui", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -54,31 +54,6 @@ const config: Config = {
           700: "#9a6d1a",
           800: "#7d561d",
           900: "#66481c",
-        },
-        navy: {
-          50: "#f0f3f8",
-          100: "#dce3f0",
-          200: "#b9c7e0",
-          300: "#8aa3cb",
-          400: "#5b7db5",
-          500: "#3d5f99",
-          600: "#2e4a7c",
-          700: "#1e3a5f",
-          800: "#142b4a",
-          900: "#0c1b33",
-          950: "#060d1a",
-        },
-        sage: {
-          50: "#f4f8f4",
-          100: "#e5ede5",
-          200: "#cddccd",
-          300: "#a8c3a8",
-          400: "#7da67d",
-          500: "#5c8a5c",
-          600: "#476e47",
-          700: "#3a593a",
-          800: "#314831",
-          900: "#2a3c2a",
         },
         // FranklinCovey brand blue
         fc: {

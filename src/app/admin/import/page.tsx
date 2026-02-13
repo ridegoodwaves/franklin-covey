@@ -221,8 +221,8 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
               <div
                 className={cn(
                   "flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition-all duration-500",
-                  isComplete && "bg-navy-800 text-white",
-                  isActive && "bg-gold-600 text-white shadow-lg shadow-gold-600/25",
+                  isComplete && "bg-fc-800 text-white",
+                  isActive && "bg-fc-600 text-white shadow-lg shadow-fc-600/25",
                   !isActive && !isComplete && "border-2 border-border bg-white text-muted-foreground"
                 )}
               >
@@ -237,8 +237,8 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
               <span
                 className={cn(
                   "text-sm font-medium transition-colors duration-300",
-                  isActive && "text-navy-900",
-                  isComplete && "text-navy-700",
+                  isActive && "text-fc-900",
+                  isComplete && "text-fc-700",
                   !isActive && !isComplete && "text-muted-foreground"
                 )}
               >
@@ -250,7 +250,7 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
                 <div
                   className={cn(
                     "h-full transition-all duration-700",
-                    step.num < currentStep ? "bg-navy-800" : "bg-border"
+                    step.num < currentStep ? "bg-fc-800" : "bg-border"
                   )}
                 />
               </div>
@@ -308,18 +308,18 @@ function UploadStep({ onNext }: { onNext: () => void }) {
           className={cn(
             "group relative flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-12 transition-all duration-300",
             isDragging
-              ? "border-gold-500 bg-gold-50/60 shadow-inner"
+              ? "border-fc-500 bg-fc-50/60 shadow-inner"
               : fileName
-                ? "border-sage-400 bg-sage-50/40"
-                : "border-border hover:border-navy-300 hover:bg-navy-50/30"
+                ? "border-emerald-400 bg-emerald-50/40"
+                : "border-border hover:border-fc-300 hover:bg-fc-50/30"
           )}
         >
           {fileName ? (
             <>
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-sage-100">
-                <FileTextIcon className="h-6 w-6 text-sage-700" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100">
+                <FileTextIcon className="h-6 w-6 text-emerald-700" />
               </div>
-              <p className="mt-4 text-sm font-semibold text-navy-900">{fileName}</p>
+              <p className="mt-4 text-sm font-semibold text-fc-900">{fileName}</p>
               <p className="mt-1 text-xs text-muted-foreground">15 rows detected</p>
               <Button variant="ghost" size="sm" className="mt-3 text-xs" onClick={(e) => { e.stopPropagation(); setFileName(null); }}>
                 Choose different file
@@ -329,15 +329,15 @@ function UploadStep({ onNext }: { onNext: () => void }) {
             <>
               <div className={cn(
                 "flex h-16 w-16 items-center justify-center rounded-2xl transition-colors duration-300",
-                isDragging ? "bg-gold-100 text-gold-700" : "bg-navy-50 text-navy-400 group-hover:bg-navy-100 group-hover:text-navy-600"
+                isDragging ? "bg-fc-100 text-fc-700" : "bg-fc-50 text-fc-400 group-hover:bg-fc-100 group-hover:text-fc-600"
               )}>
                 <UploadCloudIcon />
               </div>
-              <p className="mt-5 text-sm font-medium text-navy-800">
+              <p className="mt-5 text-sm font-medium text-fc-800">
                 {isDragging ? "Drop your file here" : "Drag and drop your CSV file here"}
               </p>
               <p className="mt-1.5 text-xs text-muted-foreground">
-                or <span className="text-gold-700 font-medium underline underline-offset-2">browse to select</span>
+                or <span className="text-fc-700 font-medium underline underline-offset-2">browse to select</span>
               </p>
               <p className="mt-4 text-[11px] text-muted-foreground">
                 Accepts .csv files up to 10MB
@@ -353,7 +353,7 @@ function UploadStep({ onNext }: { onNext: () => void }) {
           <div className="flex items-center gap-3">
             <FileTextIcon className="text-muted-foreground" />
             <div>
-              <p className="text-sm font-medium text-navy-800">CSV Template</p>
+              <p className="text-sm font-medium text-fc-800">CSV Template</p>
               <p className="text-[11px] text-muted-foreground">
                 first_name, last_name, email, org, program_track
               </p>
@@ -373,12 +373,12 @@ function UploadStep({ onNext }: { onNext: () => void }) {
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             {["first_name", "last_name", "email", "org", "program_track"].map((col) => (
               <div key={col} className="rounded-md border border-border/60 bg-white px-3 py-2 text-center">
-                <code className="text-[11px] font-mono text-navy-700">{col}</code>
+                <code className="text-[11px] font-mono text-fc-700">{col}</code>
               </div>
             ))}
           </div>
           <p className="mt-3 text-[11px] text-muted-foreground">
-            <span className="font-medium">program_track</span> accepts: <code className="text-navy-600">TWO_SESSION</code> or <code className="text-navy-600">FIVE_SESSION</code>
+            <span className="font-medium">program_track</span> accepts: <code className="text-fc-600">TWO_SESSION</code> or <code className="text-fc-600">FIVE_SESSION</code>
           </p>
         </div>
       </CardContent>
@@ -410,8 +410,8 @@ function PreviewStep({ onNext, onBack }: { onNext: () => void; onBack: () => voi
       {/* Summary bar */}
       <div className="flex flex-wrap items-center gap-4 mb-6">
         <div className="flex items-center gap-2">
-          <CheckCircleIcon className="text-sage-600" />
-          <span className="text-sm text-navy-800">
+          <CheckCircleIcon className="text-emerald-600" />
+          <span className="text-sm text-fc-800">
             <span className="font-semibold">{validCount}</span> valid rows
           </span>
         </div>
@@ -465,7 +465,7 @@ function PreviewStep({ onNext, onBack }: { onNext: () => void; onBack: () => voi
                     </td>
                     <td className="px-4 py-3 text-center">
                       {row.valid ? (
-                        <CheckCircleIcon className="mx-auto text-sage-600" />
+                        <CheckCircleIcon className="mx-auto text-emerald-600" />
                       ) : (
                         <XCircleIcon className="mx-auto text-red-500" />
                       )}
@@ -479,7 +479,7 @@ function PreviewStep({ onNext, onBack }: { onNext: () => void; onBack: () => voi
                     <td className={cn("px-4 py-3 text-sm font-mono text-xs", !row.valid && row.errors.some(e => e.toLowerCase().includes("email")) && "text-red-600")}>
                       {row.email || <span className="text-red-600 italic text-sm">Missing</span>}
                     </td>
-                    <td className="px-4 py-3 text-sm text-navy-700">{row.org}</td>
+                    <td className="px-4 py-3 text-sm text-fc-700">{row.org}</td>
                     <td className="px-4 py-3">
                       <Badge
                         variant={
@@ -550,10 +550,10 @@ function ConfirmStep({ onBack, onSubmit, isSubmitting, isComplete }: {
     return (
       <Card className="mx-auto max-w-lg opacity-0 animate-fade-in-up">
         <CardContent className="py-12 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-sage-100 opacity-0 animate-scale-in">
-            <CheckCircleIcon className="h-8 w-8 text-sage-700" />
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 opacity-0 animate-scale-in">
+            <CheckCircleIcon className="h-8 w-8 text-emerald-700" />
           </div>
-          <h2 className="mt-6 font-display text-2xl font-semibold text-navy-900">
+          <h2 className="mt-6 font-display text-2xl font-semibold text-fc-900">
             Import Successful
           </h2>
           <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
@@ -563,11 +563,11 @@ function ConfirmStep({ onBack, onSubmit, isSubmitting, isComplete }: {
 
           <div className="mt-8 grid grid-cols-3 gap-4">
             <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
-              <p className="font-display text-2xl font-semibold text-navy-900">{validRows.length}</p>
+              <p className="font-display text-2xl font-semibold text-fc-900">{validRows.length}</p>
               <p className="text-xs text-muted-foreground mt-1">Imported</p>
             </div>
             <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
-              <p className="font-display text-2xl font-semibold text-navy-900">{validRows.length}</p>
+              <p className="font-display text-2xl font-semibold text-fc-900">{validRows.length}</p>
               <p className="text-xs text-muted-foreground mt-1">Emails Queued</p>
             </div>
             <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
@@ -592,8 +592,8 @@ function ConfirmStep({ onBack, onSubmit, isSubmitting, isComplete }: {
   return (
     <Card className="mx-auto max-w-2xl opacity-0 animate-fade-in-up">
       <CardHeader className="text-center pb-2">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gold-100">
-          <SparklesIcon className="text-gold-700" />
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-fc-100">
+          <SparklesIcon className="text-fc-700" />
         </div>
         <CardTitle className="text-2xl">Ready to Import</CardTitle>
         <CardDescription className="text-base">
@@ -605,19 +605,19 @@ function ConfirmStep({ onBack, onSubmit, isSubmitting, isComplete }: {
         {/* Summary grid */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 mb-6">
           <div className="rounded-xl border border-border/60 bg-muted/20 p-4 text-center">
-            <p className="font-display text-3xl font-semibold text-navy-900">{validRows.length}</p>
+            <p className="font-display text-3xl font-semibold text-fc-900">{validRows.length}</p>
             <p className="text-xs text-muted-foreground mt-1">Total Participants</p>
           </div>
           <div className="rounded-xl border border-border/60 bg-muted/20 p-4 text-center">
-            <p className="font-display text-3xl font-semibold text-navy-900">{twoSession}</p>
+            <p className="font-display text-3xl font-semibold text-fc-900">{twoSession}</p>
             <p className="text-xs text-muted-foreground mt-1">2-Session Track</p>
           </div>
           <div className="rounded-xl border border-border/60 bg-muted/20 p-4 text-center">
-            <p className="font-display text-3xl font-semibold text-navy-900">{fiveSession}</p>
+            <p className="font-display text-3xl font-semibold text-fc-900">{fiveSession}</p>
             <p className="text-xs text-muted-foreground mt-1">5-Session Track</p>
           </div>
           <div className="rounded-xl border border-border/60 bg-muted/20 p-4 text-center">
-            <p className="font-display text-3xl font-semibold text-navy-900">{orgs.length}</p>
+            <p className="font-display text-3xl font-semibold text-fc-900">{orgs.length}</p>
             <p className="text-xs text-muted-foreground mt-1">Organizations</p>
           </div>
         </div>
@@ -654,10 +654,10 @@ function ConfirmStep({ onBack, onSubmit, isSubmitting, isComplete }: {
               { step: "3", text: "Participants select their preferred coach from the available roster" },
             ].map((item) => (
               <div key={item.step} className="flex items-start gap-3">
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-navy-100 text-[11px] font-semibold text-navy-700">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-fc-100 text-[11px] font-semibold text-fc-700">
                   {item.step}
                 </div>
-                <p className="text-sm text-navy-700 leading-relaxed">{item.text}</p>
+                <p className="text-sm text-fc-700 leading-relaxed">{item.text}</p>
               </div>
             ))}
           </div>
@@ -670,7 +670,7 @@ function ConfirmStep({ onBack, onSubmit, isSubmitting, isComplete }: {
           Back
         </Button>
         <Button
-          variant="gold"
+          variant="default"
           onClick={onSubmit}
           disabled={isSubmitting}
           className="gap-2 px-8"
@@ -724,7 +724,7 @@ export default function ImportPage() {
     >
       {/* Page header */}
       <div className="mb-8">
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-navy-900">
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-fc-900">
           Import Participants
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">

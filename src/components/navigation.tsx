@@ -42,7 +42,7 @@ export function PortalShell({
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-navy-950/20 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-fc-950/20 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -56,11 +56,9 @@ export function PortalShell({
       >
         {/* Logo */}
         <div className="flex h-16 items-center gap-3 px-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-navy-800 text-white">
-            {portalIcon}
-          </div>
+          <img src="/fc-logomark.svg" alt="FranklinCovey" className="h-8 w-8" />
           <div>
-            <p className="font-display text-base font-semibold text-navy-900">
+            <p className="font-display text-base font-semibold text-fc-900">
               FranklinCovey
             </p>
             <p className="text-xs text-muted-foreground">{portalName}</p>
@@ -78,23 +76,23 @@ export function PortalShell({
               className={cn(
                 "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                 item.active || item.href === activeItem
-                  ? "bg-navy-50 text-navy-900"
-                  : "text-muted-foreground hover:bg-muted/60 hover:text-navy-800"
+                  ? "bg-fc-50 text-fc-900"
+                  : "text-muted-foreground hover:bg-muted/60 hover:text-fc-800"
               )}
             >
               <span
                 className={cn(
                   "flex h-8 w-8 items-center justify-center rounded-md transition-colors",
                   item.active || item.href === activeItem
-                    ? "bg-navy-800 text-white"
-                    : "bg-muted/60 text-muted-foreground group-hover:bg-navy-100 group-hover:text-navy-700"
+                    ? "bg-fc-600 text-white"
+                    : "bg-muted/60 text-muted-foreground group-hover:bg-fc-100 group-hover:text-fc-700"
                 )}
               >
                 {item.icon}
               </span>
               <span className="flex-1">{item.label}</span>
               {item.badge !== undefined && item.badge > 0 && (
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-gold-600 px-1.5 text-[10px] font-semibold text-white">
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-fc-600 px-1.5 text-[10px] font-semibold text-white">
                   {item.badge}
                 </span>
               )}
@@ -116,7 +114,7 @@ export function PortalShell({
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="truncate text-sm font-medium text-navy-900">
+            <p className="truncate text-sm font-medium text-fc-900">
               {userName}
             </p>
             <p className="truncate text-xs text-muted-foreground">{userRole}</p>
@@ -164,7 +162,7 @@ export function PortalShell({
               <line x1="4" y1="18" x2="20" y2="18" />
             </svg>
           </Button>
-          <span className="font-display text-lg font-semibold text-navy-900">
+          <span className="font-display text-lg font-semibold text-fc-900">
             {portalName}
           </span>
         </header>
