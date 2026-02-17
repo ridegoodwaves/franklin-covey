@@ -34,10 +34,10 @@ export function getStatusColor(status: string): string {
     COMPLETED: "status-completed",
     CANCELED: "status-canceled",
     ON_HOLD: "status-on-hold",
-    SCHEDULED: "bg-blue-50 text-blue-700",
-    NO_SHOW: "bg-orange-50 text-orange-700",
+    SCHEDULED: "bg-[rgba(103,223,255,0.12)] text-[#1386BF]",
+    NO_SHOW: "bg-[rgba(255,88,93,0.1)] text-[#A6214D]",
   };
-  return colors[status] || "bg-gray-100 text-gray-700";
+  return colors[status] || "bg-fc-cool-gray text-fc-cool-black";
 }
 
 export function getStatusLabel(status: string): string {

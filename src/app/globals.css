@@ -1,31 +1,76 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:ital,wght@0,100..900;1,100..900&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 30 25% 97%;
-    --foreground: 222 47% 11%;
+    /* ── FranklinCovey Brand CSS Variables ───────────────── */
+    /* Primary */
+    --fc-deep-blue: #3253FF;
+    --fc-bright-white: #FFFFFF;
+    --fc-cool-black: #141928;
+    /* Primary Tints */
+    --fc-deep-blue-70: rgba(50, 83, 255, 0.7);
+    --fc-deep-blue-50: rgba(50, 83, 255, 0.5);
+    --fc-cool-black-70: rgba(20, 25, 40, 0.7);
+    --fc-cool-black-50: rgba(20, 25, 40, 0.5);
+    /* Secondary */
+    --fc-light-sky: #67DFFF;
+    --fc-coral: #FF585D;
+    --fc-golden: #FFB93C;
+    --fc-green: #45D8B4;
+    --fc-violet: #A191F2;
+    --fc-cool-gray: #CFDEE5;
+    --fc-warm-gray: #D8D4D7;
+    /* Semantic Tokens */
+    --fc-text-primary: var(--fc-cool-black);
+    --fc-text-inverse: var(--fc-bright-white);
+    --fc-bg-primary: var(--fc-bright-white);
+    --fc-bg-secondary: var(--fc-cool-gray);
+    --fc-accent-primary: var(--fc-deep-blue);
+    --fc-accent-hover: var(--fc-deep-blue-70);
+    /* Shadows */
+    --fc-shadow-card: 0 2px 8px rgba(20, 25, 40, 0.08);
+    --fc-shadow-elevated: 0 4px 16px rgba(20, 25, 40, 0.12);
+
+    /* ── shadcn/ui variables (HSL without wrapper) ──────── */
+    /* Mapped to FC brand palette:                           */
+    /*   background  → Bright White (#FFFFFF)                */
+    /*   foreground  → Cool Black (#141928)                  */
+    /*   primary     → Deep Blue (#3253FF)                   */
+    /*   card        → Bright White                          */
+    /*   muted       → Cool Gray area (#CFDEE5)              */
+    /*   destructive → Coral (#FF585D)                       */
+    --background: 0 0% 100%;
+    --foreground: 229 33% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 229 33% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 233 100% 60%;
+    --popover-foreground: 229 33% 12%;
+    --primary: 229 100% 60%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 30 15% 92%;
-    --secondary-foreground: 222 47% 15%;
-    --muted: 30 12% 93%;
-    --muted-foreground: 222 15% 45%;
-    --accent: 233 100% 55%;
+    --secondary: 199 23% 93%;
+    --secondary-foreground: 229 33% 15%;
+    --muted: 199 23% 90%;
+    --muted-foreground: 229 15% 45%;
+    --accent: 229 100% 55%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 72% 51%;
+    --destructive: 358 100% 67%;
     --destructive-foreground: 0 0% 100%;
-    --border: 30 15% 88%;
-    --input: 30 15% 85%;
-    --ring: 233 100% 60%;
+    --border: 199 18% 88%;
+    --input: 199 18% 85%;
+    --ring: 229 100% 60%;
     --radius: 0.625rem;
+
+    /* FC Brand Typography */
+    --fc-font-primary: 'Arial', sans-serif;
+    --fc-font-secondary: 'Times New Roman', 'Georgia', serif;
+
+    /* FC Font Weight Scale */
+    --fc-weight-light: 300;
+    --fc-weight-regular: 400;
+    --fc-weight-medium: 500;
+    --fc-weight-bold: 700;
   }
 }
 
@@ -36,14 +81,39 @@
 
   body {
     @apply bg-background text-foreground font-body antialiased;
-    font-feature-settings: "ss01", "ss02", "cv01";
+    font-family: var(--fc-font-primary);
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-display tracking-tight;
+  /* Headlines — Times New Roman (Tiempos Fine Light fallback) */
+  h1, h2, h3 {
+    @apply font-display;
+    font-family: var(--fc-font-secondary);
+    font-weight: var(--fc-weight-light);
+    line-height: 1.15;
+    letter-spacing: 0;
+  }
+
+  /* Subheads — Arial Bold */
+  h4, h5, h6 {
+    font-family: var(--fc-font-primary);
+    font-weight: var(--fc-weight-bold);
+  }
+
+  /* CTA / link utility */
+  .cta {
+    font-family: var(--fc-font-primary);
+    font-weight: var(--fc-weight-bold);
+  }
+
+  /* All-caps utility (eyebrow text, section labels) */
+  .all-caps {
+    font-family: var(--fc-font-primary);
+    font-weight: var(--fc-weight-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
   }
 }
 
@@ -60,13 +130,31 @@
   .stagger-5 { animation-delay: 0.5s; }
   .stagger-6 { animation-delay: 0.6s; }
 
-  /* Status colors */
-  .status-invited { @apply bg-fc-100 text-fc-700; }
-  .status-coach-selected { @apply bg-gold-100 text-gold-800; }
-  .status-in-progress { @apply bg-blue-50 text-blue-700; }
-  .status-completed { @apply bg-emerald-100 text-emerald-700; }
-  .status-canceled { @apply bg-red-50 text-red-700; }
-  .status-on-hold { @apply bg-amber-50 text-amber-700; }
+  /* Status colors — mapped to FC brand palette */
+  .status-invited {
+    background-color: rgba(50, 83, 255, 0.1);
+    color: var(--fc-deep-blue);
+  }
+  .status-coach-selected {
+    background-color: rgba(255, 185, 60, 0.15);
+    color: #9A6D1A; /* darkened fc-golden for contrast */
+  }
+  .status-in-progress {
+    background-color: rgba(103, 223, 255, 0.12);
+    color: #1386BF; /* fc-data-blue for text contrast */
+  }
+  .status-completed {
+    background-color: rgba(69, 216, 180, 0.12);
+    color: #21A685; /* fc-data-teal for text contrast */
+  }
+  .status-canceled {
+    background-color: rgba(255, 88, 93, 0.1);
+    color: #A6214D; /* fc-data-red for text contrast */
+  }
+  .status-on-hold {
+    background-color: rgba(255, 185, 60, 0.1);
+    color: #CC853D; /* fc-data-orange for text contrast */
+  }
 }
 
 /* Custom scrollbar */
@@ -95,10 +183,10 @@
   border-radius: var(--radius);
 }
 
-/* Selection */
+/* Selection — FC Deep Blue + Cool Black */
 ::selection {
-  background: hsl(233 100% 60% / 0.15);
-  color: hsl(222 47% 11%);
+  background: rgba(50, 83, 255, 0.15);
+  color: var(--fc-cool-black);
 }
 
 /* Smooth page transitions */

@@ -6,8 +6,10 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        display: ["Cormorant Garamond", "Georgia", "serif"],
-        body: ["Inter", "system-ui", "sans-serif"],
+        sans: ["Arial", "sans-serif"],
+        serif: ["Times New Roman", "Georgia", "serif"],
+        display: ["Times New Roman", "Georgia", "serif"],
+        body: ["Arial", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -43,6 +45,32 @@ const config: Config = {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
         },
+        // ── FranklinCovey Brand Palette ──────────────────────────
+        // Primary
+        'fc-deep-blue': '#3253FF',
+        'fc-bright-white': '#FFFFFF',
+        'fc-cool-black': '#141928',
+        // Secondary
+        'fc-light-sky': '#67DFFF',
+        'fc-coral': '#FF585D',
+        'fc-golden': '#FFB93C',
+        'fc-green': '#45D8B4',
+        'fc-violet': '#A191F2',
+        'fc-cool-gray': '#CFDEE5',
+        'fc-warm-gray': '#D8D4D7',
+        // Tertiary (data visualization only)
+        'fc-data-red': '#A6214D',
+        'fc-data-orange': '#CC853D',
+        'fc-data-blue': '#1386BF',
+        'fc-data-teal': '#21A685',
+        'fc-data-purple': '#7A5DBA',
+        'fc-data-slate': '#749EB2',
+        'fc-data-tan': '#A6978D',
+
+        // ── Legacy fc-* scale (kept for component compatibility) ──
+        // These map the old numeric scale to brand-derived values.
+        // Components still reference these classes — migrate in a
+        // follow-up pass, then remove this block.
         gold: {
           50: "#fdf8ef",
           100: "#faefd6",
@@ -55,7 +83,6 @@ const config: Config = {
           800: "#7d561d",
           900: "#66481c",
         },
-        // FranklinCovey brand blue
         fc: {
           50: "#eef1ff",
           100: "#dfe4ff",
@@ -63,12 +90,16 @@ const config: Config = {
           300: "#a3a8ff",
           400: "#7e79ff",
           500: "#6357fa",
-          600: "#3253FF", // Primary brand — Blue Ribbon
+          600: "#3253FF",
           700: "#2a42d4",
           800: "#2336ab",
           900: "#1e2f87",
-          950: "#141928", // Mirage — FC dark
+          950: "#141928",
         },
+      },
+      boxShadow: {
+        'fc-card': '0 2px 8px rgba(20, 25, 40, 0.08)',
+        'fc-elevated': '0 4px 16px rgba(20, 25, 40, 0.12)',
       },
       borderRadius: {
         lg: "var(--radius)",

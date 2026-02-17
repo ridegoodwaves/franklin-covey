@@ -49,9 +49,11 @@ All page components are `"use client"` with hardcoded demo data (no backend yet)
 
 ## Design System: FranklinCovey Brand
 
-**Typography** — two font families, loaded via Google Fonts in `globals.css`:
-- `font-display` → Cormorant Garamond (serif) — all headings (`h1`-`h6` apply it automatically)
-- `font-body` → Inter (sans-serif) — body text, buttons, labels
+**Typography** — two font families using system/fallback fonts (no Google Fonts, no external font loading):
+- `font-display` / `font-serif` → Times New Roman, Georgia (serif) — fallback for Tiempos Fine Light. Used for headlines (`h1`-`h3`), weight 300 (light), line-height 1.15.
+- `font-body` / `font-sans` → Arial (sans-serif) — fallback for Rand. Used for body text, buttons, labels, subheads (`h4`-`h6`), CTAs.
+- CSS variables: `--fc-font-primary` (Arial), `--fc-font-secondary` (Times New Roman). Weight scale: `--fc-weight-light` (300), `--fc-weight-regular` (400), `--fc-weight-medium` (500), `--fc-weight-bold` (700).
+- Utility classes: `.cta` (Arial Bold), `.all-caps` (Arial Bold, uppercase, 0.1em letter-spacing).
 
 **Color palette** — one primary brand scale + Tailwind defaults in `tailwind.config.ts`:
 - `fc-*` (50–950) — primary FranklinCovey brand color (#3253FF Blue Ribbon at fc-600, #141928 Mirage at fc-950)
@@ -107,8 +109,23 @@ The original PRD specified full Calendly API integration (webhooks, embeds, sess
 
 **Schema impact:** Rename `calendlyUrl` to `meetingBookingUrl` on `CoachProfile` (tool-agnostic name). Remove `calendlyEventUri` from `Session` (no webhook sync). No new models needed.
 
-**What this means for the frontend:** The participant engagement page shows a "Book Next Session" button that opens the coach's `meetingBookingUrl` (external link, new tab). Sessions appear in the timeline when the coach logs them.
+**What this means for the frontend:** The participant confirmation page shows a "Book Your Session" button that opens the coach's `meetingBookingUrl` (external link, new tab). Sessions appear in the coach's timeline when the coach logs them.
+
+## Participant Flow (updated Feb 17 workshop)
+
+**Participant portal is a one-shot flow.** Participants do NOT have a dashboard or return to the platform after selecting a coach.
+
+```
+Generic link → Enter email → OTP → Coach selector (3 cards) → Select coach → Confirmation page (Calendly link) → DONE
+```
+
+- No participant-facing filters. 3 capacity-weighted randomized coaches shown.
+- 1 remix allowed (one-way door with confirmation warning).
+- Flow ends at selection: confirmation page + Calendly link. No engagement page, no session tracking for participants.
+- Returning participant with valid session cookie → redirects to `/participant/confirmation` (if coach already selected).
+- Nudge emails (Day 5, Day 10) re-engage participants who haven't selected. Day 15 = auto-assign coach.
+- **Do NOT build participant-facing dashboards, session views, or engagement tracking.** All engagement tracking is coach-only via `/coach/engagement`.
 
 ## Engagement Status Values
 
-The domain model uses these engagement statuses throughout: `INVITED`, `COACH_SELECTED`, `IN_PROGRESS`, `COMPLETED`, `CANCELED`, `ON_HOLD`. Session statuses: `SCHEDULED`, `COMPLETED`, `CANCELED`, `NO_SHOW`. Program tracks: `TWO_SESSION` (2 sessions), `FIVE_SESSION` (5 sessions).
+The domain model uses these engagement statuses throughout: `INVITED`, `COACH_SELECTED`, `IN_PROGRESS`, `COMPLETED`, `CANCELED`, `ON_HOLD`. Session statuses (updated Feb 17 workshop): `COMPLETED`, `FORFEITED_CANCELLED` (cancelled <24h), `FORFEITED_NOT_USED`. Session notes: Topic Discussed + Session Outcome only. "Other" topic = static note "Please email the coaching practice" (no free-text input). Private notes (coach-only, free text) and session duration are kept. Program tracks: `TWO_SESSION` (2 sessions), `FIVE_SESSION` (5 sessions).
