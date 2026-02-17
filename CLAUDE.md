@@ -10,6 +10,32 @@ npm run build        # Production build (standalone output for Docker)
 npm run lint         # ESLint
 ```
 
+## Languages & Conventions
+
+Primary languages: TypeScript, Markdown. Always validate TypeScript with the project's build/type-check before committing. Format Markdown documents consistently.
+
+## Planning & Documents
+
+When creating plan documents, start with the simplest viable format (2-3 pages, brief) unless explicitly asked for a comprehensive RFC. Avoid over-engineering plans — prefer 4 essential tasks over 8 over-engineered ones.
+
+For RFC and comparison documents: present options neutrally. Do not bias toward any particular tool or platform. Include concrete architectural details (how workflows actually work, platform capabilities, listener architecture) — not just high-level summaries.
+
+## Content Rules
+
+CRITICAL: Never author scenario content, creative writing, or domain-specific material without explicit user approval. If source content is missing, FLAG it to the user — do not generate placeholder content. This applies to LeadXLab scenarios, book chapters, and any content where authorship matters.
+
+## File & Directory Navigation
+
+When the user provides a file path that doesn't exist, search for the file by name in the project before asking the user. Common project root is NOT .cursor — verify the actual working directory early.
+
+## Bug Fixing
+
+When fixing a bug, verify the fix doesn't introduce new issues before declaring it complete. Test the full user flow, not just the specific code path. If a fix reveals a deeper issue, communicate it immediately rather than ending in plan mode.
+
+## Session Management
+
+Session handoff documents should be generated at the end of every significant session. Include: what was done, what's remaining, current branch/PR status, and any known issues.
+
 ## Architecture
 
 FranklinCovey Coaching Platform frontend — Next.js 15 App Router with three portals for a government coaching engagement program (400 participants, 5-10 coaches).
@@ -51,11 +77,16 @@ Icons are inline SVGs throughout — no icon library is imported at the componen
 
 ## Key Files
 
-- `src/components/navigation.tsx` — `PortalShell` component: sidebar + mobile-responsive shell for coach/admin portals. Takes `navItems`, `portalName`, `portalIcon`, `userName`, `userRole`.
+- `src/components/navigation.tsx` — `PortalShell` component: sidebar + mobile-responsive shell for coach/admin portals. Takes `navItems`, `portalName`, `portalIcon`, `userName`, `userRole`. Supports `disabled` nav items (grayed out, non-clickable, "Soon" pill).
+- `src/lib/nav-config.tsx` — **Single source of truth** for sidebar navigation: `COACH_NAV_ITEMS`, `ADMIN_NAV_ITEMS`, portal icons (`CoachPortalIcon`, `AdminPortalIcon`), portal metadata (`COACH_PORTAL`, `ADMIN_PORTAL`). Add/remove/disable nav items here — all pages import from this file.
 - `src/lib/utils.ts` — `cn()` merge helper, `formatDate()`, `formatRelativeTime()`, `getStatusColor()`, `getStatusLabel()`, `getInitials()`.
 - `src/lib/config.ts` — Domain constants: `SESSION_TOPICS`, `SESSION_OUTCOMES`, `DURATION_OPTIONS`, `NUDGE_THRESHOLDS`, `PROGRAM_TRACK_SESSIONS`. These match the PRD spec.
 - `src/app/globals.css` — CSS variables (HSL values without `hsl()` wrapper), custom utility classes, status colors.
 - `docs/solutions/` — Documented solutions knowledge base. **Check here first** before investigating issues — past root causes, fixes, and prevention strategies are indexed by category and tags. See `docs/solutions/README.md` for the full index.
+
+## Demo Readiness
+
+Before any client demo, run a **route audit**: cross-reference all `href` values in `src/` against existing `src/app/**/page.tsx` files to catch dead links that produce white screens. Mark unbuilt routes as `disabled: true` in `src/lib/nav-config.tsx` — the sidebar will render them grayed out with a "Soon" pill. For section header action links (e.g. "View All", "See All"), pass `disabled: true` in the action object to hide them.
 
 ## Architecture Decisions
 

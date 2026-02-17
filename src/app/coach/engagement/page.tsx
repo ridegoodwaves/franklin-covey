@@ -16,47 +16,9 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn, getInitials, getStatusColor, getStatusLabel } from "@/lib/utils";
+import { COACH_NAV_ITEMS, COACH_PORTAL, CoachPortalIcon } from "@/lib/nav-config";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
-
-function DashboardIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="7" height="7" />
-      <rect x="14" y="3" width="7" height="7" />
-      <rect x="14" y="14" width="7" height="7" />
-      <rect x="3" y="14" width="7" height="7" />
-    </svg>
-  );
-}
-
-function EngagementIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  );
-}
-
-function ProfileIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
-  );
-}
-
-function CoachPortalIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-    </svg>
-  );
-}
 
 function CheckIcon() {
   return (
@@ -225,19 +187,7 @@ const outcomeOptions = [
 
 const durationOptions = [15, 30, 45, 60, 90];
 
-// ─── Nav Items ────────────────────────────────────────────────────────────────
-
-const navItems = [
-  { label: "Dashboard", href: "/coach/dashboard", icon: <DashboardIcon /> },
-  {
-    label: "My Engagements",
-    href: "/coach/engagements",
-    icon: <EngagementIcon />,
-    active: true,
-    badge: 6,
-  },
-  { label: "Profile", href: "/coach/profile", icon: <ProfileIcon /> },
-];
+// ─── Nav Items (centralized in src/lib/nav-config.tsx) ────────────────────────
 
 // ─── Stylish Checkbox ─────────────────────────────────────────────────────────
 
@@ -608,11 +558,11 @@ export default function CoachEngagementDetail() {
 
   return (
     <PortalShell
-      portalName="Coach Portal"
+      portalName={COACH_PORTAL.portalName}
       portalIcon={<CoachPortalIcon />}
-      userName="Dr. Sarah Chen"
-      userRole="Executive Coach"
-      navItems={navItems}
+      userName={COACH_PORTAL.userName}
+      userRole={COACH_PORTAL.userRole}
+      navItems={COACH_NAV_ITEMS}
       activeItem="/coach/engagements"
     >
       {/* Back nav */}

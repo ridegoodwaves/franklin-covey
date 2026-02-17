@@ -12,6 +12,7 @@ interface NavItem {
   icon: React.ReactNode;
   badge?: number;
   active?: boolean;
+  disabled?: boolean;
 }
 
 interface PortalShellProps {
@@ -69,35 +70,55 @@ export function PortalShell({
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 px-3 py-4">
-          {navItems.map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
-                item.active || item.href === activeItem
-                  ? "bg-fc-50 text-fc-900"
-                  : "text-muted-foreground hover:bg-muted/60 hover:text-fc-800"
-              )}
-            >
-              <span
+          {navItems.map((item) => {
+            if (item.disabled) {
+              return (
+                <span
+                  key={item.href}
+                  className="group flex cursor-default items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground/50"
+                  title="Coming soon"
+                >
+                  <span className="flex h-8 w-8 items-center justify-center rounded-md bg-muted/30 text-muted-foreground/40">
+                    {item.icon}
+                  </span>
+                  <span className="flex-1">{item.label}</span>
+                  <span className="rounded-full bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground/60">
+                    Soon
+                  </span>
+                </span>
+              );
+            }
+
+            return (
+              <a
+                key={item.href}
+                href={item.href}
                 className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-md transition-colors",
+                  "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                   item.active || item.href === activeItem
-                    ? "bg-fc-600 text-white"
-                    : "bg-muted/60 text-muted-foreground group-hover:bg-fc-100 group-hover:text-fc-700"
+                    ? "bg-fc-50 text-fc-900"
+                    : "text-muted-foreground hover:bg-muted/60 hover:text-fc-800"
                 )}
               >
-                {item.icon}
-              </span>
-              <span className="flex-1">{item.label}</span>
-              {item.badge !== undefined && item.badge > 0 && (
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-fc-600 px-1.5 text-[10px] font-semibold text-white">
-                  {item.badge}
+                <span
+                  className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-md transition-colors",
+                    item.active || item.href === activeItem
+                      ? "bg-fc-600 text-white"
+                      : "bg-muted/60 text-muted-foreground group-hover:bg-fc-100 group-hover:text-fc-700"
+                  )}
+                >
+                  {item.icon}
                 </span>
-              )}
-            </a>
-          ))}
+                <span className="flex-1">{item.label}</span>
+                {item.badge !== undefined && item.badge > 0 && (
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-fc-600 px-1.5 text-[10px] font-semibold text-white">
+                    {item.badge}
+                  </span>
+                )}
+              </a>
+            );
+          })}
         </nav>
 
         <Separator className="opacity-50" />
