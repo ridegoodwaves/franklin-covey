@@ -2,83 +2,88 @@
 
 ## Quick Import (2 minutes)
 
-1. Go to **sheets.new** to create a new Google Sheet
+1. Open your existing Google Sheet (or go to **sheets.new** for a new one)
 2. Name it: **FranklinCovey Coaching Platform - Project Tracker**
-3. For each CSV file, create a tab:
+3. Delete old tabs (Questions & Decisions, Requirements Log, Action Items) — fully superseded
+4. Import the 3 new CSVs:
 
-### Tab 1: Questions & Decisions (rename Sheet1)
-- File > Import > Upload > `1-questions-decisions.csv`
+### Tab 1: Decisions & Approved Language (rename Sheet1)
+- File > Import > Upload > `decisions.csv`
 - Choose: "Replace current sheet"
-- 26 rows pre-populated from PRD open questions (Q1-Q26)
+- Tim copies exact language from "Decision" column into client-facing materials
+- "Don't Say" column catches common mistakes
 
-### Tab 2: Requirements Log
+### Tab 2: Blockers & Next Actions
 - Click "+" to add a new sheet tab
-- File > Import > Upload > `2-requirements-log.csv`
+- File > Import > Upload > `blockers.csv`
 - Choose: "Insert new sheet"
-- 16 confirmed/pending requirements pre-populated
+- Grouped by owner: who needs to act (Tim / Amit / Client / Workshop)
 
-### Tab 3: Action Items
+### Tab 3: Timeline & Milestones
 - Click "+" to add a new sheet tab
-- File > Import > Upload > `3-action-items.csv`
+- File > Import > Upload > `timeline.csv`
 - Choose: "Insert new sheet"
-- 13 action items with dependencies mapped
+- 5 milestones: Workshop, Phase 0, Slice 1 (March 2), Slice 2 (March 9), Slice 3 (March 16)
 
 ## Recommended Formatting
 
-### Conditional formatting for Status column:
+### Conditional formatting for Status columns:
 - **Open** = Yellow background
-- **Resolved** = Green background
-- **Blocked** = Red background
 - **Waiting** = Orange background
-- **Partially Resolved** = Light green background
+- **Ready** = Light blue background
+- **In Progress** = Light green background
+- **Done** = Green background
+- **Not Started** = Gray background
+- **At Risk** = Red background
 
 ### Freeze rows:
 - Freeze Row 1 (header) on all tabs
 
 ### Column widths:
-- Question/Requirement/Action Item columns: 400px
-- Notes columns: 300px
-- Status/Priority: 120px
+- Decision / Item / Milestone columns: 300px
+- Don't Say / Notes / Key Deliverables: 250px
+- Status / Owner / Date: 120px
 
 ## Sharing
 
-Share with client team as "Commenter" initially, upgrade to "Editor" once workflow is established.
+Share with Tim as "Editor". Share with client team as "Commenter" if/when appropriate.
+
+## Sync Workflow
+
+These CSVs are kept in the repo at `google-sheets/`. After each significant session:
+
+1. Claude reads plan/brainstorm/handoff docs and diffs against current CSVs
+2. Claude generates updated CSVs with change summary
+3. Amit reviews (~2 min) and imports into Google Sheet
 
 ## Column Reference
 
-### Questions & Decisions
+### Decisions & Approved Language
 | Column | Purpose |
 |--------|---------|
-| # | Question ID (matches PRD: Q1-Q26) |
-| Category | Phase 0 Blocker / IT / v2 Feature / Phase 1 |
-| Question | Full question text |
-| Priority | P0-Blocker / P1-High / P2-Medium |
-| Owner | Who needs to answer (Client IT / Client PM / Amit) |
-| Asked Date | When we first raised it |
-| Status | Open / Resolved / Partially Resolved |
-| Answer / Decision | The actual decision made |
-| Decision Date | When decided |
-| PRD Updated? | Has the PRD been updated to reflect this? |
-| Notes | Additional context |
+| Topic | Feature or concept name |
+| Decision (Approved Language) | Exact language Tim should use in client materials |
+| Don't Say | Old/wrong terms to avoid |
+| Impact | What this means for the build |
+| Date | When decided |
+| Source | Where the decision was made |
 
-### Requirements Log
+### Blockers & Next Actions
 | Column | Purpose |
 |--------|---------|
-| # | Requirement ID (R1-R16) |
-| Feature Area | Portal / Auth / Scheduling / etc. |
-| Requirement | What needs to be built |
-| Source | Client v1 / Client v2 / Architecture Decision |
-| Priority | P0-Core / P1-High / P2-Medium / P3-Deferred |
-| Status | Confirmed / Pending / Deferred / Cut / Simplified |
-| Implementation Notes | How we're building it |
-| PRD Section | Where it lives in the PRD |
+| Item | What needs to happen or be decided |
+| Owner | Tim / Amit / Client (FC) / Workshop / Client IT |
+| Status | Open / Waiting / Ready / In Progress / Done |
+| Deadline | When it's needed by |
+| Blocks | What can't proceed until this is resolved |
+| Notes | Context |
 
-### Action Items
+### Timeline & Milestones
 | Column | Purpose |
 |--------|---------|
-| # | Action ID (A1-A13) |
-| Action Item | What needs to happen |
-| Owner | Amit / Client IT / Client PM |
-| Priority | P0 / P1 / P2 |
-| Status | Ready / Blocked / Waiting / In Progress / Done |
-| Blocked By | Dependencies (other action IDs or question IDs) |
+| Milestone | What ships |
+| Target Date | Deadline |
+| Status | Not Started / In Progress / At Risk / Done |
+| Key Deliverables | What's included |
+| Blockers | What could delay it |
+| Last Updated | When this row was last touched |
