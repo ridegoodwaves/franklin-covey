@@ -135,13 +135,58 @@ These overlap heavily with our Q13-Q27. Many may get answered simultaneously.
 
 ## New Questions to Add to Tracker
 
-- Q31: Is coach filtering (location, credential, skills, language) participant-facing or system-side matching?
-- Q32: Is the "20-min interview option" for 5-session cohort a system feature or just "book a short call on coach's Calendly"?
-- Q33: Are sponsor teams (coachee's manager + HR partner) MVP scope or future?
-- Q34: Which dashboard views are MVP? (Ops view / Carrie's per-coach view / Greg's portfolio view)
-- ~~Q35: What are the "top 20 objectives" for session topic dropdowns?~~ **ANSWERED (Feb 17)**: Not "top 20" — two separate competency lists by program type. MLP (managerial): Solving Problems, Facilitating Change, Driving Unit Performance, Building Relationships, Managing People, Setting Expectations, Other. ALP/EF/EL (executive): Implementing Strategies, Promoting Change, Driving Functional Excellence, Collaborating for Success, Developing People, Leading by Example, Other. Implemented in `src/lib/config.ts` as `SESSION_TOPICS_BY_PROGRAM`.
-- Q36: Does "printable reports" mean browser print CSS or generated PDF?
-- Q37: What methodologies need to be configurable? (Referenced but not defined)
-- Q38: Carrie's Lovable prototype — which features should we match vs. reimagine?
-- Q39: NDA/IT procurement timeline — blocking factor for accessing FC infrastructure?
-- Q40: March 9 week (Amit at Mayo Clinic) — what's the continuity plan?
+- ~~Q31: Is coach filtering participant-facing or system-side?~~ **ANSWERED (Feb 17)**: No filters. 3 randomized coaches.
+- ~~Q32: 20-min interview option — system feature or Calendly link?~~ **ANSWERED (Feb 17)**: Deferred. EF/EL launch later.
+- ~~Q33: Sponsor teams — MVP or future?~~ **ANSWERED (Feb 17)**: Deferred. Future roadmap.
+- ~~Q34: Which dashboard views are MVP?~~ **ANSWERED (Feb 17)**: Ops dashboard + executive summary. Two views.
+- ~~Q35: What are the "top 20 objectives" for session topic dropdowns?~~ **ANSWERED (Feb 17)**: Two competency lists by program type (see `src/lib/config.ts`).
+- Q36: Does "printable reports" mean browser print CSS or generated PDF? **→ Browser print CSS** (already in plan)
+- Q37: What methodologies need to be configurable? **→ Deferred post-MVP**
+- Q38: Carrie's Lovable prototype — which features to match? **→ Not discussed in workshop. Deferred.**
+- ~~Q39: NDA/IT procurement timeline?~~ **ANSWERED (Feb 18)**: Tim to email `datasecurity@franklincovey.com` to start process.
+- Q40: March 9 week (Amit at Mayo Clinic) — continuity plan? **→ Still open. Slice 2 deadline is March 9.**
+
+---
+
+## Production Infrastructure — Blaine (IT) Responses
+
+**Received**: 2026-02-18 (Blaine = FC Head of IT / Procurement gatekeeper)
+
+> These are the **production target** requirements. MVP is built on Vercel + Supabase and designed to migrate cleanly to this stack. See `docs/brainstorms/2026-02-18-mvp-foundation-sequence-brainstorm.md` for migration strategy.
+
+| Question | Blaine's Answer | Impact |
+|----------|----------------|--------|
+| **Hosting environment** | AWS | Target: AWS ECS |
+| **Container registry** | AWS ECS (accepts Docker images) | Push to ECR; ECS runs containers |
+| **CI/CD** | GitHub with Actions | GitHub Actions → ECR push → ECS deploy |
+| **Database provisioning** | PostgreSQL fine; prefer Terraform | Terraform configs needed for RDS provisioning |
+| **Production URL / DNS** | Yes, they control DNS; need URL proposal | Request `coaching.franklincovey.com` when ready |
+| **Security / compliance** | SSO with Okta required; AES-256 at rest; modern SSL | Auth.js + Okta provider for coaches/admins; RDS encryption flag; ACM for SSL |
+| **Outbound email** | Integrate with SendGrid; asked what email it sends from | SendGrid replaces Resend in production; need to propose sender address |
+| **NDA / procurement** | Start by emailing `datasecurity@franklincovey.com` | **Action: Tim to send this email** |
+
+### Production Migration Checklist (post-MVP)
+
+| Task | Owner | Notes |
+|------|-------|-------|
+| Email `datasecurity@franklincovey.com` | Tim | Start NDA + procurement now |
+| Propose sender email address to Blaine | Tim/Amit | e.g. `coaching@franklincovey.com` |
+| Request `coaching.franklincovey.com` DNS entry | Amit → Blaine | When production deploy is ready |
+| Set up SendGrid account + sender domain | Tim/Amit | Swap from Resend; 1-line change in `email.ts` |
+| Set up Okta application (coach/admin auth) | Blaine + Amit | Auth.js Okta provider; participants stay on OTP |
+| Write Terraform configs (RDS, ECS, ALB, ACM) | Amit | After MVP validated on Vercel |
+| GitHub Actions workflow: ECR push + ECS deploy | Amit | Replace Vercel deploy |
+| Verify AES-256 at rest (RDS encryption flag) | Amit | Terraform: `storage_encrypted = true` |
+
+### Design-for-Portability Decisions (already baked into MVP)
+
+These decisions mean the migration is a config change, not a rewrite:
+
+| Concern | MVP | Production | How it's portable |
+|---------|-----|------------|-------------------|
+| Database | Supabase PostgreSQL | AWS RDS PostgreSQL | `DATABASE_URL` only — Prisma is provider-agnostic |
+| Email | Resend | SendGrid | Abstracted behind `src/lib/email.ts` |
+| Auth (coach/admin) | Auth.js magic links | Auth.js + Okta provider | Same library, different provider config |
+| Auth (participants) | Custom OTP (iron-session) | Custom OTP (unchanged) | USPS participants are not in FC's Okta tenant |
+| Container | Dockerfile written in Phase 0 | AWS ECS pulls from ECR | Same Docker image, different registry destination |
+| Env vars | Vercel dashboard | AWS Secrets Manager | Generic names (`DATABASE_URL`, `EMAIL_API_KEY`) map cleanly |
