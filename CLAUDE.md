@@ -2,6 +2,22 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Agent Quickstart — Read Before Implementing
+
+Read these files in order before touching any code:
+
+1. **`CLAUDE.md`** (this file) — architecture, conventions, design system, all locked decisions
+2. **`docs/plans/2026-02-12-feat-mvp-backend-vertical-slices-plan.md`** — master implementation plan: full ERD, API routes, acceptance criteria, task checklist for Slices 1–3
+3. **`src/lib/config.ts`** — domain constants (session topics, nudge thresholds, program types, coach capacity)
+4. **`docs/plans/2026-02-18-fc-project-plan.md`** — cohort schedule, dates, and what FC provides by when
+
+Do NOT read `docs/archive/` — historical context only, decisions already incorporated above.
+Check `docs/solutions/` if debugging a known issue pattern.
+
+**Google Sheets sync** (Tim's project management view): `docs/brainstorms/2026-02-14-sheet-sync-workflow-brainstorm.md` — defines the CSV diff workflow for keeping Tim's sheet current.
+
+---
+
 ## Commands
 
 ```bash
