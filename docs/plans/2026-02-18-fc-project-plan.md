@@ -1,7 +1,7 @@
 # FranklinCovey Coaching Platform — Project Plan
 
 **Date**: 2026-02-18
-**Last Updated**: 2026-02-18
+**Last Updated**: 2026-02-18 (cohort schedule added from Kari's FY26 Coaching Timelines doc)
 **Status**: Active Build — Phase 0 starting today
 
 ---
@@ -23,8 +23,8 @@ The platform ships in three milestones between now and March 16, aligned to the 
 
 | Portal | Who Uses It | Key Capabilities |
 |--------|-------------|-----------------|
-| **Participant portal** | ~60 participants (first cohort) | Magic-link access → browse 3 coaches → select → book via Calendly |
-| **Coach portal** | 35+ coaches | Log session notes, view assigned participants, track session status |
+| **Participant portal** | ~400 participants across all cohorts (first wave starts March 12) | OTP access → browse 3 coaches → select → book via Calendly |
+| **Coach portal** | 32 coaches (15 MLP/ALP panel + 17 EF/EL panel) | Log session notes, view assigned participants, track session status |
 | **Admin portal** | Kari, Andrea (FC Ops) | Bulk participant import, nudge email automation, KPI dashboard, CSV export |
 
 **Participant flow is intentionally simple:** one visit, one decision, done. Participants do not return to the platform after selecting a coach. Re-engagement for participants who haven't selected is handled by automated nudge emails at Day 5, Day 10, and auto-assignment at Day 15.
@@ -39,7 +39,70 @@ The platform ships in three milestones between now and March 16, aligned to the 
 | **Feb 26** | Beta test with Kari on staging | 🔜 Committed |
 | **Mar 2** | **Slice 1 live** — participant auth + coach selection + Calendly booking | 🎯 Hard deadline |
 | **Mar 9** | **Slice 2 live** — coach portal: session logging + engagement tracking | 🎯 Hard deadline |
+| **Mar 12** | ALP-135 first participants access platform (earliest cohort) | 🎯 Must be live |
 | **Mar 16** | **Slice 3 live** — admin portal: import, nudge emails, KPI dashboard | 🎯 Hard deadline |
+| Mar 16 | MLP-80 + EF-1 in-person training begins (coaching window opens after) | FC milestone |
+| Mar 23 | ALP-136 + EF-2 in-person training begins | FC milestone |
+| Mar 27+ | EF-1 coaching begins | FC milestone |
+| Apr 6 | ALP-137 + EL-1 in-person training begins | FC milestone |
+| Apr 10+ | EL-1 coaching begins | FC milestone |
+| Apr 20 | MLP-81 + EF-2 in-person training begins | FC milestone |
+
+---
+
+## Cohort Schedule (Source: FY26 Coaching Timelines — Kari Sadler, 2026-02-18)
+
+### MLP Cohorts — 2 sessions per participant
+
+| Cohort | Week 1 In-Person | Session 1 Coaching Window | Week 2 In-Person | Session 2 Coaching Window |
+|--------|-----------------|--------------------------|-----------------|--------------------------|
+| **80** | 3/9 – 3/11 | **3/16 – 5/15** | 5/18 – 5/20 | **5/21 – 8/20** |
+| **81** | 4/20 – 4/22 | **4/27 – 6/19** | 6/22 – 6/24 | **6/25 – 9/24** |
+
+### ALP Cohorts — 2 sessions per participant
+
+| Cohort | Week 1 In-Person | Session 1 Coaching Window | Week 2 In-Person | Session 2 Coaching Window |
+|--------|-----------------|--------------------------|-----------------|--------------------------|
+| **135** | 3/9 – 3/11 | **3/12 – 5/8** | 5/11 – 5/14 | **5/15 – 8/14** |
+| **136** | 3/23 – 3/25 | **3/26 – 5/15** | 5/18 – 5/21 | **5/22 – 8/21** |
+| **137** | 4/6 – 4/8 | **4/9 – 6/5** | 6/8 – 6/11 | **6/12 – 9/11** |
+| **138** | 6/1 – 6/3 | **6/4 – 7/31** | 8/3 – 8/6 | **8/7 – 11/6** ⚠️ |
+
+> ⚠️ ALP-138 Session 2 start date in source doc shows 8/4, which conflicts with Week 2 ending 8/6. Assumed 8/7 (day after Week 2 ends). **Confirm with Kari.**
+
+*MLP/ALP: Session 1 occurs between Week 1 and Week 2. Session 2 occurs within 3 months following Week 2 completion.*
+
+### EF Cohorts — 5 sessions per participant (coaching window TBD)
+
+| Cohort | In-Person Training | Coaching Starts |
+|--------|--------------------|----------------|
+| **1** | 3/23 – 3/26 | After 3/26 |
+| **2** | 4/20 – 4/23 | After 4/23 |
+| **3** | 6/8 – 6/11 | After 6/11 |
+| **4** | 6/22 – 6/25 | After 6/25 |
+| **5** | 8/3 – 8/6 | After 8/6 |
+
+### EL Cohorts — 5 sessions per participant (coaching window TBD)
+
+| Cohort | In-Person Training | Coaching Starts |
+|--------|--------------------|----------------|
+| **1** | 4/6 – 4/9 | After 4/9 |
+| **2** | 5/11 – 5/14 | After 5/14 |
+| **3** | 6/1 – 6/4 | After 6/4 |
+
+*EF/EL: Coaching can start any time after in-person session ends. Coaching window close date still being determined by FC.*
+
+---
+
+## Open Questions (Pending Kari)
+
+| Question | Impact |
+|----------|--------|
+| **ALP-138 Session 2 start date** — source shows 8/4 but Week 2 ends 8/6; assumed 8/7 | Minor date correction only |
+| **MLP/ALP panel size** — is it 15 coaches or ~30? | Affects capacity math: 15 coaches × 15 slots = 225 vs 30 × 15 = 450 |
+| **EF/EL coaching window close** — "still determining" | Required before we can build nudge logic for exec programs |
+| **"Use or lose" enforcement** — does platform flag/close expired windows, or ops-managed? | Affects nudge system design |
+| **Participant counts per cohort** | Required to validate coach capacity holds across overlapping cohorts |
 
 ---
 
@@ -49,8 +112,9 @@ These inputs are on the critical path. Delays here delay the March 2 launch.
 
 | Item | Owner | Needed By | Notes |
 |------|-------|-----------|-------|
-| Coach bios + photos + scheduling links (~35 coaches) | Kari Sadler | Feb 21 | CSV format; includes Calendly/meeting booking links |
-| First cohort participant list (~60 participants) | Kari Sadler | Feb 24 | Name + email; used for OTP invitations |
+| Coach bios + photos + scheduling links (MLP/ALP panel) | Kari Sadler | Feb 21 | CSV format; includes Calendly/meeting booking links |
+| ALP-135 participant list (first to access platform — March 12) | Kari Sadler | Feb 24 | Name + email; platform must be live by 3/12 |
+| MLP-80 participant list | Kari Sadler | Feb 24 | Coaching window opens 3/16 |
 | Beta testing time — Kari + 1-2 staff | Kari Sadler | Feb 26 (full day) | Verbally confirmed at workshop |
 | Email sender domain decision | Tim + Blaine | Feb 21 | Proposed: `coaching@franklincovey.com` |
 | IT approval (Blaine) | Tim to facilitate | ASAP | Required for production infrastructure; not MVP blocker |
