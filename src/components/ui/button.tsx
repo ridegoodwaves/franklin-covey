@@ -9,17 +9,17 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-fc-600 text-white shadow-sm hover:bg-fc-700 active:scale-[0.98]",
+          "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:scale-[0.98]",
         destructive:
           "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
         outline:
-          "border border-fc-200 bg-transparent text-fc-700 hover:bg-fc-50 hover:border-fc-300",
+          "border-2 border-fc-deep-blue bg-transparent text-fc-deep-blue hover:bg-fc-deep-blue hover:text-white",
         secondary:
           "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
         ghost:
-          "text-fc-700 hover:bg-fc-50 hover:text-fc-900",
+          "text-primary hover:bg-primary/10 hover:text-fc-cool-black",
         link:
-          "text-fc-700 underline-offset-4 hover:underline",
+          "text-primary underline-offset-4 hover:underline",
       },
       size: {
         default: "h-10 px-5 py-2",

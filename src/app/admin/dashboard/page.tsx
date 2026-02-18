@@ -68,7 +68,7 @@ function AlertTriangleIcon({ className }: { className?: string }) {
 // Sparkline - Mini trend chart for KPI cards
 // ---------------------------------------------------------------------------
 
-function Sparkline({ data, color = "#B8965A", className }: { data: number[]; color?: string; className?: string }) {
+function Sparkline({ data, color = "#FFB93C", className }: { data: number[]; color?: string; className?: string }) {
   const max = Math.max(...data);
   const min = Math.min(...data);
   const range = max - min || 1;
@@ -117,7 +117,7 @@ const kpis = [
     change: "+24 this month",
     changeType: "positive" as const,
     sparkData: [320, 335, 350, 342, 358, 370, 380, 390, 395, 400],
-    color: "#0c1b33",
+    color: "#141928",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -130,7 +130,7 @@ const kpis = [
     change: "62% of total",
     changeType: "neutral" as const,
     sparkData: [200, 210, 215, 225, 230, 235, 238, 242, 245, 248],
-    color: "#3b82f6",
+    color: "#3253FF",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="10" />
@@ -144,7 +144,7 @@ const kpis = [
     change: "+5 since last week",
     changeType: "attention" as const,
     sparkData: [18, 20, 22, 28, 25, 30, 32, 29, 34, 37],
-    color: "#B8965A",
+    color: "#FFB93C",
     icon: <AlertTriangleIcon />,
   },
   {
@@ -153,7 +153,7 @@ const kpis = [
     change: "+12 this month",
     changeType: "positive" as const,
     sparkData: [50, 55, 60, 65, 70, 75, 80, 85, 92, 98],
-    color: "#5c8a5c",
+    color: "#45D8B4",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
@@ -167,7 +167,7 @@ const kpis = [
     change: "4.3% rate",
     changeType: "neutral" as const,
     sparkData: [8, 9, 10, 10, 11, 12, 13, 14, 15, 17],
-    color: "#dc2626",
+    color: "#FF585D",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="10" />
@@ -292,7 +292,7 @@ export default function AdminDashboard() {
     >
       {/* Page header */}
       <div className="mb-8">
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-fc-900">
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-fc-cool-black">
           Dashboard
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -312,7 +312,7 @@ export default function AdminDashboard() {
               className={cn(
                 "relative overflow-hidden opacity-0 animate-fade-in",
                 `stagger-${idx + 1}`,
-                isAttention && "border-amber-300 bg-gradient-to-br from-amber-50/80 to-white shadow-amber-100/40 shadow-md"
+                isAttention && "border-fc-golden/40 bg-gradient-to-br from-fc-golden/10 to-white shadow-fc-golden/20 shadow-md"
               )}
             >
               {/* Gold shimmer on attention card */}
@@ -324,8 +324,8 @@ export default function AdminDashboard() {
                     className={cn(
                       "flex h-10 w-10 items-center justify-center rounded-lg",
                       isAttention
-                        ? "bg-amber-100 text-amber-700"
-                        : "bg-fc-50 text-fc-600"
+                        ? "bg-fc-golden/20 text-fc-golden"
+                        : "bg-fc-deep-blue/10 text-fc-deep-blue"
                     )}
                   >
                     {kpi.icon}
@@ -334,10 +334,7 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="mt-4">
-                  <p className={cn(
-                    "font-display text-3xl font-semibold tracking-tight",
-                    isAttention ? "text-amber-800" : "text-fc-900"
-                  )}>
+                  <p className="font-display text-3xl font-semibold tracking-tight text-fc-cool-black">
                     {kpi.value}
                   </p>
                   <p className="mt-0.5 text-xs font-medium text-muted-foreground">
@@ -347,21 +344,21 @@ export default function AdminDashboard() {
 
                 <div className="mt-3 flex items-center gap-1.5">
                   {kpi.changeType === "positive" && (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5c8a5c" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#45D8B4" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
                       <polyline points="17 6 23 6 23 12" />
                     </svg>
                   )}
                   {kpi.changeType === "attention" && (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#B8965A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFB93C" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
                       <polyline points="17 18 23 18 23 12" />
                     </svg>
                   )}
                   <span className={cn(
                     "text-[11px] font-medium",
-                    kpi.changeType === "positive" && "text-emerald-600",
-                    kpi.changeType === "attention" && "text-amber-700",
+                    kpi.changeType === "positive" && "text-fc-green",
+                    kpi.changeType === "attention" && "text-fc-golden",
                     kpi.changeType === "neutral" && "text-muted-foreground"
                   )}>
                     {kpi.change}
@@ -397,7 +394,7 @@ export default function AdminDashboard() {
                 </TabsTrigger>
                 <TabsTrigger value="attention" className="gap-1.5">
                   Needs Attention
-                  <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-600 px-1.5 text-[10px] font-semibold text-white">
+                  <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-fc-golden px-1.5 text-[10px] font-semibold text-fc-cool-black">
                     {attentionCount}
                   </span>
                 </TabsTrigger>
@@ -410,7 +407,7 @@ export default function AdminDashboard() {
                   <select
                     value={filterStatus}
                     onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
-                    className="h-9 appearance-none rounded-lg border border-input bg-white pl-3 pr-8 text-xs font-medium text-fc-700 transition-colors hover:border-fc-300 focus:outline-none focus:ring-2 focus:ring-fc-300"
+                    className="h-9 appearance-none rounded-lg border border-input bg-white pl-3 pr-8 text-xs font-medium text-foreground transition-colors hover:border-fc-deep-blue/50 focus:outline-none focus:ring-2 focus:ring-fc-deep-blue/30"
                   >
                     {statuses.map((s) => (
                       <option key={s} value={s}>
@@ -426,7 +423,7 @@ export default function AdminDashboard() {
                   <select
                     value={filterCoach}
                     onChange={(e) => { setFilterCoach(e.target.value); setCurrentPage(1); }}
-                    className="h-9 appearance-none rounded-lg border border-input bg-white pl-3 pr-8 text-xs font-medium text-fc-700 transition-colors hover:border-fc-300 focus:outline-none focus:ring-2 focus:ring-fc-300"
+                    className="h-9 appearance-none rounded-lg border border-input bg-white pl-3 pr-8 text-xs font-medium text-foreground transition-colors hover:border-fc-deep-blue/50 focus:outline-none focus:ring-2 focus:ring-fc-deep-blue/30"
                   >
                     {coaches.map((c) => (
                       <option key={c} value={c}>{c}</option>
@@ -440,7 +437,7 @@ export default function AdminDashboard() {
                   <select
                     value={filterTrack}
                     onChange={(e) => { setFilterTrack(e.target.value); setCurrentPage(1); }}
-                    className="h-9 appearance-none rounded-lg border border-input bg-white pl-3 pr-8 text-xs font-medium text-fc-700 transition-colors hover:border-fc-300 focus:outline-none focus:ring-2 focus:ring-fc-300"
+                    className="h-9 appearance-none rounded-lg border border-input bg-white pl-3 pr-8 text-xs font-medium text-foreground transition-colors hover:border-fc-deep-blue/50 focus:outline-none focus:ring-2 focus:ring-fc-deep-blue/30"
                   >
                     {tracks.map((t) => (
                       <option key={t} value={t}>
@@ -489,15 +486,15 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground">
               Showing{" "}
-              <span className="font-medium text-fc-800">
+              <span className="font-medium text-fc-cool-black">
                 {Math.min((currentPage - 1) * perPage + 1, sorted.length)}
               </span>
               {" "}to{" "}
-              <span className="font-medium text-fc-800">
+              <span className="font-medium text-fc-cool-black">
                 {Math.min(currentPage * perPage, sorted.length)}
               </span>
               {" "}of{" "}
-              <span className="font-medium text-fc-800">{sorted.length}</span>
+              <span className="font-medium text-fc-cool-black">{sorted.length}</span>
               {" "}engagements
             </p>
 
@@ -567,7 +564,7 @@ function SortHeader({
   return (
     <button
       onClick={() => onSort(col)}
-      className="group inline-flex items-center gap-1 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:text-fc-800"
+      className="group inline-flex items-center gap-1 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:text-fc-cool-black"
     >
       {label}
       <span className={cn("transition-opacity", active ? "opacity-100" : "opacity-0 group-hover:opacity-50")}>
@@ -588,7 +585,7 @@ function EngagementTable({ data, sortCol, sortAsc, onSort }: EngagementTableProp
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/80">
           <SearchIcon className="text-muted-foreground" />
         </div>
-        <p className="mt-4 font-display text-lg font-medium text-fc-800">No engagements found</p>
+        <p className="mt-4 font-display text-lg font-medium text-fc-cool-black">No engagements found</p>
         <p className="mt-1 text-sm text-muted-foreground">Try adjusting your filters or search query</p>
       </div>
     );
@@ -626,31 +623,31 @@ function EngagementTable({ data, sortCol, sortAsc, onSort }: EngagementTableProp
             <tr
               key={eng.id}
               className={cn(
-                "group border-b border-border/30 transition-colors hover:bg-fc-50/50",
-                eng.needsAttention && "bg-amber-50/30"
+                "group border-b border-border/30 transition-colors hover:bg-fc-deep-blue/5",
+                eng.needsAttention && "bg-fc-golden/5"
               )}
             >
               {/* Participant */}
               <td className="px-6 py-3.5">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-fc-100 text-fc-700 text-xs font-medium">
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
                       {getInitials(eng.participant)}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="text-sm font-medium text-fc-900">{eng.participant}</p>
+                    <p className="text-sm font-medium text-fc-cool-black">{eng.participant}</p>
                     <p className="text-[11px] text-muted-foreground">{eng.id}</p>
                   </div>
                   {eng.needsAttention && (
-                    <AlertTriangleIcon className="ml-1 h-3.5 w-3.5 text-amber-600" />
+                    <AlertTriangleIcon className="ml-1 h-3.5 w-3.5 text-fc-golden" />
                   )}
                 </div>
               </td>
 
               {/* Coach */}
               <td className="px-4 py-3.5">
-                <span className="text-sm text-fc-700">{eng.coach}</span>
+                <span className="text-sm text-foreground">{eng.coach}</span>
               </td>
 
               {/* Status */}
