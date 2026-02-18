@@ -14,10 +14,10 @@
 - **Brainstorm** (`docs/brainstorms/2026-02-12-mvp-ship-strategy-brainstorm.md`) — nudge strategy reversed, open questions resolved, pre-dev checklist updated
 - **Implementation plan** (`docs/plans/2026-02-12-feat-mvp-backend-vertical-slices-plan.md`) — 20+ edits: filters removed, participant flow simplified, session statuses updated, nudge emails re-scoped, auto-assign added
 - **Delta analysis** (`docs/CIL-BRIEF-DELTA-ANALYSIS.md`) — all 11 delta items marked with resolution status
-- "Kari" → "Carrie Sadler" fixed across all 6 docs + pre-commit hook installed
+- "Kari" → "Kari Sadler" fixed across all 6 docs + pre-commit hook installed
 
 ### Schema & Domain Model Finalized
-- **`src/lib/config.ts`** — replaced placeholder topics with real USPS competencies from Carrie:
+- **`src/lib/config.ts`** — replaced placeholder topics with real USPS competencies from Kari:
   - `MLP_SESSION_TOPICS` (7 managerial competencies)
   - `EXECUTIVE_SESSION_TOPICS` (7 executive competencies for ALP/EF/EL)
   - `SESSION_TOPICS_BY_PROGRAM` map (program-aware lookup)
@@ -133,7 +133,7 @@
 
 - `src/lib/config.ts` — real USPS competencies, updated nudge thresholds, COACH_CAPACITY, PROGRAM_TYPES
 - `docs/plans/2026-02-12-feat-mvp-backend-vertical-slices-plan.md` — ERD + 20+ workshop edits
-- `docs/CIL-BRIEF-DELTA-ANALYSIS.md` — all deltas resolved, Carrie name fixed, Blaine IT responses + production migration plan added
+- `docs/CIL-BRIEF-DELTA-ANALYSIS.md` — all deltas resolved, Kari name fixed, Blaine IT responses + production migration plan added
 - `docs/brainstorms/2026-02-12-mvp-ship-strategy-brainstorm.md` — questions resolved, nudge reversed
 - `docs/drafts/2026-02-16-workshop-open-questions.md` — all sections ANSWERED
 - `docs/workshop-agenda-feb-18.md` — Outcomes section added
@@ -153,7 +153,7 @@
 
 4. **Supabase project** — Not yet created. Need to create at supabase.com and get `DATABASE_URL` before starting Phase 0.
 
-5. **Pre-commit hook false positive** — The "Kari" check triggers on correction notes (e.g. `"Kari" in original docs is actually Carrie Sadler`). Use `--no-verify` for those cases, or tighten the hook exception pattern.
+5. **Pre-commit hook false positive** — The "Kari" check triggers on correction notes (e.g. `"Kari" in original docs is actually Kari Sadler`). Use `--no-verify` for those cases, or tighten the hook exception pattern.
 
 ---
 

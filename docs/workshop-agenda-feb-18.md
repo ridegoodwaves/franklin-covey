@@ -3,12 +3,12 @@
 > **STATUS: EXECUTED** — Workshop ran Feb 17, 2026 (moved up 1 day from original Feb 18 plan). Outcomes and decisions documented below. Full meeting follow-up: `docs/emails/2026-02-17-usps-meeting-followup.md`. Full PRD extraction: this session's PRD output.
 
 **Duration**: ~90 minutes
-**Attendees**: Amit, Tim, Carrie Sadler, Andrea, Greg (left at ~60 min mark)
+**Attendees**: Amit, Tim, Kari Sadler, Andrea, Greg (left at ~60 min mark)
 **Not present**: Blaine (IT) — still unreachable as of Feb 17. Critical blocker.
 **Objective**: Align on the minimum viable coach selector, coach portal, and ops dashboard — using their real data and constraints — so we can lock scope, decisions, and tradeoffs to confidently hit March 2 and March 16.
 **Approach**: Partnership-style facilitation. Open-ended questions first, decisions emerge from understanding their world. We've built recommendations — we validate, not extract.
 
-**Note**: "Kari" in original docs is actually **Carrie Sadler** (confirmed pronunciation during meeting).
+**Note**: "Kari" in original docs is actually **Kari Sadler** (confirmed pronunciation during meeting).
 
 ---
 
@@ -19,7 +19,7 @@
 - [x] Amit reviews Tim's corrected proposal deck
 - [x] CSV template ready to hand Andrea
 - [x] 8:45 am sync with Tim on Feb 17 (dress rehearsal)
-- [x] Confirm attendee list — Blaine did NOT join. Greg, Carrie, Andrea attended.
+- [x] Confirm attendee list — Blaine did NOT join. Greg, Kari, Andrea attended.
 
 ---
 
@@ -122,7 +122,7 @@ Tim leads the wrap:
 
 If these come up, acknowledge and park: "Great question — let's dig into that in our follow-up session."
 
-- Reporting parameters in depth (what Carrie wants vs Greg)
+- Reporting parameters in depth (what Kari wants vs Greg)
 - Bulk import workflow (CSV format, duplicate handling, invitation email content)
 - Coach portal session topics and outcomes (calibrated to FC methodology)
 - Future roadmap (sponsor teams, AI matching, SurveyMonkey, multi-program admin UI)
@@ -202,9 +202,9 @@ Not to present proactively, but to have on hand if FC asks for something that so
 - First cohort: ~60 participants (not 400 all at once). 400 = total across all programs over 6 months.
 
 ### Decision Speed & Data (resolved)
-- **Carrie Sadler** = primary contact. `@CarrieSadler` in email body = same-day response. Text cell for critical blockers only.
+- **Kari Sadler** = primary contact. `@CarrieSadler` in email body = same-day response. Text cell for critical blockers only.
 - **Andrea** = day-to-day coach/participant comms.
-- Coach bios, videos (32/34 already recorded), participant data, competency list expected from Carrie by Feb 17-18.
+- Coach bios, videos (32/34 already recorded), participant data, competency list expected from Kari by Feb 17-18.
 
 ### Big Picture (resolved)
 - **Greg** (left at ~60 min): Vision is scalable platform, not one-off tool. Multi-org architecture confirmed as correct direction.
@@ -214,7 +214,7 @@ Not to present proactively, but to have on hand if FC asks for something that so
 ### Timeline (confirmed)
 | Date | Milestone |
 |------|-----------|
-| Feb 17 | Coach data from Carrie (bios, videos, participant list, competencies) |
+| Feb 17 | Coach data from Kari (bios, videos, participant list, competencies) |
 | Feb 18 | Target green light from Blaine/IT |
 | Feb 26 | Beta testing |
 | March 2 | Coach selector live |

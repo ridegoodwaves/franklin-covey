@@ -1,4 +1,4 @@
-// Session topics by program type — from Carrie Sadler (Feb 17, 2026)
+// Session topics by program type — from Kari Sadler (Feb 17, 2026)
 // "OTHER" shows static note: "Please email the coaching practice" (no free-text input)
 
 export const MLP_SESSION_TOPICS = [

@@ -43,7 +43,7 @@ We chose **vertical slices** over backend-first or progressive enhancement becau
 
 **Slice 3 — Admin Portal (target: March 16)**
 - Ops dashboard with real KPI queries (cached 60s)
-- Executive summary view (aggregated metrics for Carrie/Greg)
+- Executive summary view (aggregated metrics for Kari/Greg)
 - Bulk participant import (two-phase: atomic DB transaction + email batch)
 - Automated nudge emails (Day 5 reminder, Day 10 reminder, Day 15 auto-assign) + nudge cron (`/api/cron/nudges`, daily 9am ET)
 - Wire `/admin/dashboard`, `/admin/coaches`, `/admin/import` to real data
@@ -57,8 +57,8 @@ We chose **vertical slices** over backend-first or progressive enhancement becau
 - **Implication**: Email provider (Resend or AWS SES) needed from Slice 1. OTP table in schema. 5-minute expiry, 3-attempt limit.
 
 ### 2. Dashboard Views: Ops + Executive Summary
-- **What**: Two admin views instead of three. Full Ops dashboard for Andrea's daily workflow. Simplified executive summary for Carrie (coaching director) and Greg (VP).
-- **Why**: 2x is buildable by March 16. Three bespoke dashboards would push past deadline. Executive summary can evolve into separate Carrie/Greg views post-launch.
+- **What**: Two admin views instead of three. Full Ops dashboard for Andrea's daily workflow. Simplified executive summary for Kari (coaching director) and Greg (VP).
+- **Why**: 2x is buildable by March 16. Three bespoke dashboards would push past deadline. Executive summary can evolve into separate Kari/Greg views post-launch.
 - **Implication**: Admin portal needs a view toggle or tab. Executive summary = completion rates, program health, coach utilization — no drill-down.
 
 ### 3. Multi-Program: Soft Support (Schema-Ready, UI-Later)
@@ -103,8 +103,8 @@ Before starting Slice 1:
 - [ ] Set up PostgreSQL (local dev + staging)
 - [x] ~~Resolve participant auth flow at Feb 18 workshop~~ — Generic link + OTP confirmed (resolved Feb 17)
 - [ ] Complete visual QA of brand refresh (from previous session handoff)
-- [x] ~~Receive competency list from Carrie~~ — received Feb 17. MLP: 7 managerial competencies. ALP/EF/EL: 7 executive competencies. Implemented in `src/lib/config.ts`.
-- [ ] Receive coach data from Carrie (bios, videos, participant list) — expected Feb 17-18
+- [x] ~~Receive competency list from Kari~~ — received Feb 17. MLP: 7 managerial competencies. ALP/EF/EL: 7 executive competencies. Implemented in `src/lib/config.ts`.
+- [ ] Receive coach data from Kari (bios, videos, participant list) — expected Feb 17-18
 
 ---
 

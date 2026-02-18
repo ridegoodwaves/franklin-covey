@@ -13,7 +13,7 @@ changelog:
   - 2026-02-14: "Applied technical review amendments: replaced Serializable transactions with SELECT FOR UPDATE + unique constraints, cut Phase 0 over-engineering (pino, PII masking, API helpers), replaced advisory lock with timestamp guard, simplified coach ordering to Math.random(), added typed error classes and null safety notes. Full review: docs/reviews/2026-02-14-technical-review-consolidated.md"
   - 2026-02-14b: "Designed fully automated QA strategy: 5 test suites (30 scenarios) using Claude in Chrome browser automation. Added test infrastructure (/api/test/* endpoints, test seed data, Mailpit). Covers OTP auth, coach selection, session logging, admin import/export, dashboard KPIs, cross-cutting auth/rate-limiting. Zero manual QA target."
   - 2026-02-16: "Added email safety stack to Phase 0: startup assertion (crash if prod SMTP creds in non-prod env), sanitize-by-default on coach CSV import (--raw flag for production), Mailpit explicitly in docker-compose spec. Added .gitignore for real data CSVs."
-  - 2026-02-17: "Applied Feb 17 workshop decisions: removed participant-facing filters from coach selector, simplified participant flow (ends at selection — no engagement page), updated session statuses to 3 types, re-scoped nudge emails IN (Day 5/10/15 + auto-assign), updated participant count (~60 first cohort), fixed 'Kari' to 'Carrie Sadler' throughout, added session receipts to future considerations."
+  - 2026-02-17: "Applied Feb 17 workshop decisions: removed participant-facing filters from coach selector, simplified participant flow (ends at selection — no engagement page), updated session statuses to 3 types, re-scoped nudge emails IN (Day 5/10/15 + auto-assign), updated participant count (~60 first cohort), fixed 'Kari' to 'Kari Sadler' throughout, added session receipts to future considerations."
 ---
 
 # feat: Ship MVP Backend — 3 Vertical Slices (March 2/9/16)
@@ -26,7 +26,7 @@ Connect the existing polished frontend (~60% built, hardcoded demo data) to a re
 |-------|-------|----------|----------------|
 | **1** | Coach Selector + Participant OTP Auth | **March 2** | ~60 participants (first cohort) |
 | **2** | Coach Engagement + Session Logging | **March 9** | ~30 coaches (MLP/ALP panel) |
-| **3** | Admin Portal + Nudge Emails + Auto-Assign | **March 16** | 3 admins (Ops, Carrie, Greg) |
+| **3** | Admin Portal + Nudge Emails + Auto-Assign | **March 16** | 3 admins (Ops, Kari, Greg) |
 
 **Key architectural decisions** (from [brainstorm](docs/brainstorms/2026-02-12-mvp-ship-strategy-brainstorm.md)):
 - Participant auth: Generic link + email + OTP (not HMAC tokens)
@@ -276,7 +276,7 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
   - 4 programs under the primary org: MLP (TWO_SESSION), ALP (TWO_SESSION), EF (FIVE_SESSION), EL (FIVE_SESSION)
   - 5 sample coaches with realistic profiles for dev testing
   - CoachProgramPanel assignments: all 5 sample coaches → MLP + ALP panels (shared panel)
-  - 3 admin users (Andrea/Ops, Carrie/Coaching Director, Greg/VP)
+  - 3 admin users (Andrea/Ops, Kari/Coaching Director, Greg/VP)
   - 10 sample participants for dev testing
   - 5 sample engagements at various states
 - [ ] Add `prisma.seed` script to `package.json`
@@ -505,7 +505,7 @@ await prisma.$transaction(async (tx) => {
   - Handle "zero coaches available" (show message + "we'll notify the team")
 
 - [ ] Create zero-coaches notification — `src/lib/notifications.ts`
-  - When zero coaches available: send email to ops team (Andrea + Carrie)
+  - When zero coaches available: send email to ops team (Andrea + Kari)
   - Include: participant name, program, timestamp
   - **Hardcoded recipients for MVP** (configurable post-launch)
 
@@ -724,7 +724,7 @@ await prisma.$transaction(async (tx) => {
 
 - [ ] Executive summary — `src/app/api/admin/dashboard/executive/route.ts`
   - `GET /api/admin/dashboard/executive?programId=`
-  - Aggregated metrics for Carrie/Greg:
+  - Aggregated metrics for Kari/Greg:
     - Overall completion rate (%)
     - Average sessions per engagement
     - Coach utilization (active engagements / max capacity, per coach)
@@ -785,7 +785,7 @@ if (lastNudge && Date.now() - lastNudge.sentAt.getTime() < 3600_000) {
     - **Day 10 — `PARTICIPANT_REMINDER_2`**: status = `INVITED`, no coach selected in 10+ days, `REMINDER_1` already sent. Send firmer reminder email. Set dashboard flag.
     - **Day 15 — `AUTO_ASSIGN`**: status = `INVITED`, no coach selected in 15+ days, `REMINDER_2` already sent. **System auto-assigns coach** (capacity-weighted selection) + sends notification email to participant with assigned coach info + Calendly link. Set dashboard flag. Transitions engagement to `COACH_SELECTED`.
     - **`COACH_ATTENTION`**: status = `IN_PROGRESS`, no session logged in 14+ days. Dashboard flag only (no email to participant — coach handles this).
-    - **`OPS_ESCALATION`**: any engagement stalled 21+ days. Dashboard flag + email to ops (Andrea/Carrie).
+    - **`OPS_ESCALATION`**: any engagement stalled 21+ days. Dashboard flag + email to ops (Andrea/Kari).
   - **Per-nudge-type cooldown** — each type checked independently
   - Log each nudge to `NudgeLog` table: type, email sent (boolean), dashboard flag set, auto-assignment details
   - Return: `{ processed: number, emailsSent: number, flagsSet: number, autoAssigned: number, errors: number }`
@@ -893,7 +893,7 @@ if (lastNudge && Date.now() - lastNudge.sentAt.getTime() < 3600_000) {
 - **Rejected**: Adds deployment complexity and cross-repo coordination. Next.js API routes are sufficient for this scale (35 coaches, 400 participants).
 
 ### 4. Three Separate Dashboards
-- Purpose-built views for Ops, Carrie, and Greg
+- Purpose-built views for Ops, Kari, and Greg
 - **Rejected**: 3x build effort. Ops dashboard + executive summary covers 90% of needs. Individual views can evolve post-launch.
 
 ---
@@ -1138,14 +1138,14 @@ Suites are designed to run **in order** — each suite builds on state created b
 | **Email provider** | Resend vs AWS SES | OTP + magic link + nudge emails all depend on this |
 | **Cloud provider** | AWS vs GCP vs Azure | Database provisioning, Docker hosting, cron scheduler |
 | **Domain / DNS** | Who manages? What subdomain? | Deployment URL, email sender domain |
-| **Real coach data entry** | Admin CSV upload vs manual entry vs seed script | 35 coaches need real bios, photos, booking URLs, and video URLs before March 2. Seed script only covers dev data. Options: (a) FC provides a CSV and we import via a one-off script, (b) build a minimal coach profile edit form in admin portal (pulls Slice 3 work forward), or (c) Carrie/Andrea enter data directly in the database via a simple admin form. **Recommend option (a)** — CSV from FC ops, imported with a script. |
+| **Real coach data entry** | Admin CSV upload vs manual entry vs seed script | 35 coaches need real bios, photos, booking URLs, and video URLs before March 2. Seed script only covers dev data. Options: (a) FC provides a CSV and we import via a one-off script, (b) build a minimal coach profile edit form in admin portal (pulls Slice 3 work forward), or (c) Kari/Andrea enter data directly in the database via a simple admin form. **Recommend option (a)** — CSV from FC ops, imported with a script. |
 
 ### Must Resolve Before Slice 3 (by March 9)
 
 | Decision | Options | Impact |
 |----------|---------|--------|
 | **Nudge recipients** | Hardcoded vs configurable | Ops escalation email targets |
-| **Executive summary scope** | What metrics matter to Carrie vs Greg? | Dashboard content |
+| **Executive summary scope** | What metrics matter to Kari vs Greg? | Dashboard content |
 | **Import duplicate handling** | Skip existing vs error on duplicate | CSV import behavior |
 
 ---
@@ -1173,7 +1173,7 @@ Post-launch backlog (NOT in scope for March 16):
 4. **Configurable nudge thresholds** — Admin UI to change 7/14/21 day thresholds
 5. **Waitlist system** — When all coaches at capacity
 6. **`next/font` migration** — Better font loading, eliminate FOUT
-7. **Separate Carrie/Greg dashboard views** — When executive summary is insufficient
+7. **Separate Kari/Greg dashboard views** — When executive summary is insufficient
 8. **Print-friendly reports** — PDF export of engagement summaries
 9. **Real-time updates** — WebSocket/SSE for dashboard live refresh
 10. **Session receipts** — Per-session receipt with coach attestation (checkbox, not DocuSign). USPS client request from Feb 17 workshop. Nice-to-have.

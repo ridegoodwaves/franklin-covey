@@ -34,7 +34,7 @@ This draft is **source-led, assumption-light**:
 ### Why This Lands with FC Stakeholders
 
 - **Greg lens (VP):** build once, reuse across engagements; improve operating leverage.
-- **Carrie lens (Director of Coaching):** stable baseline that creates room for better coaching experiences.
+- **Kari lens (Director of Coaching):** stable baseline that creates room for better coaching experiences.
 - **Andrea lens (Ops):** proactive exception management and lower reporting burden.
 
 ### Phase 2 Objectives (90 days)
