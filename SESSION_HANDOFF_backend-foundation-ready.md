@@ -41,6 +41,12 @@
   - Auth.js (magic links now → Okta provider later)
   - `DATABASE_URL` only (Supabase now → RDS later)
 - **New brainstorm**: `docs/brainstorms/2026-02-18-mvp-foundation-sequence-brainstorm.md`
+- **Delta analysis updated** (`docs/CIL-BRIEF-DELTA-ANALYSIS.md`) — full Blaine IT response table, production migration checklist with owners, design-for-portability mapping
+
+### Repo Hygiene
+- **Git global config set**: `user.name = Amit Bhatia`, `user.email = 93797937+ridegoodwaves@users.noreply.github.com` — no more hostname warnings
+- **`fc-assets/` gitignored** — real coach bios (PII) and brand PDFs excluded from repo
+- **All changes committed and pushed** to `feat/fc-brand-component-migration` (3 commits: UI changes, docs/schema, delta analysis)
 
 ### CLAUDE.md Updates
 - Participant flow documented: one-shot, ends at selection, no return visits
@@ -127,7 +133,7 @@
 
 - `src/lib/config.ts` — real USPS competencies, updated nudge thresholds, COACH_CAPACITY, PROGRAM_TYPES
 - `docs/plans/2026-02-12-feat-mvp-backend-vertical-slices-plan.md` — ERD + 20+ workshop edits
-- `docs/CIL-BRIEF-DELTA-ANALYSIS.md` — all deltas resolved, Carrie name fixed
+- `docs/CIL-BRIEF-DELTA-ANALYSIS.md` — all deltas resolved, Carrie name fixed, Blaine IT responses + production migration plan added
 - `docs/brainstorms/2026-02-12-mvp-ship-strategy-brainstorm.md` — questions resolved, nudge reversed
 - `docs/drafts/2026-02-16-workshop-open-questions.md` — all sections ANSWERED
 - `docs/workshop-agenda-feb-18.md` — Outcomes section added
@@ -147,7 +153,7 @@
 
 4. **Supabase project** — Not yet created. Need to create at supabase.com and get `DATABASE_URL` before starting Phase 0.
 
-5. **Old handoff files** — 3 old `SESSION_HANDOFF_*.md` files are deleted in working tree. These should be committed or cleaned up.
+5. **Pre-commit hook false positive** — The "Kari" check triggers on correction notes (e.g. `"Kari" in original docs is actually Carrie Sadler`). Use `--no-verify` for those cases, or tighten the hook exception pattern.
 
 ---
 
@@ -173,5 +179,9 @@ Start with:
 
 ---
 
-**Uncommitted Changes:** Yes — docs (all from this session), `src/lib/config.ts`, deleted old handoff files
+**Uncommitted Changes:** Yes — `SESSION_HANDOFF_backend-foundation-ready.md` (this file, just updated)
 **Tests Passing:** N/A — no backend code yet
+**Latest commits pushed:**
+- `669aeb4` feat: brand component refinements and gitignore for real data files
+- `ee8df61` docs: post-workshop decisions, finalized ERD, USPS competencies, and backend sequence
+- `921b675` docs: add Blaine IT responses and production migration plan to delta analysis
