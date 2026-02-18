@@ -1,15 +1,48 @@
-export const SESSION_TOPICS = [
-  "Goal Setting",
-  "Leadership Development",
-  "Communication Skills",
-  "Time Management",
-  "Conflict Resolution",
-  "Team Building",
-  "Career Planning",
-  "Stress Management",
-  "Decision Making",
+// Session topics by program type — from Carrie Sadler (Feb 17, 2026)
+// "OTHER" shows static note: "Please email the coaching practice" (no free-text input)
+
+export const MLP_SESSION_TOPICS = [
+  "Solving Problems",
+  "Facilitating Change",
+  "Driving Unit Performance",
+  "Building Relationships",
+  "Managing People",
+  "Setting Expectations",
   "Other",
 ] as const;
+
+export const EXECUTIVE_SESSION_TOPICS = [
+  "Implementing Strategies",
+  "Promoting Change",
+  "Driving Functional Excellence",
+  "Collaborating for Success",
+  "Developing People",
+  "Leading by Example",
+  "Other",
+] as const;
+
+// Map program to topic list
+// MLP = Managerial Leadership Program (2-session, new managers)
+// ALP = Advanced Leadership Program (2-session, experienced managers)
+// EF = Executive Foundations (5-session, new execs)
+// EL = Executive Leadership (5-session, execs)
+export const SESSION_TOPICS_BY_PROGRAM = {
+  MLP: MLP_SESSION_TOPICS,
+  ALP: EXECUTIVE_SESSION_TOPICS,
+  EF: EXECUTIVE_SESSION_TOPICS,
+  EL: EXECUTIVE_SESSION_TOPICS,
+} as const;
+
+// Flat union for backward compatibility (e.g., Zod validation across all programs)
+export const ALL_SESSION_TOPICS = [
+  ...MLP_SESSION_TOPICS,
+  ...EXECUTIVE_SESSION_TOPICS.filter(
+    (t) => !MLP_SESSION_TOPICS.includes(t as (typeof MLP_SESSION_TOPICS)[number])
+  ),
+] as const;
+
+// Legacy alias — use SESSION_TOPICS_BY_PROGRAM for program-aware code
+export const SESSION_TOPICS = ALL_SESSION_TOPICS;
 
 export const SESSION_OUTCOMES = [
   "Action Plan Created",
@@ -22,11 +55,13 @@ export const SESSION_OUTCOMES = [
 
 export const DURATION_OPTIONS = [15, 30, 45, 60, 90] as const;
 
+// Updated Feb 17 workshop: email nudges at Day 5/10, auto-assign at Day 15
 export const NUDGE_THRESHOLDS = {
-  coachReminderDays: 14,
-  participantReminderDays: 7,
-  opsEscalationDays: 21,
-  nudgeCooldownDays: 7,
+  participantReminder1Days: 5,   // Day 5: gentle reminder email
+  participantReminder2Days: 10,  // Day 10: firmer reminder email
+  autoAssignDays: 15,            // Day 15: system auto-assigns coach
+  coachAttentionDays: 14,        // No session logged in 14+ days (dashboard flag)
+  opsEscalationDays: 21,         // Critically stalled (dashboard flag + ops email)
 } as const;
 
 export const PROGRAM_TRACK_SESSIONS = {
@@ -34,6 +69,18 @@ export const PROGRAM_TRACK_SESSIONS = {
   FIVE_SESSION: 5,
 } as const;
 
-export type SessionTopic = (typeof SESSION_TOPICS)[number];
+export const COACH_CAPACITY = 15 as const; // Fixed per coach for MVP (Feb 17 workshop)
+
+export const PROGRAM_TYPES = {
+  MLP: { name: "Managerial Leadership Program", track: "TWO_SESSION" as const, coachPanel: "MLP_ALP" },
+  ALP: { name: "Advanced Leadership Program", track: "TWO_SESSION" as const, coachPanel: "MLP_ALP" },
+  EF:  { name: "Executive Foundations", track: "FIVE_SESSION" as const, coachPanel: "EF_EL" },
+  EL:  { name: "Executive Leadership", track: "FIVE_SESSION" as const, coachPanel: "EF_EL" },
+} as const;
+
+export type MlpSessionTopic = (typeof MLP_SESSION_TOPICS)[number];
+export type ExecutiveSessionTopic = (typeof EXECUTIVE_SESSION_TOPICS)[number];
+export type SessionTopic = MlpSessionTopic | ExecutiveSessionTopic;
 export type SessionOutcome = (typeof SESSION_OUTCOMES)[number];
 export type DurationOption = (typeof DURATION_OPTIONS)[number];
+export type ProgramType = keyof typeof PROGRAM_TYPES;

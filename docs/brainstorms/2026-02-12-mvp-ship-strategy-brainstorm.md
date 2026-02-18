@@ -1,7 +1,7 @@
 # MVP Ship Strategy Brainstorm
 
-**Date**: 2026-02-12 (updated 2026-02-13 with Tim call decisions)
-**Status**: Complete
+**Date**: 2026-02-12 (updated 2026-02-13 with Tim call decisions, 2026-02-17 with workshop resolutions)
+**Status**: Complete — all open questions resolved
 **Participants**: Amit + Claude
 **Next Step**: `/workflows:plan` to break into implementation tasks
 
@@ -11,10 +11,10 @@
 
 Ship the FranklinCovey Coaching Platform MVP by connecting the existing polished frontend (~60% built, hardcoded demo data) to a real backend, hitting two hard deadlines:
 
-- **March 2**: Coach Selector live for 400 USPS participants
+- **March 2**: Coach Selector live (~60 USPS participants, first cohort — 400 total across all programs over 6 months)
 - **March 16**: Full portal (coach + admin dashboards) live
 
-The platform serves three portals (Participant, Coach, Admin) for a government coaching engagement program scaling to 35 coaches and 4 programs.
+The platform serves three portals (Participant, Coach, Admin) for a government coaching engagement program scaling to ~30 coaches (MLP/ALP shared panel) and 4 programs.
 
 ## Why This Approach: Vertical Slices
 
@@ -29,7 +29,7 @@ We chose **vertical slices** over backend-first or progressive enhancement becau
 **Slice 1 — Coach Selector (target: March 2)**
 - Prisma schema initialization (full schema, not just what Slice 1 needs)
 - Participant OTP auth (generic link + email + one-time code)
-- Coach pool API (capacity-aware, filtered by location/language/specialty/credential)
+- Coach pool API (capacity-aware, 3 randomized coaches — no filters per Feb 17 workshop)
 - Wire `/participant/select-coach` to real data
 - Email provider setup (for OTPs — reused later for nudges)
 - Deploy to production (Docker standalone, PostgreSQL)
@@ -43,9 +43,9 @@ We chose **vertical slices** over backend-first or progressive enhancement becau
 
 **Slice 3 — Admin Portal (target: March 16)**
 - Ops dashboard with real KPI queries (cached 60s)
-- Executive summary view (aggregated metrics for Kari/Greg)
+- Executive summary view (aggregated metrics for Carrie/Greg)
 - Bulk participant import (two-phase: atomic DB transaction + email batch)
-- Automated nudge cron (`/api/cron/nudges`, daily 9am ET)
+- Automated nudge emails (Day 5 reminder, Day 10 reminder, Day 15 auto-assign) + nudge cron (`/api/cron/nudges`, daily 9am ET)
 - Wire `/admin/dashboard`, `/admin/coaches`, `/admin/import` to real data
 - Admin auth (Auth.js magic links, role-based)
 
@@ -57,8 +57,8 @@ We chose **vertical slices** over backend-first or progressive enhancement becau
 - **Implication**: Email provider (Resend or AWS SES) needed from Slice 1. OTP table in schema. 5-minute expiry, 3-attempt limit.
 
 ### 2. Dashboard Views: Ops + Executive Summary
-- **What**: Two admin views instead of three. Full Ops dashboard for Andrea's daily workflow. Simplified executive summary for Kari (coaching director) and Greg (VP).
-- **Why**: 2x is buildable by March 16. Three bespoke dashboards would push past deadline. Executive summary can evolve into separate Kari/Greg views post-launch.
+- **What**: Two admin views instead of three. Full Ops dashboard for Andrea's daily workflow. Simplified executive summary for Carrie (coaching director) and Greg (VP).
+- **Why**: 2x is buildable by March 16. Three bespoke dashboards would push past deadline. Executive summary can evolve into separate Carrie/Greg views post-launch.
 - **Implication**: Admin portal needs a view toggle or tab. Executive summary = completion rates, program health, coach utilization — no drill-down.
 
 ### 3. Multi-Program: Soft Support (Schema-Ready, UI-Later)
@@ -72,37 +72,39 @@ We chose **vertical slices** over backend-first or progressive enhancement becau
 - **Implication**: `Organization` model in schema. `Program.organizationId` FK. All queries scoped to org. MVP UI shows only one org (hardcoded or session-derived). No org-switching admin UI for MVP — that's future roadmap. This is the "shadow deliverable" Tim identified: the three visible deliverables (coach selector, coach portal, ops dashboard) all sit on top of multi-org plumbing.
 - **Schema impact**: New `Organization { id, name, slug, active, createdAt }` model. `Program` gets `organizationId` FK. Potentially `User` gets org scope for future.
 
-### 6. Nudge Strategy: Dashboard Flags, Not Email (added 2026-02-13)
-- **What**: Automated escalation for stalled engagements shows as dashboard flags/notifications in the ops portal, NOT as automated emails. OTP emails (participant auth) and magic links (coach/admin auth) are still email-based.
-- **Why**: FC's infrastructure is a significant unknown — their system may be "very closed" and not recognize external emails. Email delivery adds complexity (provider setup, deliverability, DPA). The ops team will be using their dashboard daily (possibly multiple times per day), so in-dashboard flags may be sufficient. Additionally, with 400 engagements, automated emails could mean 15+ emails/day flooding inboxes.
-- **Implication**: Slice 3 simplifies significantly. The nudge cron becomes a flag-setter that marks overdue engagements in the database, not an email sender. `NudgeLog` table retained for tracking when flags were set. Dashboard shows "Needs Attention" with overdue flags prominently. Email nudges move to a workshop trade-off conversation — if FC decides they want emails after understanding the complexity, we can add them post-MVP or in a Slice 3 extension.
-- **Complexity trigger**: Tim confirmed FC's contact explicitly requested emails. But they may not realize the development/testing cost or the alternative (dashboard visibility). This is a key workshop conversation.
+### 6. Nudge Strategy: Email Reminders + Dashboard Flags (updated 2026-02-17 — REVERSED from 2026-02-13)
+- **What**: Automated email nudges for stalled participants + dashboard flags for ops visibility. Three escalation levels: Day 5 gentle reminder email, Day 10 second reminder email, Day 15 auto-assign coach (system assigns, no more participant choice).
+- **Why**: Feb 17 workshop confirmed FC needs proactive participant outreach. Dashboard-only flags (2026-02-13 decision) don't reach participants who never log in — the exact population that needs nudging. Email infrastructure already exists for OTP auth, so incremental cost of 2-3 email templates is low.
+- **Implication**: Slice 3 needs email templates for nudge reminders. `NudgeLog` table tracks both dashboard flags AND email sends. Auto-assignment at Day 15 requires new logic: system selects coach (capacity-weighted) and creates engagement without participant input. Initial access link still sent by USPS internally (not from FC/CIL domain — spam filter risk).
+- **History**: De-scoped to dashboard-only on 2026-02-13 (Tim call). Re-scoped to emails on 2026-02-17 (workshop). FC explicitly wants automated re-engagement, not manual ops follow-up.
 
 ### 4. Backend Stack: Next.js API Routes + Prisma (Same Repo)
 - **What**: Server actions + API routes in the existing Next.js 15 app. Prisma ORM with PostgreSQL.
 - **Why**: Fastest path to March deadlines. No cross-repo coordination, no separate deployment pipeline. The frontend is already here.
 - **Implication**: `/src/app/api/` for API routes. Prisma client in `/src/lib/prisma.ts`. Server actions where appropriate for form mutations.
 
-## Open Questions
+## Open Questions — ALL RESOLVED (2026-02-17 workshop)
 
-1. **Email provider**: Resend (simpler DX, needs DPA for gov) vs AWS SES (cheaper, more config). Decision needed before Slice 1. *Note (2026-02-13): Email still needed for OTP + magic links. Nudge emails de-scoped to dashboard flags — email provider decision less urgent but still needed for auth.*
-2. **Deployment target**: ~~Docker on which cloud?~~ Vercel for hosting, Supabase for database (managed PostgreSQL). Proposal says "web hosted, can be migrated to FC infrastructure." *Resolved 2026-02-13 — pending clarity on FC infrastructure by Tuesday.*
-3. **Coach filtering**: Current UI has participant-facing filters. CIL Brief is ambiguous on whether matching is participant-driven or system-driven. Clarify at Feb 18 workshop.
-4. **20-minute intro interviews**: CIL Brief mentions this for 5-session cohort. Is this just a Calendly link or a tracked feature? Clarify with stakeholders. *Confirmed optional in transcript — "select or request" language in infographic.*
-5. **Sponsor teams**: ~~CIL Brief mentions "coachee, leader, HR/talent partner" as a team. Is this MVP or post-launch?~~ Removed from MVP scope per Tim call 2026-02-13. Not enough info on what the role does.
-6. **Multi-org depth** (added 2026-02-13): Greg wants "infrastructure for the full platform" — how deep does the org-scoping go for MVP? Just the schema model + programId FK, or do we need org-scoped auth, org-scoped admin views? Recommend schema-only for MVP, UI-later. Workshop conversation.
-7. **Nudge mechanism** (added 2026-02-13): FC contact explicitly requested emails for escalation. Workshop trade-off: dashboard flags (simpler, reliable, no infra risk) vs emails (their stated preference, but significant complexity). Need to present options with trade-offs.
-8. **Admin filter/report categories** (added 2026-02-13): Specific categories TBD in workshop. Cap at ~5 parameters for MVP to manage complexity.
+1. **Email provider**: ~~Resend vs AWS SES~~ — Decision still pending, but now more urgent: nudge emails are back in scope (Day 5, Day 10, Day 15). Need provider for OTP + magic links + nudge emails. **Status: pick before Slice 1 starts.**
+2. **Deployment target**: ~~Docker on which cloud?~~ CIL builds on own Dockerized infrastructure. Migration to FC later (pending Blaine/IT). **RESOLVED.**
+3. **Coach filtering**: ~~Participant-driven or system-driven?~~ **RESOLVED: No filters.** Participants see 3 capacity-weighted randomized coaches. Bio + video drive selection. Filters removed entirely.
+4. **20-minute intro interviews**: ~~Calendly link or tracked feature?~~ **RESOLVED: Deferred.** EF/EL (5-session programs) launch later with separate coach panel. Not in March 2 scope.
+5. **Sponsor teams**: ~~MVP or post-launch?~~ **RESOLVED: Deferred.** Not discussed in workshop. Remains future roadmap.
+6. **Multi-org depth**: ~~Schema-only or UI too?~~ **RESOLVED: Schema-only for MVP.** Organization model in schema, programs belong to orgs. No org-switching admin UI. Greg confirmed scalable platform vision.
+7. **Nudge mechanism**: ~~Dashboard flags vs emails?~~ **RESOLVED: BOTH.** Email nudges (Day 5 reminder, Day 10 reminder, Day 15 auto-assign coach) + dashboard flags. Reverses 2026-02-13 de-scoping. FC explicitly wants automated re-engagement.
+8. **Admin filter/report categories**: ~~TBD in workshop~~ **RESOLVED:** Filtering by status and coach for MVP. Org/program filtering deferred. "Needs Attention" as default dashboard view (top of page).
 
 ## Pre-Development Checklist
 
 Before starting Slice 1:
-- [ ] Confirm email provider choice with client
-- [ ] Confirm deployment target / cloud provider
-- [ ] Initialize Prisma schema with full model set (including Program)
+- [ ] Confirm email provider choice (Resend vs SES — now more urgent with nudge emails back in scope)
+- [x] ~~Confirm deployment target / cloud provider~~ — CIL Dockerized infrastructure (resolved Feb 17)
+- [ ] Initialize Prisma schema with full model set (including Program, Organization)
 - [ ] Set up PostgreSQL (local dev + staging)
-- [ ] Resolve participant auth flow at Feb 18 workshop
+- [x] ~~Resolve participant auth flow at Feb 18 workshop~~ — Generic link + OTP confirmed (resolved Feb 17)
 - [ ] Complete visual QA of brand refresh (from previous session handoff)
+- [x] ~~Receive competency list from Carrie~~ — received Feb 17. MLP: 7 managerial competencies. ALP/EF/EL: 7 executive competencies. Implemented in `src/lib/config.ts`.
+- [ ] Receive coach data from Carrie (bios, videos, participant list) — expected Feb 17-18
 
 ---
 

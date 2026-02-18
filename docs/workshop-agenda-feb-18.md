@@ -1,9 +1,14 @@
-# Workshop Agenda — Feb 18, 2026
+# Workshop Agenda — Feb 17, 2026 (Executed)
 
-**Duration**: 90 minutes
-**Attendees**: Amit, Tim, FC stakeholders (Andrea, Kari, Greg, Blaine/CTO)
+> **STATUS: EXECUTED** — Workshop ran Feb 17, 2026 (moved up 1 day from original Feb 18 plan). Outcomes and decisions documented below. Full meeting follow-up: `docs/emails/2026-02-17-usps-meeting-followup.md`. Full PRD extraction: this session's PRD output.
+
+**Duration**: ~90 minutes
+**Attendees**: Amit, Tim, Carrie Sadler, Andrea, Greg (left at ~60 min mark)
+**Not present**: Blaine (IT) — still unreachable as of Feb 17. Critical blocker.
 **Objective**: Align on the minimum viable coach selector, coach portal, and ops dashboard — using their real data and constraints — so we can lock scope, decisions, and tradeoffs to confidently hit March 2 and March 16.
 **Approach**: Partnership-style facilitation. Open-ended questions first, decisions emerge from understanding their world. We've built recommendations — we validate, not extract.
+
+**Note**: "Kari" in original docs is actually **Carrie Sadler** (confirmed pronunciation during meeting).
 
 ---
 
@@ -11,10 +16,10 @@
 
 - [x] Google Sheets shared with Tim (Decisions, Blockers, Timeline)
 - [x] Open-ended questions prepared (docs/drafts/2026-02-16-workshop-open-questions.md)
-- [ ] Amit reviews Tim's corrected proposal deck
-- [ ] CSV template ready to hand Andrea
-- [ ] 8:45 am sync with Tim on Feb 17 (dress rehearsal)
-- [ ] Confirm attendee list — is Blaine joining?
+- [x] Amit reviews Tim's corrected proposal deck
+- [x] CSV template ready to hand Andrea
+- [x] 8:45 am sync with Tim on Feb 17 (dress rehearsal)
+- [x] Confirm attendee list — Blaine did NOT join. Greg, Carrie, Andrea attended.
 
 ---
 
@@ -117,7 +122,7 @@ Tim leads the wrap:
 
 If these come up, acknowledge and park: "Great question — let's dig into that in our follow-up session."
 
-- Reporting parameters in depth (what Kari wants vs Greg)
+- Reporting parameters in depth (what Carrie wants vs Greg)
 - Bulk import workflow (CSV format, duplicate handling, invitation email content)
 - Coach portal session topics and outcomes (calibrated to FC methodology)
 - Future roadmap (sponsor teams, AI matching, SurveyMonkey, multi-program admin UI)
@@ -156,4 +161,73 @@ Not to present proactively, but to have on hand if FC asks for something that so
 
 ---
 
+---
+
+## Outcomes — Decisions from Feb 17 Workshop
+
+> Full meeting follow-up with action items: `docs/emails/2026-02-17-usps-meeting-followup.md`
+
+### Coach Matching & Selection (resolved)
+- **Filters REMOVED** from participant-facing UI. Participants see 3 capacity-weighted randomized coaches, period.
+- **Remix**: Exactly 1 remix allowed. One-way door with confirmation warning ("you won't see these coaches again"). Original 3 gone after remix.
+- **Selection**: Single selection (not first + second choice). Confirmed selection shows Calendly link.
+- **Participant flow ENDS at selection**: Confirmation page + Calendly link. NO engagement page, NO session tracking for participants. They never return to the platform.
+- **Capacity**: Fixed at 15 per coach for MVP. No per-coach variability.
+- **Coach panels**: MLP/ALP share ~30 coaches. EF/EL have a completely separate panel (future).
+
+### Infrastructure & Hosting (resolved)
+- CIL builds on own Dockerized infrastructure. Migration to FC infrastructure later (pending Blaine).
+- **Blaine (IT) was NOT present** — still unreachable. Critical blocker for contract sign-off and infrastructure access.
+- Microsoft ecosystem — no SharePoint access for external partners. Send data as zip/Excel attachments.
+
+### Nudge Strategy (CHANGED from plan)
+- **Plan said**: Dashboard flags only, no automated emails (de-scoped 2026-02-13).
+- **Meeting decided**: Day 5 reminder email, Day 10 second reminder, Day 15 auto-assign coach.
+- This REVERSES the 2026-02-13 de-scoping decision. Email nudges are back in scope.
+- Initial access link sent by USPS internally (not from FC/CIL domain — spam filter risk).
+
+### Session Logging (resolved)
+- **Three session statuses**: (1) Session Completed, (2) Session Forfeited — Cancelled <24h, (3) Session Forfeited — Did Not Use
+- **Session notes simplified**: Topic Discussed + Session Outcome only (removed "previous session context" section).
+- **"Other" topic**: Static note "Please email the coaching practice" (no free-text input).
+- **Private notes**: KEPT (free text, coach-only).
+- **Session duration**: KEPT.
+- **Session receipts**: NEW parking lot item. USPS client wants per-session receipt with coach attestation (checkbox, not DocuSign). Nice-to-have.
+
+### Programs (clarified)
+- **MLP** = Managerial Leadership Program (new managers, 2 sessions, cohorts 80-81)
+- **ALP** = Advanced Leadership Program (experienced managers, 2 sessions, cohorts 135-138)
+- **EF** = Executive Foundations (new executives, 5 sessions) — launches later
+- **EL** = Executive Leadership (executives, 5 sessions) — launches later
+- First cohort: ~60 participants (not 400 all at once). 400 = total across all programs over 6 months.
+
+### Decision Speed & Data (resolved)
+- **Carrie Sadler** = primary contact. `@CarrieSadler` in email body = same-day response. Text cell for critical blockers only.
+- **Andrea** = day-to-day coach/participant comms.
+- Coach bios, videos (32/34 already recorded), participant data, competency list expected from Carrie by Feb 17-18.
+
+### Big Picture (resolved)
+- **Greg** (left at ~60 min): Vision is scalable platform, not one-off tool. Multi-org architecture confirmed as correct direction.
+- **Biggest risk**: Getting Blaine/IT engaged. Feb 18 target for green light.
+- **If one thing ships perfectly**: Coach selector. Everything else can follow.
+
+### Timeline (confirmed)
+| Date | Milestone |
+|------|-----------|
+| Feb 17 | Coach data from Carrie (bios, videos, participant list, competencies) |
+| Feb 18 | Target green light from Blaine/IT |
+| Feb 26 | Beta testing |
+| March 2 | Coach selector live |
+| March 9 | First cohort training |
+| March 23 | First 5-session program |
+
+### Parking Lot (new items from meeting)
+- Session receipts (coach attestation checkbox per session) — nice-to-have
+- "Other" topic handling (static message vs. free text)
+- EF/EL separate coach panel (future)
+- Workshop #2 for admin/reporting deep-dive — NOT yet scheduled
+
+---
+
+*Updated 2026-02-17. Added Outcomes section from workshop. Original prep content preserved above for reference.*
 *Updated 2026-02-16. Revised from directive question style to partnership-style facilitation based on Tim's guidance. Reference: docs/drafts/2026-02-16-workshop-open-questions.md, docs/drafts/2026-02-16-workshop-prep-note-to-tim.md*
