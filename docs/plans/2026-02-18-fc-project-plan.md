@@ -1,7 +1,7 @@
 # FranklinCovey Coaching Platform — Project Plan
 
 **Date**: 2026-02-18
-**Last Updated**: 2026-02-18 (cohort schedule added from Kari's FY26 Coaching Timelines doc)
+**Last Updated**: 2026-02-18 (P0 updates: Vercel/Supabase confirmed, contract signed, 24-hour decision owner confirmed, coach panel split clarified, session status policy + forfeiture labels clarified, nudge Day 0 anchor clarified, pre-training coach selection timing clarified, operating cadence + feedback process added)
 **Status**: Active Build — Phase 0 starting today
 
 ---
@@ -23,11 +23,11 @@ The platform ships in three milestones between now and March 16, aligned to the 
 
 | Portal | Who Uses It | Key Capabilities |
 |--------|-------------|-----------------|
-| **Participant portal** | ~400 participants across all cohorts (first wave starts March 12) | OTP access → browse 3 coaches → select → book via Calendly |
-| **Coach portal** | 32 coaches (15 MLP/ALP panel + 17 EF/EL panel) | Log session notes, view assigned participants, track session status |
+| **Participant portal** | ~400 participants across all cohorts (coach selection starts March 2, before in-person week) | OTP access → browse 3 coaches → select → book via Calendly |
+| **Coach portal** | 31 coaches (15 MLP/ALP panel + 16 EF/EL panel) | Log session notes, view assigned participants, track session status |
 | **Admin portal** | Kari, Andrea (FC Ops) | Bulk participant import, nudge email automation, KPI dashboard, CSV export |
 
-**Participant flow is intentionally simple:** one visit, one decision, done. Participants do not return to the platform after selecting a coach. Re-engagement for participants who haven't selected is handled by automated nudge emails at Day 5, Day 10, and auto-assignment at Day 15.
+**Participant flow is intentionally simple:** one visit, one decision, done. Participants do not return to the platform after selecting a coach. Re-engagement for participants who haven't selected is handled by automated nudge emails at Day 5, Day 10, and auto-assignment at Day 15. **Day counters are measured from cohort start date (Day 0).**
 
 ---
 
@@ -94,15 +94,25 @@ The platform ships in three milestones between now and March 16, aligned to the 
 
 ---
 
-## Open Questions (Pending Kari)
+## Confirmed P0 Decisions (Locked)
+
+- MVP deployment target is **Vercel + Supabase**.
+- FC confirmed a **24-hour turnaround owner** for blocking decisions through March 16.
+- Contract status: **signed**.
+- Coach pools are **separate by track family**: MLP/ALP panel and EF/EL panel are distinct pools (no cross-pool matching in MVP).
+- Session outcomes are **coach-entered only** (`COMPLETED`, `FORFEITED_CANCELLED`, `FORFEITED_NOT_USED`). For forfeited Session 1, coaches log either **"Session forfeited - canceled within 24 hours"** or **"Session forfeited - not taken advantage of"**. No automatic Session 1 lock/expiry by May window deadlines in MVP.
+- Nudge timing anchor is locked: **Day 0 = cohort start date**.
+- Capacity counting rule is locked: count participants in `COACH_SELECTED`, `IN_PROGRESS`, and `ON_HOLD`; exclude `INVITED`, `COMPLETED`, and `CANCELED`.
+
+---
+
+## Open Questions (Pending Kari/FC)
 
 | Question | Impact |
 |----------|--------|
 | **ALP-138 Session 2 start date** — source shows 8/4 but Week 2 ends 8/6; assumed 8/7 | Minor date correction only |
-| **MLP/ALP panel size** — is it 15 coaches or ~30? | Affects capacity math: 15 coaches × 15 slots = 225 vs 30 × 15 = 450 |
-| **EF/EL coaching window close** — "still determining" | Required before we can build nudge logic for exec programs |
-| **"Use or lose" enforcement** — does platform flag/close expired windows, or ops-managed? | Affects nudge system design |
-| **Participant counts per cohort** | Required to validate coach capacity holds across overlapping cohorts |
+| **Participant counts per cohort (final)** | Required to validate capacity holds across overlapping cohorts (MLP/ALP panel locked at 15 coaches; EF/EL panel locked at 16) |
+| **EF/EL coaching window close** — "still determining" | Needed for ops reporting/calendar views; does not drive automatic session status changes in MVP |
 
 ---
 
@@ -113,8 +123,8 @@ These inputs are on the critical path. Delays here delay the March 2 launch.
 | Item | Owner | Needed By | Notes |
 |------|-------|-----------|-------|
 | Coach bios + photos + scheduling links (MLP/ALP panel) | Kari Sadler | Feb 21 | CSV format; includes Calendly/meeting booking links |
-| ALP-135 participant list (first to access platform — March 12) | Kari Sadler | Feb 24 | Name + email; platform must be live by 3/12 |
-| MLP-80 participant list | Kari Sadler | Feb 24 | Coaching window opens 3/16 |
+| ALP-135 participant list (first coach selection window starts March 2) | Kari Sadler | Feb 24 | Name + email + cohort code + cohort start date (Day 0 for nudges); platform must be live by 3/2 |
+| MLP-80 participant list | Kari Sadler | Feb 24 | Name + email + cohort code + cohort start date (Day 0 for nudges); coaching window opens 3/16 |
 | Beta testing time — Kari + 1-2 staff | Kari Sadler | Feb 26 (full day) | Verbally confirmed at workshop |
 | Email sender domain decision | Tim + Blaine | Feb 21 | Proposed: `coaching@franklincovey.com` |
 | IT approval (Blaine) | Tim to facilitate | ASAP | Required for production infrastructure; not MVP blocker |
@@ -128,7 +138,38 @@ These inputs are on the critical path. Delays here delay the March 2 launch.
 | Staging environment | Feb 25 | Full Slice 1 on Vercel + Supabase; smoke-tested |
 | **Slice 1** | March 2 | Participant OTP auth, coach selector (3 capacity-weighted coaches, 1 remix), confirmation + Calendly link |
 | **Slice 2** | March 9 | Coach magic-link auth, session logging (topic + outcome), engagement tracking |
-| **Slice 3** | March 16 | Admin CSV import, nudge emails (Day 5/10/auto-assign Day 15), KPI dashboard, CSV export |
+| **Slice 3** | March 16 | Admin CSV import, nudge emails (Day 5/10/auto-assign Day 15, measured from cohort start date), KPI dashboard, CSV export |
+
+---
+
+## Working Cadence and Feedback Process
+
+### Meeting Cadence (every other day)
+
+| Cadence | Participants | Focus |
+|---------|--------------|-------|
+| Every other day (30 minutes) | Tim + Amit (+ FC stakeholders as needed) | Progress updates, blocking issues, confusing items to brainstorm together |
+
+### Feedback Priority System
+
+| Priority | Definition | Expected Turnaround |
+|----------|------------|---------------------|
+| **P0** | Blocking/critical issue that prevents launch-critical work or breaks core flow | Immediate triage same day |
+| **P1** | Urgent fix needed for upcoming milestone quality or timeline protection | Prioritize in next build window (typically within 24 hours) |
+| **P2** | Nice-to-have or non-blocking enhancement | Backlog and schedule against milestone capacity |
+
+### Feedback Workflow
+
+1. Tim sends feedback by Whisper note or Loom recording with page/flow context.
+2. Each feedback item is tagged as P0, P1, or P2.
+3. CIL posts disposition for each item: `accepted`, `needs clarification`, or `deferred`.
+4. P0 items are escalated immediately and handled before non-P0 work.
+
+### 24-Hour Change Log Standard
+
+- The project plan or companion update note includes a daily "last 24 hours" summary.
+- Summary includes: what changed, why it changed, and whether scope/timeline impact exists.
+- Any breaking change proposal is explicitly called out before implementation.
 
 ---
 
@@ -138,7 +179,8 @@ These inputs are on the critical path. Delays here delay the March 2 launch.
 |------|--------|-----------|
 | **Coach data late from Kari** | Blocks seed database and beta testing | Feb 21 deadline set; chase proactively after Feb 21 |
 | **Blaine approval not received pre-launch** | Blocks production infrastructure; MVP uses Vercel/Supabase so March 2 is not affected | MVP does not require Blaine sign-off; production migration is post-launch |
-| **Contract not signed before March 2** | Risk of building without a signed agreement | Tim to drive; building in good faith per Greg's direction |
+| **Participant counts by cohort not finalized** | Capacity model could still be wrong during overlap windows | Keep panel split fixed at 15 (MLP/ALP) and 16 (EF/EL); lock per-cohort counts with Kari and rerun capacity checks before final Slice 1 load tests |
+| **Coach session logging lag** | Ops visibility can drift if coaches delay status entry | Use dashboard "Needs Attention" monitoring and ops follow-up cadence; no auto-forfeiture mutations in MVP |
 
 ---
 
@@ -188,7 +230,7 @@ Phase 2 roadmap (April+) is available upon request — covers platform hardening
 | Task | Owner | Notes |
 |------|-------|-------|
 | Auth.js magic-link auth for coaches + admins | Amit | 30-min idle timeout; dual-auth routing |
-| Session logging API (COMPLETED, FORFEITED_CANCELLED, FORFEITED_NOT_USED) | Amit | Topic + Outcome dropdowns; private notes |
+| Session logging API (COMPLETED, FORFEITED_CANCELLED, FORFEITED_NOT_USED) | Amit | Topic + Outcome dropdowns; forfeiture labels: "canceled within 24 hours" / "not taken advantage of"; private notes |
 | Coach dashboard + engagement detail + session logging form | Amit | Auto-save on form |
 
 ### Slice 3: Admin Portal (Mar 10 – 16)
@@ -214,6 +256,6 @@ These are the blockers **Tim** needs to drive. Amit handles everything on the bu
 
 4. **Request `coaching.franklincovey.com` from Blaine/DNS team** — Can do after March 2 MVP is validated; needs lead time.
 
-5. **Contract follow-up** — Greg confirmed we should build. Ensure Blaine sign-off is tracked as a parallel workstream. Tim owns the relationship path.
+5. **Contract status** — Signed (closed). If scope expands, route through change-order approval path.
 
 6. **Chase coach data from Kari if not received by Feb 21** — Coach bios + photos + Calendly links are on the critical path for March 2. Text Kari if no response by end of Feb 21.

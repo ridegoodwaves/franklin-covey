@@ -2,7 +2,7 @@
 title: "Ship MVP Backend — 3 Vertical Slices"
 type: feat
 date: 2026-02-12
-updated: 2026-02-17
+updated: 2026-02-18
 brainstorm: docs/brainstorms/2026-02-12-mvp-ship-strategy-brainstorm.md
 prd: prd_for_apps/franklincovey-coaching-platform-prd.md
 delta: docs/CIL-BRIEF-DELTA-ANALYSIS.md
@@ -14,6 +14,13 @@ changelog:
   - 2026-02-14b: "Designed fully automated QA strategy: 5 test suites (30 scenarios) using Claude in Chrome browser automation. Added test infrastructure (/api/test/* endpoints, test seed data, Mailpit). Covers OTP auth, coach selection, session logging, admin import/export, dashboard KPIs, cross-cutting auth/rate-limiting. Zero manual QA target."
   - 2026-02-16: "Added email safety stack to Phase 0: startup assertion (crash if prod SMTP creds in non-prod env), sanitize-by-default on coach CSV import (--raw flag for production), Mailpit explicitly in docker-compose spec. Added .gitignore for real data CSVs."
   - 2026-02-17: "Applied Feb 17 workshop decisions: removed participant-facing filters from coach selector, simplified participant flow (ends at selection — no engagement page), updated session statuses to 3 types, re-scoped nudge emails IN (Day 5/10/15 + auto-assign), updated participant count (~60 first cohort), fixed 'Kari' to 'Kari Sadler' throughout, added session receipts to future considerations."
+  - 2026-02-18: "Resolved P0 deployment decisions: official MVP target is Vercel + Supabase, contract signed, and FC committed to a 24-hour blocking-decision owner through March 16. Coach panel split clarified: 15 total coaches for MLP/ALP and 16 total for EF/EL. Remaining open clarifications: participant counts by cohort and use-or-lose/window-close policy."
+  - 2026-02-18b: "Locked session status policy per stakeholder clarification: coaches are source of truth for session outcomes (COMPLETED, FORFEITED_CANCELLED, FORFEITED_NOT_USED). No automatic Session 1 lock/expiry based on cohort window deadlines in MVP; ops monitors via dashboard."
+  - 2026-02-18c: "Confirmed panel separation with FC: EF/EL coaches are a completely separate pool from MLP/ALP. No cross-pool matching in MVP."
+  - 2026-02-18d: "Nudge anchor clarified: Day 0 is cohort start date. Day 5/10 reminders and Day 15 auto-assign are measured from cohort start date."
+  - 2026-02-18e: "Forfeited Session 1 labels clarified by FC: 'Session forfeited - canceled within 24 hours' and 'Session forfeited - not taken advantage of' (mapped to FORFEITED_CANCELLED and FORFEITED_NOT_USED)."
+  - 2026-02-18f: "Email delivery planning note added: Resend free-tier daily limits can throttle launch-day OTP/magic-link traffic; recommend paid tier for launch window."
+  - 2026-02-18g: "Capacity counting rule confirmed by Kari: count COACH_SELECTED, IN_PROGRESS, and ON_HOLD; exclude INVITED, COMPLETED, and CANCELED."
 ---
 
 # feat: Ship MVP Backend — 3 Vertical Slices (March 2/9/16)
@@ -25,7 +32,7 @@ Connect the existing polished frontend (~60% built, hardcoded demo data) to a re
 | Slice | Scope | Deadline | Users Impacted |
 |-------|-------|----------|----------------|
 | **1** | Coach Selector + Participant OTP Auth | **March 2** | ~60 participants (first cohort) |
-| **2** | Coach Engagement + Session Logging | **March 9** | ~30 coaches (MLP/ALP panel) |
+| **2** | Coach Engagement + Session Logging | **March 9** | ~15 coaches (MLP/ALP panel) |
 | **3** | Admin Portal + Nudge Emails + Auto-Assign | **March 16** | 3 admins (Ops, Kari, Greg) |
 
 **Key architectural decisions** (from [brainstorm](docs/brainstorms/2026-02-12-mvp-ship-strategy-brainstorm.md)):
@@ -33,7 +40,7 @@ Connect the existing polished frontend (~60% built, hardcoded demo data) to a re
 - Dashboards: 1 Ops dashboard + 1 executive summary view
 - Multi-program: Schema-ready, UI-later (`Program` model seeded, no admin UI)
 - Multi-org: `Organization` model from day 1 — infrastructure for the full platform (Greg's requirement, added 2026-02-13)
-- Nudges: Email reminders (Day 5, Day 10, Day 15 auto-assign) + dashboard flags (re-scoped 2026-02-17 — reverses 2026-02-13 de-scoping)
+- Nudges: Email reminders (Day 5, Day 10, Day 15 auto-assign; **Day 0 = cohort start date**) + dashboard flags (re-scoped 2026-02-17 — reverses 2026-02-13 de-scoping)
 - Backend: Next.js API routes + Prisma in same repo
 
 ## Problem Statement / Motivation
@@ -79,7 +86,7 @@ The CIL Brief (Feb 2026) expanded scope from 5-10 coaches to **35 coaches** and 
                      │
          ┌───────────┴───────────┐
          │   PostgreSQL 16       │
-         │   (RDS / Cloud SQL)   │
+         │ (Supabase PostgreSQL) │
          │   via PgBouncer       │
          └───────────────────────┘
 ```
@@ -160,6 +167,7 @@ erDiagram
         String participantId FK
         String coachId FK "nullable"
         String programId FK
+        DateTime cohortStartDate "Day 0 for nudge timing"
         EngagementStatus status
         Int statusVersion "optimistic lock"
         Int totalSessions
@@ -222,7 +230,7 @@ erDiagram
 - **Added** `Engagement.programId` (multi-program from day 1)
 
 **Schema changes from Feb 17 workshop:**
-- **Added** `CoachProgramPanel` join table (many-to-many: coaches ↔ programs). MLP/ALP share ~30 coaches, EF/EL will have separate panel. `@@unique([coachProfileId, programId])` prevents duplicate assignments.
+- **Added** `CoachProgramPanel` join table (many-to-many: coaches ↔ programs). MLP/ALP share 15 total coaches; EF/EL use a separate 16-coach panel. **Pools are separate with no cross-pool matching in MVP.** `@@unique([coachProfileId, programId])` prevents duplicate assignments.
 - **Added** `Program.code` (unique program identifier: MLP, ALP, EF, EL) and `Program.track` (moved from Participant — track is a property of the program, not the participant)
 - **Changed** `SessionStatus` enum: was `SCHEDULED | COMPLETED | CANCELED | NO_SHOW` → now `COMPLETED | FORFEITED_CANCELLED | FORFEITED_NOT_USED`
 - **Changed** `SessionNote.topics/outcomes` arrays → `SessionNote.topicDiscussed` (single string from program competency list) + `SessionNote.sessionOutcome` (single string)
@@ -233,6 +241,7 @@ erDiagram
 - **Removed** `NudgeLog.acknowledged/acknowledgedAt` (ops workflow doesn't need explicit acknowledgment for MVP)
 - **Removed** `Participant.programTrack` (track is now on `Program.track` — derived via `Engagement.programId`)
 - **Added** `Engagement.autoAssigned` boolean (tracks whether coach was system-assigned at Day 15 vs participant-selected)
+- **Added** `Engagement.cohortStartDate` (Day 0 anchor for nudge timing from cohort schedule)
 
 ---
 
@@ -274,8 +283,8 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 - [ ] Create seed script — `prisma/seed.ts`
   - 1 organization (the government coaching contract) + 1 placeholder org for dev testing
   - 4 programs under the primary org: MLP (TWO_SESSION), ALP (TWO_SESSION), EF (FIVE_SESSION), EL (FIVE_SESSION)
-  - 5 sample coaches with realistic profiles for dev testing
-  - CoachProgramPanel assignments: all 5 sample coaches → MLP + ALP panels (shared panel)
+  - 5+ sample coaches with realistic profiles for dev testing
+  - CoachProgramPanel assignments model both pools: MLP/ALP shared pool and EF/EL separate pool
   - 3 admin users (Andrea/Ops, Kari/Coaching Director, Greg/VP)
   - 10 sample participants for dev testing
   - 5 sample engagements at various states
@@ -286,9 +295,11 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
   - CSV columns: name, email, bio, photo, specialties (semicolon-separated), languages, location, credentials, videoUrl, meetingBookingUrl, maxEngagements
   - Validates each row against Zod schema, logs errors, skips invalid rows
   - Creates `User` (role=COACH) + `CoachProfile` + `CoachProgramPanel` entries atomically per row
-  - `--programs MLP,ALP` flag assigns coaches to specified program panels (default: MLP,ALP for shared panel)
+  - `--programs MLP,ALP` or `--programs EF,EL` assigns coaches to specified program panels
+  - Coaches should be imported into the correct pool only; no cross-pool assignment by default in MVP
   - Idempotent: update existing coach by email if re-run (upsert)
-  - Run via `npx tsx scripts/import-coaches.ts --file coaches.csv --orgId <orgId> --programs MLP,ALP`
+  - Run via `npx tsx scripts/import-coaches.ts --file coaches-mlp-alp.csv --orgId <orgId> --programs MLP,ALP`
+  - Run via `npx tsx scripts/import-coaches.ts --file coaches-ef-el.csv --orgId <orgId> --programs EF,EL`
   - **Sanitize-by-default**: emails rewritten to `{slug}+test@yourdomain.com` unless `--raw` flag is passed. `--raw` prints a warning: "Importing raw email addresses. Only use in production." Safe-by-default prevents accidental email sends to real coaches.
   - **This is how 35 real coaches get into the system for March 2.** Admin UI for coach management ships in Slice 3 (March 16).
   - FC provides the CSV; Amit provides the template (see workshop agenda pre-req)
@@ -306,7 +317,7 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
   - `participantEmailSchema` — lowercase, trim, valid format
   - `otpSchema` — exactly 6 digits
   - `sessionNoteSchema` — topics from `SESSION_TOPICS_BY_PROGRAM[programType]` (MLP has managerial competencies, ALP/EF/EL have executive competencies), outcomes from `SESSION_OUTCOMES`, duration from `DURATION_OPTIONS`
-  - `csvRowSchema` — firstName, lastName, email, org, programTrack, programId
+  - `csvRowSchema` — firstName, lastName, email, org, programTrack, programId, cohortCode, cohortStartDate (ISO date)
 - [ ] Email client — `src/lib/email.ts`
   - Resend client wrapper (or AWS SES — **decision needed before Slice 1**)
   - `sendOTP(email, code)` — participant verification
@@ -436,7 +447,7 @@ Generic link (franklincovey-coaching.com/participant)
   - Requires participant session
   - Lookup participant's engagement → `programId` → coach panel via `CoachProgramPanel`
   - Query: `CoachProfile` where `active = true` AND on participant's program panel AND current engagement count < `maxEngagements`
-  - Capacity count: `SELECT COUNT(*) FROM Engagement WHERE coachId = ? AND status NOT IN ('COMPLETED', 'CANCELED')`
+  - Capacity count: `SELECT COUNT(*) FROM Engagement WHERE coachId = ? AND status IN ('COACH_SELECTED', 'IN_PROGRESS', 'ON_HOLD')`
   - ~~Apply filters (location, language, specialty, credential)~~ — **REMOVED** per Feb 17 workshop. Bio + video drive selection, not filters.
   - Capacity-weighted randomization: coaches with more remaining capacity are weighted higher (`Math.random()` weighted by `maxEngagements - activeCount`)
   - Return first 3 coaches with profile data (bio, photo, specialties, languages, location, credentials, videoUrl)
@@ -466,7 +477,7 @@ await prisma.$transaction(async (tx) => {
   if (!coach.active) throw new CoachInactiveError(coachId)
 
   const activeCount = await tx.engagement.count({
-    where: { coachId, status: { notIn: ['COMPLETED', 'CANCELED'] } }
+    where: { coachId, status: { in: ['COACH_SELECTED', 'IN_PROGRESS', 'ON_HOLD'] } }
   })
   if (activeCount >= coach.maxEngagements) {
     throw new CoachAtCapacityError(coachId)
@@ -523,11 +534,11 @@ await prisma.$transaction(async (tx) => {
 
 #### 1.4 Deploy Infrastructure
 
-- [ ] Provision PostgreSQL (RDS / Cloud SQL — **decision needed**)
+- [ ] Provision Supabase PostgreSQL project/environment (P0 confirmed Feb 18)
 - [ ] Run `prisma migrate deploy` against production database
 - [ ] Run seed script (4 programs, 35 coaches, 3 admins)
-- [ ] Deploy Docker container to staging
-- [ ] Configure email provider (Resend / SES — **decision needed**)
+- [ ] Deploy to Vercel staging (Supabase env)
+- [ ] Configure email provider (Resend / SES — **decision needed**; if Resend, use paid tier for launch window to avoid free-tier daily cap throttling)
 - [ ] Set environment variables in production
 - [ ] Test OTP flow end-to-end on staging
 - [ ] Test coach selection end-to-end on staging
@@ -585,11 +596,13 @@ await prisma.$transaction(async (tx) => {
 
 **Resolution of SpecFlow issue #48/#49: Coach creates Session + logs notes in one step.**
 
-> **Session statuses updated (Feb 17 workshop)**: Three statuses: (1) Session Completed, (2) Session Forfeited — Cancelled <24h, (3) Session Forfeited — Did Not Use. Session notes simplified to Topic Discussed + Session Outcome only. "Other" topic shows static note "Please email the coaching practice" (no free-text input).
+> **Session statuses updated (Feb 18 clarification)**: Three statuses: (1) Session Completed, (2) Session forfeited - canceled within 24 hours, (3) Session forfeited - not taken advantage of. Session notes simplified to Topic Discussed + Session Outcome only. "Other" topic shows static note "Please email the coaching practice" (no free-text input).
+>
+> **Policy clarification (2026-02-18):** Session outcomes are coach-entered only. The system does **not** auto-forfeit, auto-close, or auto-expire Session 1 access based on May/cohort window deadlines in MVP.
 
 - [ ] Create + log session — `src/app/api/coach/sessions/route.ts`
   - `POST /api/coach/sessions { engagementId, occurredAt, topicDiscussed, sessionOutcome, duration, privateNotes?, status }`
-  - `status`: `COMPLETED`, `FORFEITED_CANCELLED` (<24h cancel), `FORFEITED_NOT_USED`
+  - `status`: `COMPLETED`, `FORFEITED_CANCELLED` ("Session forfeited - canceled within 24 hours"), `FORFEITED_NOT_USED` ("Session forfeited - not taken advantage of")
   - Requires authenticated coach session
   - Verify coach owns this engagement (`Engagement.coachId = currentUser.coachProfile.id`)
   - **Transaction with unique constraint protection** for session number assignment (reviewed 2026-02-14: unique constraint replaces Serializable):
@@ -748,6 +761,8 @@ await prisma.$transaction(async (tx) => {
     - `org`: required
     - `programTrack`: must be `TWO_SESSION` or `FIVE_SESSION`
     - `programId`: must match existing `Program.id`
+    - `cohortCode`: required (e.g., `ALP-135`, `MLP-80`, `EF-1`, `EL-1`)
+    - `cohortStartDate`: required ISO date; used as Day 0 for nudge timing
   - Check for duplicate emails within CSV
   - Check for existing participants (by email) — skip or error (configurable)
   - Return validation results with row-level errors
@@ -756,7 +771,7 @@ await prisma.$transaction(async (tx) => {
 - [ ] Import execution — `src/app/api/admin/import/execute/route.ts`
   - `POST /api/admin/import/execute { rows: ValidatedRow[], programId }`
   - **Phase A**: Atomic transaction — create all `Participant` + `Engagement` records
-    - Engagement created with `status: INVITED`, `coachId: null`, `totalSessions` from `programTrack`
+    - Engagement created with `status: INVITED`, `coachId: null`, `totalSessions` from `programTrack`, `cohortStartDate` from CSV
     - Transaction timeout: 30s (fail-safe for large imports)
   - **Phase B**: Email batch — send invitation emails (generic link + instructions)
     - Queued, not blocking (admin sees "Import complete, sending invitations...")
@@ -767,6 +782,8 @@ await prisma.$transaction(async (tx) => {
 #### 3.3 Nudge System (Email Reminders + Dashboard Flags + Auto-Assign)
 
 > **Updated 2026-02-17**: Re-scoped from dashboard-only flags to email nudges + auto-assignment per Feb 17 workshop. FC explicitly wants automated participant re-engagement. The "blind spot" identified in 2026-02-13 (participants who never log in can't see dashboard flags) is now addressed by email nudges. Email infrastructure already exists for OTP auth — incremental cost of 2-3 templates is low.
+>
+> **Nudge timing anchor (2026-02-18):** Day 0 is the participant's **cohort start date**. Day 5/10 reminders and Day 15 auto-assignment are measured from cohort start date, not from invitation send date or first login.
 
 - [ ] Nudge evaluation + email sending endpoint — `src/app/api/cron/nudges/route.ts`
   - `POST /api/cron/nudges` with `Authorization: Bearer {CRON_SECRET}`
@@ -781,11 +798,12 @@ if (lastNudge && Date.now() - lastNudge.sentAt.getTime() < 3600_000) {
 ```
 
   - Query overdue engagements and **send emails + set dashboard flags**:
-    - **Day 5 — `PARTICIPANT_REMINDER_1`**: status = `INVITED`, no coach selected in 5+ days. Send gentle reminder email to participant. Set dashboard flag.
-    - **Day 10 — `PARTICIPANT_REMINDER_2`**: status = `INVITED`, no coach selected in 10+ days, `REMINDER_1` already sent. Send firmer reminder email. Set dashboard flag.
-    - **Day 15 — `AUTO_ASSIGN`**: status = `INVITED`, no coach selected in 15+ days, `REMINDER_2` already sent. **System auto-assigns coach** (capacity-weighted selection) + sends notification email to participant with assigned coach info + Calendly link. Set dashboard flag. Transitions engagement to `COACH_SELECTED`.
+    - **Day 5 — `PARTICIPANT_REMINDER_1`**: status = `INVITED`, no coach selected in 5+ days from cohort start date. Send gentle reminder email to participant. Set dashboard flag.
+    - **Day 10 — `PARTICIPANT_REMINDER_2`**: status = `INVITED`, no coach selected in 10+ days from cohort start date, `REMINDER_1` already sent. Send firmer reminder email. Set dashboard flag.
+    - **Day 15 — `AUTO_ASSIGN`**: status = `INVITED`, no coach selected in 15+ days from cohort start date, `REMINDER_2` already sent. **System auto-assigns coach** (capacity-weighted selection) + sends notification email to participant with assigned coach info + Calendly link. Set dashboard flag. Transitions engagement to `COACH_SELECTED`.
     - **`COACH_ATTENTION`**: status = `IN_PROGRESS`, no session logged in 14+ days. Dashboard flag only (no email to participant — coach handles this).
     - **`OPS_ESCALATION`**: any engagement stalled 21+ days. Dashboard flag + email to ops (Andrea/Kari).
+    - **No date-based session status mutation**: cron flags overdue work for ops visibility but does not auto-mark sessions `FORFEITED_*` based on cohort window dates.
   - **Per-nudge-type cooldown** — each type checked independently
   - Log each nudge to `NudgeLog` table: type, email sent (boolean), dashboard flag set, auto-assignment details
   - Return: `{ processed: number, emailsSent: number, flagsSet: number, autoAssigned: number, errors: number }`
@@ -793,7 +811,7 @@ if (lastNudge && Date.now() - lastNudge.sentAt.getTime() < 3600_000) {
 - [ ] Auto-assignment logic — `src/lib/auto-assign.ts`
   - Called by nudge cron at Day 15 for `INVITED` engagements
   - Selects coach via capacity-weighted randomization (same logic as participant coach selector)
-  - Scoped to same program's coach panel (MLP/ALP shared panel)
+  - Scoped to same program's coach panel (MLP/ALP pool or EF/EL pool; no cross-pool assignment)
   - Creates engagement with `COACH_SELECTED` status, sets `coachSelectedAt`
   - Sends notification email to participant: "You've been matched with [coach name]" + coach bio + Calendly link
   - Sends notification email to coach: "New participant auto-assigned: [participant name]"
@@ -1131,19 +1149,23 @@ Suites are designed to run **in order** — each suite builds on state created b
 
 ## Dependencies & Prerequisites
 
-### Must Resolve Before Slice 1 (by Feb 18)
+### Must Resolve Before Slice 1 (status as of Feb 18)
 
 | Decision | Options | Impact |
 |----------|---------|--------|
-| **Email provider** | Resend vs AWS SES | OTP + magic link + nudge emails all depend on this |
-| **Cloud provider** | AWS vs GCP vs Azure | Database provisioning, Docker hosting, cron scheduler |
+| **Email provider** | Resend (recommend paid tier at launch) vs AWS SES | OTP + magic link + nudge emails all depend on this; free-tier daily caps may throttle launch-day traffic |
+| **Cloud provider** | **Resolved: Vercel + Supabase (confirmed 2026-02-18)** | MVP hosting and database target locked; remove infra ambiguity |
 | **Domain / DNS** | Who manages? What subdomain? | Deployment URL, email sender domain |
 | **Real coach data entry** | Admin CSV upload vs manual entry vs seed script | 35 coaches need real bios, photos, booking URLs, and video URLs before March 2. Seed script only covers dev data. Options: (a) FC provides a CSV and we import via a one-off script, (b) build a minimal coach profile edit form in admin portal (pulls Slice 3 work forward), or (c) Kari/Andrea enter data directly in the database via a simple admin form. **Recommend option (a)** — CSV from FC ops, imported with a script. |
+| **Blocking decision turnaround** | **Resolved: FC 24-hour owner through Mar 16 (confirmed 2026-02-18)** | Protects critical path when implementation questions arise |
+| **Contract status** | **Resolved: signed (confirmed 2026-02-18)** | Removes pre-launch legal/commercial execution risk |
+| **Participant counts by cohort** | Pending clarification from Kari/FC | Required to validate capacity assumptions and overlap load with panel split fixed at 15 (MLP/ALP) and 16 (EF/EL) |
 
 ### Must Resolve Before Slice 3 (by March 9)
 
 | Decision | Options | Impact |
 |----------|---------|--------|
+| **Session window reporting rule** | Display-only deadline tracking vs hide from MVP | Affects dashboard messaging only; does not trigger automatic session status updates |
 | **Nudge recipients** | Hardcoded vs configurable | Ops escalation email targets |
 | **Executive summary scope** | What metrics matter to Kari vs Greg? | Dashboard content |
 | **Import duplicate handling** | Skip existing vs error on duplicate | CSV import behavior |
@@ -1155,7 +1177,8 @@ Suites are designed to run **in order** — each suite builds on state created b
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
 | Email provider DPA not signed by March 2 | Medium | High — no OTP, no auth | Start with Resend trial, fallback to AWS SES (no DPA needed for internal tool) |
-| 400 concurrent users overwhelm coach selector | Low | High — launch day failure | Load test before March 2, PgBouncer handles connection pooling |
+| Resend free-tier daily cap throttles launch-day emails | Medium | High — OTP/magic link delays during spikes | Use Resend paid tier for launch window or SES fallback; monitor send rate on first cohort days |
+| ~60 first-cohort users overwhelm coach selector | Low | High — launch day failure | Load test before March 2, validate with first-cohort concurrency assumptions |
 | Coach capacity race condition | Medium | Medium — two participants get same coach | Serialized transaction with capacity recheck (implemented above) |
 | OTP email deliverability issues | Medium | High — participants can't log in | Monitor Resend deliverability, add "Resend code" UX, ops has manual workaround |
 | Schema migration needed mid-slice | Low | Medium — deployment complexity | Ship full schema in Phase 0, even for models used in later slices |
@@ -1177,7 +1200,7 @@ Post-launch backlog (NOT in scope for March 16):
 8. **Print-friendly reports** — PDF export of engagement summaries
 9. **Real-time updates** — WebSocket/SSE for dashboard live refresh
 10. **Session receipts** — Per-session receipt with coach attestation (checkbox, not DocuSign). USPS client request from Feb 17 workshop. Nice-to-have.
-11. **EF/EL separate coach panel** — Executive programs (5-session) use different coach pool than MLP/ALP
+11. **Admin panel management UI for coach pools** — Visual management of MLP/ALP vs EF/EL pool membership
 12. **Participant-facing filters** — If FC decides participants need filtering by specialty/language in future (removed from MVP per Feb 17 workshop)
 
 ---

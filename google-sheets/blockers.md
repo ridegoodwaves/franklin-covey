@@ -1,0 +1,22 @@
+# Blockers
+
+Last synced: 2026-02-19
+
+Canonical sources:
+- `franklin-covey/docs/plans/2026-02-18-fc-project-plan.md`
+- `franklin-covey/docs/plans/2026-02-12-feat-mvp-backend-vertical-slices-plan.md`
+- `franklin-covey/docs/drafts/2026-02-18-mvp-contract-v1.md`
+
+| Item | Owner | Status | Needed By | Why It Matters | Current Ask |
+| --- | --- | --- | --- | --- | --- |
+| Coach bios/photos/booking links (MLP/ALP) | Kari Sadler | Waiting | Feb 21, 2026 | Needed for realistic staging, beta confidence, and launch readiness. | Provide final coach CSV package. |
+| ALP-135 participant file | Kari Sadler | Waiting | Feb 24, 2026 | Needed for first-wave invite/auth validation. | Share file with name, email, cohortCode, cohortStartDate. |
+| MLP-80 participant file | Kari Sadler | Waiting | Feb 24, 2026 | Needed for import and overlap capacity validation. | Share file with name, email, cohortCode, cohortStartDate. |
+| Final participant counts by cohort | Kari / FC Ops | Open | Before Feb 26 load test | Required to validate capacity assumptions before launch. | Confirm final counts for all cohorts. |
+| Sender domain decision | Tim + Blaine | Open | Feb 21, 2026 | Needed for trusted production email sending. | Confirm sender identity (proposed: coaching@franklincovey.com). |
+| Launch email tier choice | Amit + Tim | Open | Before Mar 2, 2026 | Free-tier email limits may throttle OTP/magic links on busy days. | Use paid Resend tier for launch window or choose SES. |
+| Vercel environment split | Amit + Build Team | Open | Feb 20, 2026 (2:00 PM CT) | Required to prevent staging/prod deploy and secret crossover. | Create separate `fc-staging` and `fc-production` Vercel projects with env scoping. |
+| Supabase environment split | Amit + Build Team | Open | Feb 20, 2026 (2:00 PM CT) | Required to isolate auth, data, and migrations between staging and production. | Create separate `fc-staging` and `fc-production` Supabase projects and provide keys/URLs. |
+| Staging email safety gate | Amit + Build Team | Open | Feb 20, 2026 (2:00 PM CT) | Prevents accidental emails to real coaches/participants during QA. | Enforce `EMAIL_MODE=sandbox` + hard allowlist; run proof test and log result. |
+| Coach access + onboarding timing | Kari + Andrea | Open | Before Mar 2, 2026 | Coaches need a clear start and onboarding path. | Confirm access date and onboarding format. |
+| Slice 3 policy package | Kari + Greg + FC Ops | Open | Before Mar 9, 2026 | Needed to finalize admin behavior in Slice 3. | Confirm nudge recipients, KPI scope, and duplicate-import rule. |
