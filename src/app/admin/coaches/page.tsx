@@ -220,21 +220,21 @@ export default function CoachesPage() {
       {/* Overview Stats                                                     */}
       {/* ------------------------------------------------------------------ */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-8">
-        <Card className="opacity-0 animate-fade-in stagger-1">
+        <Card>
           <CardContent className="p-5">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Active Coaches</p>
             <p className="mt-2 font-display text-3xl font-semibold text-fc-900">{activeCoaches.length}</p>
             <p className="mt-1 text-xs text-muted-foreground">of {coachData.length} total</p>
           </CardContent>
         </Card>
-        <Card className="opacity-0 animate-fade-in stagger-2">
+        <Card>
           <CardContent className="p-5">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Engagements</p>
             <p className="mt-2 font-display text-3xl font-semibold text-fc-900">{totalActive}</p>
             <p className="mt-1 text-xs text-muted-foreground">across all coaches</p>
           </CardContent>
         </Card>
-        <Card className="opacity-0 animate-fade-in stagger-3">
+        <Card>
           <CardContent className="p-5">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Overall Utilization</p>
             <p className="mt-2 font-display text-3xl font-semibold text-fc-900">{getCapacityPercent(totalActive, totalCapacity)}%</p>
@@ -248,7 +248,7 @@ export default function CoachesPage() {
       {/* ------------------------------------------------------------------ */}
       {/* Capacity Overview - Hero visual                                    */}
       {/* ------------------------------------------------------------------ */}
-      <Card className="mb-8 opacity-0 animate-fade-in stagger-4">
+      <Card className="mb-8">
         <CardHeader>
           <CardTitle className="text-xl">Capacity Overview</CardTitle>
           <CardDescription>Real-time coach workload and availability</CardDescription>
@@ -339,7 +339,7 @@ export default function CoachesPage() {
       {/* ------------------------------------------------------------------ */}
       {/* Coach Roster Table                                                 */}
       {/* ------------------------------------------------------------------ */}
-      <Card className="opacity-0 animate-fade-in stagger-5">
+      <Card>
         <CardHeader className="pb-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-xl">Coach Directory</CardTitle>

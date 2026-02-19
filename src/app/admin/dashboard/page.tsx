@@ -373,7 +373,7 @@ export default function AdminDashboard() {
       {/* ------------------------------------------------------------------ */}
       {/* Engagement Table                                                   */}
       {/* ------------------------------------------------------------------ */}
-      <Card className="opacity-0 animate-fade-in stagger-6">
+      <Card>
         <CardHeader className="pb-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-xl">Engagements</CardTitle>
