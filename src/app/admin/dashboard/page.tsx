@@ -35,6 +35,16 @@ function DownloadIcon() {
   );
 }
 
+function PrinterIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 9 6 2 18 2 18 9" />
+      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+      <rect x="6" y="14" width="12" height="8" />
+    </svg>
+  );
+}
+
 function ChevronUpDown({ className }: { className?: string }) {
   return (
     <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -231,7 +241,7 @@ export default function AdminDashboard() {
   const [filterStatus, setFilterStatus] = useState("All Statuses");
   const [filterCoach, setFilterCoach] = useState("All Coaches");
   const [filterTrack, setFilterTrack] = useState("All Tracks");
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState("attention");
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -310,8 +320,7 @@ export default function AdminDashboard() {
             <Card
               key={kpi.label}
               className={cn(
-                "relative overflow-hidden opacity-0 animate-fade-in",
-                `stagger-${idx + 1}`,
+                "relative overflow-hidden",
                 isAttention && "border-fc-golden/40 bg-gradient-to-br from-fc-golden/10 to-white shadow-fc-golden/20 shadow-md"
               )}
             >
@@ -377,10 +386,16 @@ export default function AdminDashboard() {
         <CardHeader className="pb-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-xl">Engagements</CardTitle>
-            <Button variant="outline" size="sm" className="gap-2 self-start">
-              <DownloadIcon />
-              Export CSV
-            </Button>
+            <div className="flex items-center gap-2 self-start">
+              <Button variant="outline" size="sm" className="gap-2">
+                <DownloadIcon />
+                Export CSV
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => window.print()}>
+                <PrinterIcon />
+                Print PDF
+              </Button>
+            </div>
           </div>
         </CardHeader>
 
