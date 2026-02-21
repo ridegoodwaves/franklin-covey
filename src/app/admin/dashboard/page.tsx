@@ -291,6 +291,39 @@ export default function AdminDashboard() {
 
   const attentionCount = engagements.filter((e) => e.needsAttention).length;
 
+  const handleExportCsv = () => {
+    const headers = ["ID", "Participant", "Coach", "Status", "Program Track", "Last Activity", "Needs Attention"];
+
+    const csvRows = [
+      headers.join(","),
+      ...sorted.map((e) =>
+        [
+          e.id,
+          `"${e.participant}"`,
+          `"${e.coach}"`,
+          getStatusLabel(e.status),
+          getStatusLabel(e.programTrack),
+          e.lastActivity,
+          e.needsAttention ? "Yes" : "No",
+        ].join(",")
+      ),
+    ];
+
+    const csvContent = csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const prefix = activeTab === "attention" ? "needs-attention" : "engagements";
+    const date = new Date().toISOString().slice(0, 10);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${prefix}-${date}.csv`);
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <PortalShell
       portalName={ADMIN_PORTAL.portalName}
@@ -387,11 +420,11 @@ export default function AdminDashboard() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-xl">Engagements</CardTitle>
             <div className="flex items-center gap-2 self-start">
-              <Button variant="outline" size="sm" className="gap-2">
+              <Button variant="outline" size="sm" className="gap-2 no-print" onClick={handleExportCsv}>
                 <DownloadIcon />
                 Export CSV
               </Button>
-              <Button variant="outline" size="sm" className="gap-2" onClick={() => window.print()}>
+              <Button variant="outline" size="sm" className="gap-2 no-print" onClick={() => window.print()}>
                 <PrinterIcon />
                 Print PDF
               </Button>

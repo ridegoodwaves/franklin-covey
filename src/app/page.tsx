@@ -45,7 +45,7 @@ export default function LandingPage() {
             <div className="mt-16 grid gap-5 sm:grid-cols-3">
               {/* Participant */}
               <a
-                href="/participant/select-coach"
+                href="/participant/"
                 className="group relative overflow-hidden rounded-2xl border border-fc-100 bg-white p-8 text-left transition-all duration-300 hover:border-fc-200 hover:shadow-lg hover:shadow-fc-900/5 hover:-translate-y-0.5 opacity-0 animate-fade-in-up"
               >
                 <div className="relative">
@@ -68,8 +68,7 @@ export default function LandingPage() {
                     Participant
                   </h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    Select your coach, book sessions, and track your coaching
-                    journey.
+                    Select your coach and book your first session.
                   </p>
                   <div className="mt-6 flex items-center gap-2 text-sm font-medium text-fc-600 transition-all group-hover:gap-3 group-hover:text-fc-800">
                     Enter Portal

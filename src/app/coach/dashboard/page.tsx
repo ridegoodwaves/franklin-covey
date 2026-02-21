@@ -333,7 +333,7 @@ function SessionRow({
 
   return (
     <a
-      href={`/coach/engagement?id=${session.engagementId}`}
+      href={`/coach/engagements/${session.engagementId}`}
       className={cn(
         "group flex items-center gap-4 rounded-xl px-4 py-3.5 transition-all duration-200 hover:bg-fc-50/60 opacity-0 animate-fade-in",
         isToday && "bg-amber-50/50 hover:bg-amber-50"
@@ -402,7 +402,7 @@ function AttentionItem({
 }) {
   return (
     <a
-      href={`/coach/engagement?id=${item.engagementId}`}
+      href={`/coach/engagements/${item.engagementId}`}
       className="group flex items-center gap-4 rounded-xl border border-amber-200/60 bg-amber-50/30 px-4 py-3.5 transition-all duration-200 hover:border-amber-300/80 hover:bg-amber-50/60 hover:shadow-sm opacity-0 animate-fade-in"
       style={{ animationDelay: `${delay}ms` }}
     >
@@ -457,7 +457,7 @@ function EngagementCard({
 
   return (
     <a
-      href={`/coach/engagement?id=${engagement.id}`}
+      href={`/coach/engagements/${engagement.id}`}
       className="group block opacity-0 animate-fade-in"
       style={{ animationDelay: `${delay}ms` }}
     >
@@ -729,7 +729,7 @@ export default function CoachDashboard() {
         <SectionHeader
           title="My Engagements"
           count={engagements.length}
-          action={{ label: "See All", href: "/coach/engagements", disabled: true }}
+          action={{ label: "See All", href: "/coach/engagements" }}
           delay={650}
         />
 
