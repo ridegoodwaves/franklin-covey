@@ -24,7 +24,14 @@ Check `docs/solutions/` if debugging a known issue pattern.
 npm run dev          # Start dev server (http://localhost:3000)
 npm run build        # Production build (standalone output for Docker)
 npm run lint         # ESLint
+git config core.hooksPath .githooks  # One-time: enable repo-managed git hooks
 ```
+
+## Git Hooks
+
+- Pre-push build gate is defined at `.githooks/pre-push`.
+- After one-time hook-path setup (`git config core.hooksPath .githooks`), every `git push` runs `npm run build`.
+- Treat pre-push failures as release blockers for the current branch.
 
 ## Languages & Conventions
 
@@ -141,6 +148,41 @@ Generic link → Enter email → OTP → Coach selector (3 cards) → Select coa
 - Returning participant with valid session cookie → redirects to `/participant/confirmation` (if coach already selected).
 - Nudge emails (Day 5, Day 10) re-engage participants who haven't selected. Day 15 = auto-assign coach.
 - **Do NOT build participant-facing dashboards, session views, or engagement tracking.** All engagement tracking is coach-only via `/coach/engagement`.
+
+### Participant Session State (MVP Stub Mode)
+
+Current MVP frontend uses `sessionStorage` for temporary participant flow state:
+
+- `participant-email`: set after OTP request succeeds on `/participant`; read by `/participant/verify-otp`.
+- `participant-verified`: set to `"true"` after OTP verify succeeds; required to access `/participant/select-coach`.
+- `selected-coach`: JSON payload set after successful coach selection; drives `/participant/confirmation`.
+
+Lifecycle rules:
+
+1. `/participant` successful submit -> set `participant-email`.
+2. `/participant/verify-otp` successful verify -> set `participant-verified`.
+3. `/participant/select-coach` successful select -> set `selected-coach`; redirect to `/participant/confirmation`.
+4. Direct/deep-link access to later steps without required key(s) must redirect to valid prior step.
+
+Production migration path:
+
+- Replace `participant-verified` and `selected-coach` client state with server-backed session (iron-session cookie) and DB-backed selection state.
+- Keep UI behavior identical while changing only the state source of truth.
+- Do not persist participant auth state in `localStorage`.
+
+## API Integration Pattern (Stub-First)
+
+For endpoints not yet live, use this repo-standard pattern:
+
+1. Define request/response/error contracts in `src/lib/api-client.ts`.
+2. Add real `apiFetch` call line with a nearby `// TODO: uncomment when backend is live`.
+3. Keep temporary stub logic in the same wrapper (not in page components).
+4. Make stubs deterministic where possible for QA coverage (avoid random-only behavior).
+5. Page components call wrapper functions only; never hardcode fake persistence in UI files.
+
+Launch wiring rule:
+
+- When backend endpoint is ready, uncomment `apiFetch`, remove or gate the stub branch, and keep the same typed function signature so UI code does not change.
 
 ## Engagement Status Values
 
