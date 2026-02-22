@@ -102,17 +102,6 @@ function BuildingIcon() {
   );
 }
 
-function FileTextIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 2 14 8 20 8" />
-      <line x1="16" y1="13" x2="8" y2="13" />
-      <line x1="16" y1="17" x2="8" y2="17" />
-      <polyline points="10 9 9 9 8 9" />
-    </svg>
-  );
-}
 
 function SpinnerIcon() {
   return (
@@ -270,84 +259,6 @@ function TimelineItem({
         </button>
       </div>
     </div>
-  );
-}
-
-// ─── Previous Session Context Panel ───────────────────────────────────────────
-
-function PreviousSessionPanel({ delay }: { delay: number }) {
-  const prevSession = sessionHistory[sessionHistory.length - 1];
-  if (!prevSession) return null;
-
-  return (
-    <Card
-      className="border-fc-100/80 bg-fc-50/30 opacity-0 animate-fade-in"
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <CardHeader className="pb-3">
-        <div className="flex items-center gap-2">
-          <FileTextIcon />
-          <CardTitle className="text-sm">Previous Session Context</CardTitle>
-        </div>
-        <CardDescription className="text-xs">
-          Session {prevSession.sessionNumber} &middot; {prevSession.date} &middot;{" "}
-          {prevSession.duration} min
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-            Topics Covered
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {prevSession.topics.map((topic) => (
-              <Badge key={topic} variant="outline" className="text-[10px] font-normal">
-                {topic}
-              </Badge>
-            ))}
-          </div>
-        </div>
-
-        <Separator className="opacity-40" />
-
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-            Session Notes
-          </p>
-          <p className="text-xs leading-relaxed text-fc-700">
-            {prevSession.notesPreview}
-          </p>
-        </div>
-
-        <Separator className="opacity-40" />
-
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-            Outcomes
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {prevSession.outcomes.map((outcome) => (
-              <Badge key={outcome} variant="info" className="text-[10px] font-normal">
-                {outcome}
-              </Badge>
-            ))}
-          </div>
-        </div>
-
-        {/* Private notes from previous session */}
-        <div className="rounded-lg border border-dashed border-fc-200/60 bg-white/60 p-3">
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <LockIcon />
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Your Private Notes
-            </p>
-          </div>
-          <p className="text-xs leading-relaxed text-fc-600 italic">
-            {prevSession.privateNotes}
-          </p>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
 
@@ -635,9 +546,7 @@ export default function CoachEngagementDetailPage() {
             </Card>
           ) : (
             /* Session logging form */
-            <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-              {/* Main form */}
-              <div className="space-y-6 order-2 lg:order-1">
+            <div className="space-y-6">
 
                 {/* Topic — single-select dropdown */}
                 <Card
@@ -797,13 +706,7 @@ export default function CoachEngagementDetailPage() {
                     )}
                   </CardContent>
                 </Card>
-              </div>
-
-              {/* Previous session context (sidebar on desktop, above on mobile) */}
-              <div className="order-1 lg:order-2 lg:sticky lg:top-6 lg:self-start">
-                <PreviousSessionPanel delay={220} />
-              </div>
-            </div>
+          </div>
           )}
         </TabsContent>
 
