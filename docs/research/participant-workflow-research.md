@@ -630,8 +630,7 @@ Target: Feb 25 staging deploy, Feb 26 beta test with Kari.
 
 | Constant | Value | Usage |
 |----------|-------|-------|
-| `MLP_ALP_COACH_CAPACITY` | `15` | `maxEngagements` for MLP/ALP coaches |
-| `EF_EL_COACH_CAPACITY` | `20` | `maxEngagements` for EF/EL coaches (locked Feb 24) |
+| `COACH_CAPACITY` | `20` | `maxEngagements` for all coach pools — MLP/ALP updated from 15 to 20 (Kari confirmed 2026-02-24) |
 | `NUDGE_THRESHOLDS.participantReminder1Days` | `5` | Dashboard flag (not system email) |
 | `NUDGE_THRESHOLDS.participantReminder2Days` | `10` | Dashboard flag (not system email) |
 | `NUDGE_THRESHOLDS.opsManualAssignThresholdDays` | `15` | Ops manually assigns coach from dashboard (no system auto-assign in MVP) |

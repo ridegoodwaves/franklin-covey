@@ -100,7 +100,7 @@ The platform ships in three milestones between now and March 16, aligned to the 
 - FC confirmed a **24-hour turnaround owner** for blocking decisions through March 16.
 - Contract status: **signed**.
 - Coach pools are **separate by track family**: MLP/ALP panel and EF/EL panel are distinct pools (no cross-pool matching in MVP).
-- EF/EL coach capacity is confirmed at **20 participants per coach**.
+- All coach capacity confirmed at **20 participants per coach** across all pools (MLP/ALP updated from 15 to 20; Kari confirmed 2026-02-24).
 - MVP planning baseline is confirmed at **400 total participants** across cohorts.
 - Session outcomes are **coach-entered only** (`COMPLETED`, `FORFEITED_CANCELLED`, `FORFEITED_NOT_USED`). For forfeited Session 1, coaches log either **"Session forfeited - canceled within 24 hours"** or **"Session forfeited - not taken advantage of"**. No automatic Session 1 lock/expiry by May window deadlines in MVP.
 - Nudge timing anchor is locked: **Day 0 = cohort start date**.
@@ -241,7 +241,7 @@ Phase 2 roadmap (April+) is available upon request — covers platform hardening
 | Write full Prisma schema (11 models, all enums + indexes) | Amit | ERD finalized in vertical slices plan |
 | Create Supabase project, run first migration | Amit | Needs Supabase account setup |
 | docker-compose.yml (PostgreSQL + Mailpit) | Amit | Local dev email interception |
-| ~~Dockerfile~~ — **deferred post-MVP** | — | Deployment target is Vercel; no Dockerfile needed. Add if/when ECS migration is scoped. |
+| Dockerfile — **post-launch (within 30 days of March 2)** | Amit | Not needed for Vercel launch; required before FC AWS migration. |
 | Seed script — 1 org, 4 programs, 5 sample coaches, 8 test participants | Amit | Uses anonymized data; real coaches imported separately |
 | `.env.example` with all required vars documented | Amit | |
 

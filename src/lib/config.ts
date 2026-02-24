@@ -72,12 +72,9 @@ export const PROGRAM_TRACK_SESSIONS = {
   FIVE_SESSION: 5,
 } as const;
 
-// Pool-specific coach capacity (Feb 17 workshop + Feb 24 lock)
-// MLP/ALP: 15 participants per coach
-// EF/EL:   20 participants per coach
-// Authoritative source: CoachProfile.maxEngagements in DB. Use these constants for validation only.
-export const MLP_ALP_COACH_CAPACITY = 15 as const;
-export const EF_EL_COACH_CAPACITY = 20 as const;
+// All coach pools: 20 participants per coach (Kari confirmed 2026-02-24 — MLP/ALP updated from 15 to 20)
+// Authoritative source: CoachProfile.maxEngagements in DB. Use this constant for validation only.
+export const COACH_CAPACITY = 20 as const;
 
 export const PROGRAM_TYPES = {
   MLP: { name: "Managerial Leadership Program", track: "TWO_SESSION" as const, coachPanel: "MLP_ALP" },

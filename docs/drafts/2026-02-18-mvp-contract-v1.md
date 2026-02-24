@@ -13,7 +13,7 @@
   - MLP/ALP: 15 coaches total
   - EF/EL: 16 coaches total
   - No cross-pool matching in MVP
-- **Coach capacity policy:** EF/EL capacity is confirmed at **20 participants per coach** (aligned with MLP/ALP capacity target).
+- **Coach capacity policy:** All coach pools are confirmed at **20 participants per coach** (MLP/ALP updated from 15 to 20; Kari confirmed 2026-02-24).
 - **Planning baseline:** MVP planning baseline is confirmed at **400 total participants** across cohorts.
 - **Participant flow model:** One visit, one coach decision, then done (no participant dashboard).
 - **Participant access boundary:** USPS sends participant access email with coach-selector link and access code; CIL system does **not** send participant emails in MVP.

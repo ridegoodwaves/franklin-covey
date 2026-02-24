@@ -21,7 +21,7 @@ changelog:
   - 2026-02-18e: "Forfeited Session 1 labels clarified by FC: 'Session forfeited - canceled within 24 hours' and 'Session forfeited - not taken advantage of' (mapped to FORFEITED_CANCELLED and FORFEITED_NOT_USED)."
   - 2026-02-18f: "Email delivery planning note added: Resend free-tier daily limits can throttle launch-day auth/magic-link traffic; recommend paid tier for launch window."
   - 2026-02-18g: "Capacity counting rule confirmed by Kari: count COACH_SELECTED, IN_PROGRESS, and ON_HOLD; exclude INVITED, COMPLETED, and CANCELED."
-  - 2026-02-24: "Applied post-workshop decision lock to remove cross-doc ambiguity: participant auth now uses USPS-delivered email + participant access code (no system participant emails), EF/EL capacity confirmed at 20, planning baseline locked at 400, EF/EL reporting anchor locked to selection-window start + 9 months, and use-it-or-lose-it locked as ALP/MLP manual model only."
+  - 2026-02-24: "Applied post-workshop decision lock to remove cross-doc ambiguity: participant auth now uses USPS-delivered email + participant access code (no system participant emails), EF/EL capacity confirmed at 20, planning baseline locked at 400, EF/EL reporting anchor locked to selection-window start + 9 months, and use-it-or-lose-it locked as ALP/MLP manual model only. MLP/ALP capacity updated from 15 to 20 — all pools now COACH_CAPACITY = 20 (Kari confirmed)."
 ---
 
 # feat: Ship MVP Backend — 3 Vertical Slices (March 2/9/16)
@@ -235,7 +235,7 @@ erDiagram
 - **Added** `Engagement.programId` (multi-program from day 1)
 
 **Schema changes from Feb 17 workshop:**
-- **Added** `CoachProgramPanel` join table (many-to-many: coaches ↔ programs). MLP/ALP and EF/EL remain separate pools with no cross-pool matching in MVP. EF/EL coach capacity is locked at 20 per coach. `@@unique([coachProfileId, programId])` prevents duplicate assignments.
+- **Added** `CoachProgramPanel` join table (many-to-many: coaches ↔ programs). MLP/ALP and EF/EL remain separate pools with no cross-pool matching in MVP. All coach capacity locked at **20 per coach** across all pools (MLP/ALP updated from 15 to 20; Kari confirmed 2026-02-24). `@@unique([coachProfileId, programId])` prevents duplicate assignments.
 - **Added** `Program.code` (unique program identifier: MLP, ALP, EF, EL) and `Program.track` (moved from Participant — track is a property of the program, not the participant)
 - **Changed** `SessionStatus` enum: was `SCHEDULED | COMPLETED | CANCELED | NO_SHOW` → now `COMPLETED | FORFEITED_CANCELLED | FORFEITED_NOT_USED`
 - **Changed** `SessionNote.topics/outcomes` arrays → `SessionNote.topicDiscussed` (single string from program competency list) + `SessionNote.sessionOutcome` (single string)
@@ -361,7 +361,7 @@ SENTRY_DSN=
 LOG_LEVEL=info
 ```
 
-- ~~`Dockerfile`~~ — **Deferred post-MVP** (deployment target is Vercel; ECS migration not scoped for MVP). Write when/if container deployment is needed.
+- [ ] `Dockerfile` — **Post-launch (target: within 30 days of March 2)** — needed before FC AWS migration. Not required for Vercel launch. 3-stage build, non-root user.
 - [ ] Create `docker-compose.yml` (PostgreSQL 16 + Mailpit) — `docker-compose.yml`
   - Mailpit: SMTP on port 1025, web UI on port 8025. Catches all non-production email.
   - **Note**: remove PgBouncer from local docker-compose — Supabase provides pooling in production; direct Postgres locally is simpler and matches actual prod topology
@@ -546,7 +546,7 @@ await prisma.$transaction(async (tx) => {
 - [ ] Remix shows 3 different coaches (max 1 remix, one-way door with confirmation warning)
 - [ ] Coach selection creates engagement with `COACH_SELECTED` status
 - [ ] **Participant flow ends at selection**: confirmation page + scheduling link/fallback message. No engagement page.
-- [ ] Capacity is enforced with configured per-coach limits (EF/EL locked at 20; count active statuses only)
+- [ ] Capacity is enforced with configured per-coach limits (all pools locked at 20; count active statuses only)
 - [ ] Zero coaches scenario shows appropriate message + notifies ops
 - [ ] Returning participant with valid session skips auth → goes to confirmation (if coach already selected)
 - [ ] Access-code brute force is rate-limited (attempt limit + lockout + IP throttling)
@@ -1139,7 +1139,7 @@ Suites are designed to run **in order** — each suite builds on state created b
 | **Real coach data entry** | Admin CSV upload vs manual entry vs seed script | 35 coaches need real bios, photos, and booking URLs before March 2 (video is de-scoped for MVP). Seed script only covers dev data. Options: (a) FC provides a CSV and we import via a one-off script, (b) build a minimal coach profile edit form in admin portal (pulls Slice 3 work forward), or (c) Kari/Andrea enter data directly in the database via a simple admin form. **Recommend option (a)** — CSV from FC ops, imported with a script. |
 | **Blocking decision turnaround** | **Resolved: FC 24-hour owner through Mar 16 (confirmed 2026-02-18)** | Protects critical path when implementation questions arise |
 | **Contract status** | **Resolved: signed (confirmed 2026-02-18)** | Removes pre-launch legal/commercial execution risk |
-| **Participant counts by cohort** | Baseline confirmed at 400; per-cohort allocations pending final file lock | Required to validate capacity assumptions and overlap load (EF/EL capacity locked at 20) |
+| **Participant counts by cohort** | Baseline confirmed at 400; per-cohort allocations pending final file lock | Required to validate capacity assumptions and overlap load (all coach capacity locked at 20) |
 
 ### Must Resolve Before Slice 3 (by March 9)
 
