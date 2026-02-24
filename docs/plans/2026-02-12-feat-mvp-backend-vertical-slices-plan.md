@@ -2,7 +2,7 @@
 title: "Ship MVP Backend — 3 Vertical Slices"
 type: feat
 date: 2026-02-12
-updated: 2026-02-18
+updated: 2026-02-24
 brainstorm: docs/brainstorms/2026-02-12-mvp-ship-strategy-brainstorm.md
 prd: prd_for_apps/franklincovey-coaching-platform-prd.md
 delta: docs/CIL-BRIEF-DELTA-ANALYSIS.md
@@ -11,19 +11,26 @@ changelog:
   - 2026-02-13: "Added Organization model (multi-org architecture per Greg's requirement). De-scoped email nudges to dashboard flags. Added workshop agenda reference."
   - 2026-02-13b: "Added printable client reports (proposal requirement — @media print CSS, no PDF library). Added coach CSV import script to Phase 0 (critical path for March 2 real data). Cross-referenced proposal deck — 6 flags identified."
   - 2026-02-14: "Applied technical review amendments: replaced Serializable transactions with SELECT FOR UPDATE + unique constraints, cut Phase 0 over-engineering (pino, PII masking, API helpers), replaced advisory lock with timestamp guard, simplified coach ordering to Math.random(), added typed error classes and null safety notes. Full review: docs/reviews/2026-02-14-technical-review-consolidated.md"
-  - 2026-02-14b: "Designed fully automated QA strategy: 5 test suites (30 scenarios) using Claude in Chrome browser automation. Added test infrastructure (/api/test/* endpoints, test seed data, Mailpit). Covers OTP auth, coach selection, session logging, admin import/export, dashboard KPIs, cross-cutting auth/rate-limiting. Zero manual QA target."
+  - 2026-02-14b: "Designed fully automated QA strategy: 5 test suites (30 scenarios) using Claude in Chrome browser automation. Added test infrastructure (/api/test/* endpoints, test seed data, Mailpit). Covers participant auth, coach selection, session logging, admin import/export, dashboard KPIs, and cross-cutting auth/rate-limiting."
   - 2026-02-16: "Added email safety stack to Phase 0: startup assertion (crash if prod SMTP creds in non-prod env), sanitize-by-default on coach CSV import (--raw flag for production), Mailpit explicitly in docker-compose spec. Added .gitignore for real data CSVs."
-  - 2026-02-17: "Applied Feb 17 workshop decisions: removed participant-facing filters from coach selector, simplified participant flow (ends at selection — no engagement page), updated session statuses to 3 types, re-scoped nudge emails IN (Day 5/10/15 + auto-assign), updated participant count (~60 first cohort), fixed 'Kari' to 'Kari Sadler' throughout, added session receipts to future considerations."
+  - 2026-02-17: "Applied Feb 17 workshop decisions: removed participant-facing filters from coach selector, simplified participant flow (ends at selection — no engagement page), updated session statuses to 3 types, and captured the then-current reminder/assignment assumptions. Note: reminder ownership and assignment behavior were later finalized by the 2026-02-24 decision lock."
   - 2026-02-18: "Resolved P0 deployment decisions: official MVP target is Vercel + Supabase, contract signed, and FC committed to a 24-hour blocking-decision owner through March 16. Coach panel split clarified: 15 total coaches for MLP/ALP and 16 total for EF/EL. Remaining open clarifications: participant counts by cohort and use-or-lose/window-close policy."
   - 2026-02-18b: "Locked session status policy per stakeholder clarification: coaches are source of truth for session outcomes (COMPLETED, FORFEITED_CANCELLED, FORFEITED_NOT_USED). No automatic Session 1 lock/expiry based on cohort window deadlines in MVP; ops monitors via dashboard."
   - 2026-02-18c: "Confirmed panel separation with FC: EF/EL coaches are a completely separate pool from MLP/ALP. No cross-pool matching in MVP."
-  - 2026-02-18d: "Nudge anchor clarified: Day 0 is cohort start date. Day 5/10 reminders and Day 15 auto-assign are measured from cohort start date."
+  - 2026-02-18d: "Recorded timing-anchor clarification (Day 0 = cohort start date) for the pre-lock reminder model in place at that time."
   - 2026-02-18e: "Forfeited Session 1 labels clarified by FC: 'Session forfeited - canceled within 24 hours' and 'Session forfeited - not taken advantage of' (mapped to FORFEITED_CANCELLED and FORFEITED_NOT_USED)."
-  - 2026-02-18f: "Email delivery planning note added: Resend free-tier daily limits can throttle launch-day OTP/magic-link traffic; recommend paid tier for launch window."
+  - 2026-02-18f: "Email delivery planning note added: Resend free-tier daily limits can throttle launch-day auth/magic-link traffic; recommend paid tier for launch window."
   - 2026-02-18g: "Capacity counting rule confirmed by Kari: count COACH_SELECTED, IN_PROGRESS, and ON_HOLD; exclude INVITED, COMPLETED, and CANCELED."
+  - 2026-02-24: "Applied post-workshop decision lock to remove cross-doc ambiguity: participant auth now uses USPS-delivered email + participant access code (no system participant emails), EF/EL capacity confirmed at 20, planning baseline locked at 400, EF/EL reporting anchor locked to selection-window start + 9 months, and use-it-or-lose-it locked as ALP/MLP manual model only."
 ---
 
 # feat: Ship MVP Backend — 3 Vertical Slices (March 2/9/16)
+
+> **Normative decision lock (2026-02-24):** this plan is an implementation backlog, but final policy decisions are controlled by:
+> - `docs/plans/2026-02-18-fc-project-plan.md`
+> - `docs/drafts/2026-02-18-mvp-contract-v1.md`
+>
+> If this document conflicts with either source above, the source-of-truth docs win.
 
 ## Overview
 
@@ -31,16 +38,16 @@ Connect the existing polished frontend (~60% built, hardcoded demo data) to a re
 
 | Slice | Scope | Deadline | Users Impacted |
 |-------|-------|----------|----------------|
-| **1** | Coach Selector + Participant OTP Auth | **March 2** | ~60 participants (first cohort) |
+| **1** | Coach Selector + Participant Access-Code Auth | **March 2** | ~60 participants (first cohort) |
 | **2** | Coach Engagement + Session Logging | **March 9** | ~15 coaches (MLP/ALP panel) |
-| **3** | Admin Portal + Nudge Emails + Auto-Assign | **March 16** | 3 admins (Ops, Kari, Greg) |
+| **3** | Admin Portal + Needs-Attention Workflow | **March 16** | 3 admins (Ops, Kari, Greg) |
 
 **Key architectural decisions** (from [brainstorm](docs/brainstorms/2026-02-12-mvp-ship-strategy-brainstorm.md)):
-- Participant auth: Generic link + email + OTP (not HMAC tokens)
+- Participant auth: USPS-delivered coach-selector link + participant email + access code (no system participant emails in MVP)
 - Dashboards: 1 Ops dashboard + 1 executive summary view
 - Multi-program: Schema-ready, UI-later (`Program` model seeded, no admin UI)
 - Multi-org: `Organization` model from day 1 — infrastructure for the full platform (Greg's requirement, added 2026-02-13)
-- Nudges: Email reminders (Day 5, Day 10, Day 15 auto-assign; **Day 0 = cohort start date**) + dashboard flags (re-scoped 2026-02-17 — reverses 2026-02-13 de-scoping)
+- Reminder ownership: USPS/FC Ops manual reminders in MVP; system owns dashboard flags and coach/admin magic-link emails only
 - Backend: Next.js API routes + Prisma in same repo
 
 ## Problem Statement / Motivation
@@ -50,7 +57,7 @@ The frontend is polished but entirely hardcoded. Without a backend, the platform
 2. Match participants to real coaches with capacity awareness
 3. Let coaches log sessions or track engagement progress
 4. Give admins visibility into program health or import new participants
-5. Send automated nudge emails when engagements stall
+5. Surface "Needs Attention" items for FC Ops follow-up when engagements stall
 
 The CIL Brief (Feb 2026) expanded scope from 5-10 coaches to **35 coaches** and from 1 program to **4 programs**, making the backend's data model more critical than originally planned.
 
@@ -70,12 +77,12 @@ The CIL Brief (Feb 2026) expanded scope from 5-10 coaches to **35 coaches** and 
 │  ┌─────┴──────────────┴──────────────┴───────┐   │
 │  │          API Routes (/api/*)               │   │
 │  │  • /api/auth/[...nextauth] (coach/admin)  │   │
-│  │  • /api/participant/auth   (OTP flow)     │   │
+│  │  • /api/participant/auth   (access-code)  │   │
 │  │  • /api/participant/coaches (selection)    │   │
 │  │  • /api/coach/sessions     (logging)      │   │
 │  │  • /api/admin/import       (bulk)         │   │
 │  │  • /api/admin/dashboard    (KPIs)         │   │
-│  │  • /api/cron/nudges        (automated)    │   │
+│  │  • /api/cron/nudges        (dashboard flags only) │   │
 │  │  • /api/export             (CSV stream)   │   │
 │  └─────────────────┬─────────────────────────┘   │
 │                    │                              │
@@ -133,7 +140,7 @@ erDiagram
         String[] credentials
         String videoUrl
         String meetingBookingUrl
-        Int maxEngagements "default 15"
+        Int maxEngagements "default 20"
         Boolean active
     }
 
@@ -199,10 +206,10 @@ erDiagram
     NudgeLog {
         String id PK
         String engagementId FK
-        NudgeType nudgeType "REMINDER_DAY5 | REMINDER_DAY10 | AUTO_ASSIGN | COACH_ATTENTION | OPS_ESCALATION"
+        NudgeType nudgeType "SELECTION_WINDOW_NEEDS_ATTENTION | COACH_ATTENTION | OPS_ESCALATION"
         Boolean emailSent "default false"
         DateTime sentAt
-        String assignedCoachId FK "nullable, only for AUTO_ASSIGN"
+        String assignedCoachId FK "nullable, reserved for future matching workflows"
     }
 
     Organization ||--o{ Program : "has many"
@@ -222,26 +229,26 @@ erDiagram
 - **Added** `Organization` model (2026-02-13: multi-org architecture per Greg's "infrastructure for the full platform" requirement)
 - **Added** `Program.organizationId` FK (2026-02-13: programs belong to organizations)
 - **Added** `Program` model (brainstorm: soft multi-program support)
-- **Added** `VerificationCode` model (brainstorm: OTP replaces HMAC tokens)
-- **Added** `CoachProfile.languages`, `.location`, `.credentials`, `.videoUrl` (CIL Brief delta)
+- **Added** `VerificationCode` model (participant access-code verification)
+- **Added** `CoachProfile.languages`, `.location`, `.credentials`, `.videoUrl` (CIL Brief delta; `videoUrl` is de-scoped in MVP UI)
 - **Added** `Session.occurredAt` (coach enters date since no webhook auto-sync)
-- **Removed** `Participant.tokenHash` (OTP replaces HMAC tokens)
+- **Removed** `Participant.tokenHash` (replaced with participant access-code verification model)
 - **Removed** `Session.calendlyEventUri` (Calendly API removed)
 - **Added** `Engagement.programId` (multi-program from day 1)
 
 **Schema changes from Feb 17 workshop:**
-- **Added** `CoachProgramPanel` join table (many-to-many: coaches ↔ programs). MLP/ALP share 15 total coaches; EF/EL use a separate 16-coach panel. **Pools are separate with no cross-pool matching in MVP.** `@@unique([coachProfileId, programId])` prevents duplicate assignments.
+- **Added** `CoachProgramPanel` join table (many-to-many: coaches ↔ programs). MLP/ALP and EF/EL remain separate pools with no cross-pool matching in MVP. EF/EL coach capacity is locked at 20 per coach. `@@unique([coachProfileId, programId])` prevents duplicate assignments.
 - **Added** `Program.code` (unique program identifier: MLP, ALP, EF, EL) and `Program.track` (moved from Participant — track is a property of the program, not the participant)
 - **Changed** `SessionStatus` enum: was `SCHEDULED | COMPLETED | CANCELED | NO_SHOW` → now `COMPLETED | FORFEITED_CANCELLED | FORFEITED_NOT_USED`
 - **Changed** `SessionNote.topics/outcomes` arrays → `SessionNote.topicDiscussed` (single string from program competency list) + `SessionNote.sessionOutcome` (single string)
-- **Changed** `NudgeLog.nudgeType` enum: was `PARTICIPANT_STALLED | COACH_ATTENTION | OPS_ESCALATION` → now `REMINDER_DAY5 | REMINDER_DAY10 | AUTO_ASSIGN | COACH_ATTENTION | OPS_ESCALATION`
-- **Added** `NudgeLog.emailSent` boolean (tracks whether email was sent vs dashboard-only flag)
-- **Added** `NudgeLog.assignedCoachId` FK (nullable — populated only for `AUTO_ASSIGN` nudge type)
-- **Renamed** `NudgeLog.flaggedAt` → `NudgeLog.sentAt` (nudges now send emails, not just set flags)
+- **Changed** `NudgeLog.nudgeType` enum: now tracks dashboard attention flags for manual FC follow-up (no participant reminder sends in MVP)
+- **Added** `NudgeLog.emailSent` boolean (tracks coach/admin/ops email sends where applicable)
+- **Added** `NudgeLog.assignedCoachId` FK (nullable — reserved for future matching workflows)
+- **Renamed** `NudgeLog.flaggedAt` → `NudgeLog.sentAt` (single timestamp for flags/emails)
 - **Removed** `NudgeLog.acknowledged/acknowledgedAt` (ops workflow doesn't need explicit acknowledgment for MVP)
 - **Removed** `Participant.programTrack` (track is now on `Program.track` — derived via `Engagement.programId`)
-- **Added** `Engagement.autoAssigned` boolean (tracks whether coach was system-assigned at Day 15 vs participant-selected)
-- **Added** `Engagement.cohortStartDate` (Day 0 anchor for nudge timing from cohort schedule)
+- **Added** `Engagement.autoAssigned` boolean (reserved for future use; MVP matching is participant-selected/manual ops flow)
+- **Added** `Engagement.cohortStartDate` (Day 0 anchor from cohort schedule)
 
 ---
 
@@ -292,7 +299,7 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
 - [ ] Coach CSV import script (added 2026-02-13 — critical path for March 2)
   - `scripts/import-coaches.ts` — CLI script (not admin UI) to load real coach data from FC-provided CSV
-  - CSV columns: name, email, bio, photo, specialties (semicolon-separated), languages, location, credentials, videoUrl, meetingBookingUrl, maxEngagements
+  - CSV columns: name, email, bio, photo, specialties (semicolon-separated), languages, location, credentials, meetingBookingUrl, maxEngagements
   - Validates each row against Zod schema, logs errors, skips invalid rows
   - Creates `User` (role=COACH) + `CoachProfile` + `CoachProgramPanel` entries atomically per row
   - `--programs MLP,ALP` or `--programs EF,EL` assigns coaches to specified program panels
@@ -315,14 +322,13 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
   - Throws `InvalidTransitionError` on invalid transition (with current + target status)
 - [ ] Validation schemas (Zod) — `src/lib/validations.ts`
   - `participantEmailSchema` — lowercase, trim, valid format
-  - `otpSchema` — exactly 6 digits
+  - `participantAccessCodeSchema` — code format/length for participant auth
   - `sessionNoteSchema` — topics from `SESSION_TOPICS_BY_PROGRAM[programType]` (MLP has managerial competencies, ALP/EF/EL have executive competencies), outcomes from `SESSION_OUTCOMES`, duration from `DURATION_OPTIONS`
   - `csvRowSchema` — firstName, lastName, email, org, programTrack, programId, cohortCode, cohortStartDate (ISO date)
 - [ ] Email client — `src/lib/email.ts`
   - Resend client wrapper (or AWS SES — **decision needed before Slice 1**)
-  - `sendOTP(email, code)` — participant verification
   - `sendMagicLink(email, url)` — coach/admin auth (via Auth.js)
-  - `sendNudge(type, recipient, engagement)` — automated nudge emails (Day 5, Day 10 reminders, Day 15 auto-assign notification, ops escalation)
+  - `sendOpsAlert(type, recipient, engagement)` — optional ops escalation email when needed
   - **Startup assertion**: crash if production SMTP credentials (Resend/SES/SendGrid) detected in non-production `NODE_ENV`. Prevents `.env` mix-ups from sending real emails. Pattern: `if (NODE_ENV !== 'production' && SMTP_HOST matches /resend|ses|sendgrid/) throw Error`
 - [ ] Error classes — `src/lib/errors.ts`
   - `CoachAtCapacityError`, `CoachInactiveError`, `NoInvitedEngagementError`, `AllSessionsCompletedError`, `InvalidTransitionError`
@@ -342,7 +348,7 @@ NEXTAUTH_SECRET=
 NEXTAUTH_URL=http://localhost:3000
 
 # Participant Auth
-OTP_SECRET= # For HMAC-signing OTP codes
+ACCESS_CODE_SECRET= # For hashing/verifying participant access codes
 
 # Email
 RESEND_API_KEY= # Or AWS SES credentials
@@ -376,43 +382,36 @@ LOG_LEVEL=info
 
 The critical path. 400 participants arrive on this date.
 
-#### 1.1 Participant OTP Auth
+#### 1.1 Participant Access-Code Auth
 
 **Flow:**
 
 ```
-Generic link (franklincovey-coaching.com/participant)
-    → Enter email
-    → POST /api/participant/auth/request-otp { email }
-    → Server: lookup Participant by email (case-insensitive)
-    → Server: generate 6-digit OTP, hash with HMAC, store VerificationCode
-    → Server: send OTP via email (React Email template)
-    → Client: show OTP input form
-    → POST /api/participant/auth/verify-otp { email, code }
-    → Server: verify code, mark used, set httpOnly session cookie
+USPS welcome email
+    → participant gets coach-selector URL + access code
+    → participant opens /participant and enters email + access code
+    → POST /api/participant/auth/verify-access-code { email, code }
+    → server verifies participant + code + expiry window (cohort selection window end)
+    → server sets httpOnly session cookie
     → Redirect: /participant/select-coach (if no coach selected)
               OR /participant/confirmation (if coach already selected — flow ends at selection)
 ```
 
-- [ ] OTP request endpoint — `src/app/api/participant/auth/request-otp/route.ts`
-  - Validate email format (Zod)
-  - Normalize: lowercase, trim
-  - Lookup `Participant` by email
-  - **Security: identical 200 response whether email found or not** (prevent enumeration)
-  - If found: generate 6-digit code, HMAC-hash, create `VerificationCode` (5-min expiry)
-  - Invalidate any existing unused codes for this participant
-  - Send OTP email via `sendOTP()`
-  - Rate limit: 3 requests/email/hour + 10 requests/IP/hour + **100 requests/IP/day** (global brute force protection)
-
-- [ ] OTP verify endpoint — `src/app/api/participant/auth/verify-otp/route.ts`
+- [ ] Access-code verification endpoint — `src/app/api/participant/auth/verify-access-code/route.ts`
   - Validate email + code format
-  - Lookup latest `VerificationCode` for participant
-  - Check: not expired, not used, attempts < 3
-  - Increment `attempts` on each verify attempt (even if wrong code)
-  - On success: mark `used = true`, create session cookie (iron-session, 30-day rolling)
+  - Normalize email (lowercase, trim)
+  - Lookup participant by email
+  - Validate stored hashed code and enforce expiry (`coachSelectionWindowEnd`)
+  - Enforce attempt limits and lockout on repeated failures
+  - On success: create session cookie (iron-session, 30-day rolling)
   - On failure: return generic "Invalid or expired code" (no detail leaking)
-  - After 3 failed attempts: auto-lock for 15 minutes (not permanent ban)
-  - Rate limit: 5 attempts/email/5min
+  - **Security: keep response generic regardless of whether participant email exists**
+
+- [ ] Access-code generation + export utility — `scripts/generate-participant-access-codes.ts`
+  - Generate high-entropy codes for participants before each cohort window
+  - Store hashed codes in `VerificationCode` (or equivalent auth table)
+  - Export USPS-ready file: participant email + code + cohort + selection-window dates
+  - Support one-click code reset/regeneration for FC Ops
 
 - [ ] Participant session middleware — `src/lib/participant-session.ts`
   - `iron-session` with httpOnly, secure, sameSite=lax cookie
@@ -420,24 +419,21 @@ Generic link (franklincovey-coaching.com/participant)
   - `getParticipantSession(req)` — returns session or null
   - `requireParticipantSession(req)` — returns session or 401
 
-- [ ] OTP email template — `src/emails/participant-otp.tsx`
-  - React Email component with FC branding (Cormorant Garamond heading, Inter body)
-  - Subject: "Your FranklinCovey Coaching verification code"
-  - Body: 6-digit code in large monospace font, 5-minute expiry note
-  - "If you didn't request this, ignore this email"
+- [ ] Remove participant OTP email template dependency from MVP
+  - Participant emails are USPS-owned in MVP
+  - CIL system sends coach/admin magic-link emails only
 
 - [ ] Participant auth page — Update `src/app/participant/page.tsx`
   - Email input form (currently landing page — convert to auth entry point)
-  - OTP verification form (6-digit input, auto-submit on complete)
-  - Loading states, error messages, "Resend code" button (30s cooldown)
+  - Access-code verification form (email + code fields)
+  - Loading states, generic error messages, lockout message
   - Redirect logic based on engagement status
 
 **SpecFlow resolutions baked in:**
 - Email not found → identical response (issue #6)
-- OTP brute force → global IP rate limit + per-email lockout (issue #16)
-- Expired OTP → "Resend code" button (issue #7)
-- Concurrent OTP requests → invalidate previous codes (issue #9)
-- Email delivery failure → identical "check your email" response + logging (issue #12)
+- Access-code brute force → global IP rate limit + per-email lockout (issue #16)
+- Expired access code → generic "Invalid or expired code" + FC Ops reset path
+- USPS delivery delay/error → participant follows USPS support path; system does not send participant mail in MVP
 - Returning participant → check session cookie first, skip auth (issue #3)
 
 #### 1.2 Coach Selection API
@@ -450,7 +446,7 @@ Generic link (franklincovey-coaching.com/participant)
   - Capacity count: `SELECT COUNT(*) FROM Engagement WHERE coachId = ? AND status IN ('COACH_SELECTED', 'IN_PROGRESS', 'ON_HOLD')`
   - ~~Apply filters (location, language, specialty, credential)~~ — **REMOVED** per Feb 17 workshop. Bio + video drive selection, not filters.
   - Capacity-weighted randomization: coaches with more remaining capacity are weighted higher (`Math.random()` weighted by `maxEngagements - activeCount`)
-  - Return first 3 coaches with profile data (bio, photo, specialties, languages, location, credentials, videoUrl)
+  - Return first 3 coaches with profile data (bio, photo, specialties, languages, location, credentials)
   - **Do NOT return `meetingBookingUrl`** — only exposed after coach is selected (prevent pre-selection booking)
   - Cache: 60s SWR (stale-while-revalidate)
 
@@ -522,7 +518,7 @@ await prisma.$transaction(async (tx) => {
 
 - [ ] Update coach selection confirmation page — `src/app/participant/confirmation/page.tsx`
   - **Participant flow ENDS at selection** (Feb 17 workshop decision). No engagement page, no session tracking for participants.
-  - Confirmation page shows: selected coach name, bio, `meetingBookingUrl` as "Book Your Session" button (opens Calendly in new tab)
+  - Confirmation page shows: selected coach name, bio, and `meetingBookingUrl` as "Book Your Session" button when available (tool-agnostic link, e.g., Calendly/Acuity). If missing, show coach-outreach fallback message.
   - "You're all set" messaging. Participant never returns to platform.
   - ~~`/participant/engagement` page~~ — **REMOVED** from participant flow. Participants don't track sessions; coaches do.
 
@@ -540,20 +536,20 @@ await prisma.$transaction(async (tx) => {
 - [ ] Deploy to Vercel staging (Supabase env)
 - [ ] Configure email provider (Resend / SES — **decision needed**; if Resend, use paid tier for launch window to avoid free-tier daily cap throttling)
 - [ ] Set environment variables in production
-- [ ] Test OTP flow end-to-end on staging
+- [ ] Test participant access-code flow end-to-end on staging
 - [ ] Test coach selection end-to-end on staging
 - [ ] Load test: ~60 concurrent participants hitting coach selector (first cohort; 400 total over 6 months)
 
 **Slice 1 Acceptance Criteria:**
-- [ ] Participant can visit generic link, enter email, receive OTP, verify, and land on coach selector
+- [ ] Participant can visit coach-selector link, enter email + access code, verify, and land on coach selector
 - [ ] Coach selector shows 3 capacity-weighted randomized coaches (no filters)
 - [ ] Remix shows 3 different coaches (max 1 remix, one-way door with confirmation warning)
 - [ ] Coach selection creates engagement with `COACH_SELECTED` status
-- [ ] **Participant flow ends at selection**: confirmation page + Calendly link. No engagement page.
-- [ ] Capacity is enforced: full coach disappears from pool (15 per coach fixed)
+- [ ] **Participant flow ends at selection**: confirmation page + scheduling link/fallback message. No engagement page.
+- [ ] Capacity is enforced with configured per-coach limits (EF/EL locked at 20; count active statuses only)
 - [ ] Zero coaches scenario shows appropriate message + notifies ops
-- [ ] Returning participant with valid session skips OTP → goes to confirmation (if coach already selected)
-- [ ] OTP brute force is rate-limited (3 attempts/email, 10/IP/hour)
+- [ ] Returning participant with valid session skips auth → goes to confirmation (if coach already selected)
+- [ ] Access-code brute force is rate-limited (attempt limit + lockout + IP throttling)
 - [ ] All API responses identical for valid/invalid emails (no enumeration)
 
 ---
@@ -585,7 +581,7 @@ await prisma.$transaction(async (tx) => {
   - Protect `/admin/*` routes: require authenticated User with `role = ADMIN`
   - Check 30-minute idle timeout on each request (coach/admin only — participants get 30-day rolling session)
   - Redirect to `/auth/signin` if unauthenticated or expired (coach/admin)
-  - Redirect to `/participant` if participant session expired (re-enter OTP)
+  - Redirect to `/participant` if participant session expired (re-enter access code)
 
 - [ ] Sign-in page — `src/app/auth/signin/page.tsx`
   - Email input with "Send magic link" button
@@ -773,60 +769,36 @@ await prisma.$transaction(async (tx) => {
   - **Phase A**: Atomic transaction — create all `Participant` + `Engagement` records
     - Engagement created with `status: INVITED`, `coachId: null`, `totalSessions` from `programTrack`, `cohortStartDate` from CSV
     - Transaction timeout: 30s (fail-safe for large imports)
-  - **Phase B**: Email batch — send invitation emails (generic link + instructions)
-    - Queued, not blocking (admin sees "Import complete, sending invitations...")
-    - Failed emails tracked in response
-    - Admin can retry failed emails via `POST /api/admin/import/retry-emails { participantIds }`
-  - Return: `{ created: number, skipped: number, emailsSent: number, emailsFailed: string[] }`
+  - **Phase B**: Access-code export package — generate USPS-ready communication payload
+    - Build export with participant email + cohort + access code + selection window
+    - No participant email send from system in MVP
+    - Mark package timestamp for ops auditability
+  - Return: `{ created: number, skipped: number, exportGenerated: boolean, exportPath?: string }`
 
-#### 3.3 Nudge System (Email Reminders + Dashboard Flags + Auto-Assign)
+#### 3.3 Needs-Attention Workflow (Manual Reminders in MVP)
 
-> **Updated 2026-02-17**: Re-scoped from dashboard-only flags to email nudges + auto-assignment per Feb 17 workshop. FC explicitly wants automated participant re-engagement. The "blind spot" identified in 2026-02-13 (participants who never log in can't see dashboard flags) is now addressed by email nudges. Email infrastructure already exists for OTP auth — incremental cost of 2-3 templates is low.
->
-> **Nudge timing anchor (2026-02-18):** Day 0 is the participant's **cohort start date**. Day 5/10 reminders and Day 15 auto-assignment are measured from cohort start date, not from invitation send date or first login.
+> **Decision lock (2026-02-24):** participant reminders are manual in MVP (USPS + FC Ops). System does not send participant reminder emails and does not auto-assign coaches in MVP.
 
-- [ ] Nudge evaluation + email sending endpoint — `src/app/api/cron/nudges/route.ts`
+- [ ] Needs-attention flag endpoint — `src/app/api/cron/nudges/route.ts`
   - `POST /api/cron/nudges` with `Authorization: Bearer {CRON_SECRET}`
-  - **Idempotency guard**: timestamp check prevents redundant runs
+  - Runs idempotent checks and creates/updates dashboard flags only
+  - No participant reminders, no participant assignment side effects
 
-```typescript
-// Simple timestamp guard — cron runs once daily, no concurrent execution risk
-const lastNudge = await prisma.nudgeLog.findFirst({ orderBy: { sentAt: 'desc' } })
-if (lastNudge && Date.now() - lastNudge.sentAt.getTime() < 3600_000) {
-  return NextResponse.json({ skipped: true, reason: 'Ran less than 1 hour ago' })
-}
-```
-
-  - Query overdue engagements and **send emails + set dashboard flags**:
-    - **Day 5 — `PARTICIPANT_REMINDER_1`**: status = `INVITED`, no coach selected in 5+ days from cohort start date. Send gentle reminder email to participant. Set dashboard flag.
-    - **Day 10 — `PARTICIPANT_REMINDER_2`**: status = `INVITED`, no coach selected in 10+ days from cohort start date, `REMINDER_1` already sent. Send firmer reminder email. Set dashboard flag.
-    - **Day 15 — `AUTO_ASSIGN`**: status = `INVITED`, no coach selected in 15+ days from cohort start date, `REMINDER_2` already sent. **System auto-assigns coach** (capacity-weighted selection) + sends notification email to participant with assigned coach info + Calendly link. Set dashboard flag. Transitions engagement to `COACH_SELECTED`.
-    - **`COACH_ATTENTION`**: status = `IN_PROGRESS`, no session logged in 14+ days. Dashboard flag only (no email to participant — coach handles this).
-    - **`OPS_ESCALATION`**: any engagement stalled 21+ days. Dashboard flag + email to ops (Andrea/Kari).
-    - **No date-based session status mutation**: cron flags overdue work for ops visibility but does not auto-mark sessions `FORFEITED_*` based on cohort window dates.
-  - **Per-nudge-type cooldown** — each type checked independently
-  - Log each nudge to `NudgeLog` table: type, email sent (boolean), dashboard flag set, auto-assignment details
-  - Return: `{ processed: number, emailsSent: number, flagsSet: number, autoAssigned: number, errors: number }`
-
-- [ ] Auto-assignment logic — `src/lib/auto-assign.ts`
-  - Called by nudge cron at Day 15 for `INVITED` engagements
-  - Selects coach via capacity-weighted randomization (same logic as participant coach selector)
-  - Scoped to same program's coach panel (MLP/ALP pool or EF/EL pool; no cross-pool assignment)
-  - Creates engagement with `COACH_SELECTED` status, sets `coachSelectedAt`
-  - Sends notification email to participant: "You've been matched with [coach name]" + coach bio + Calendly link
-  - Sends notification email to coach: "New participant auto-assigned: [participant name]"
-
-- [ ] Nudge email templates (restored — emails back in scope per Feb 17 workshop):
-  - `src/emails/participant-reminder-day5.tsx` — gentle: "Don't forget to select your coach"
-  - `src/emails/participant-reminder-day10.tsx` — firmer: "Your coaching session is waiting — select a coach soon"
-  - `src/emails/participant-auto-assigned.tsx` — "You've been matched with [coach name]" + coach bio + Calendly link
-  - `src/emails/coach-auto-assigned.tsx` — "New participant assigned: [participant name]"
-  - `src/emails/ops-escalation.tsx` — "N engagements critically stalled (21+ days)"
+- [ ] Flag rules for MVP:
+  - **ALP/MLP selection-window attention**: participant remains `INVITED` at selection-window close
+  - **ALP/MLP use-it-or-lose-it attention**: Session 1/2 not scheduled by cohort deadline (dashboard flag only; no auto-forfeit mutation)
+  - **COACH_ATTENTION**: `IN_PROGRESS` engagement with stale session logging
+  - **OPS_ESCALATION**: engagement exceeds defined attention threshold without owner action
+  - **EF/EL exception**: do not apply ALP/MLP deadline-based use-it-or-lose-it flag logic to EF/EL
 
 - [ ] Dashboard "Needs Attention" integration — wire into admin KPI endpoint (3.1)
-  - `NudgeLog` flags surface in the Ops dashboard "Needs Attention" tab (default view, top of page)
-  - Grouped by type: "N participants haven't selected a coach", "N auto-assigned at Day 15", "N engagements have no recent session (14+ days)", "N engagements critically stalled (21+ days)"
-  - Coach dashboard also shows a "Needs Attention" indicator for their own stalled engagements
+  - `NudgeLog` (or equivalent flag table) surfaces in Ops dashboard "Needs Attention" tab
+  - Group by actionable categories (selection overdue, session status missing, stalled coach updates, escalations)
+  - Coach dashboard shows a "Needs Attention" indicator for that coach's engagements
+
+- [ ] Optional ops alert emails
+  - System may email FC Ops for escalation-only events (if enabled)
+  - Participant reminder sends remain outside system scope in MVP
 
 #### 3.4 CSV Export + Printable Reports
 
@@ -882,11 +854,8 @@ if (lastNudge && Date.now() - lastNudge.sentAt.getTime() < 3600_000) {
 - [ ] "Needs Attention" as default dashboard view (top of page)
 - [ ] Engagement table paginates, sorts, and filters correctly (by status + coach for MVP)
 - [ ] Executive summary shows aggregated metrics (completion rate, coach utilization)
-- [ ] Bulk import validates CSV, creates participants + engagements atomically, sends invitation emails
-- [ ] Failed import emails can be retried
-- [ ] Nudge cron sends Day 5 + Day 10 reminder emails to stalled participants
-- [ ] Day 15 auto-assignment: system assigns coach + notifies participant and coach via email
-- [ ] Dashboard flags set for all nudge types (stalled, attention, escalation, auto-assigned)
+- [ ] Bulk import validates CSV, creates participants + engagements atomically, and generates access-code export package for USPS communications
+- [ ] Dashboard flags set for all configured needs-attention types (selection overdue, attention, escalation)
 - [ ] "Needs Attention" tab in ops dashboard shows flagged engagements grouped by type
 - [ ] Coach dashboard shows "Needs Attention" indicator for their own stalled engagements
 - [ ] Concurrent cron runs are prevented via timestamp guard
@@ -898,9 +867,9 @@ if (lastNudge && Date.now() - lastNudge.sentAt.getTime() < 3600_000) {
 
 ## Alternative Approaches Considered
 
-### 1. HMAC Token Auth (PRD Original)
-- Per-participant unique URL with signed token
-- **Rejected**: Distribution of 400 unique links is operationally complex. OTP with generic link is simpler for admins and participants.
+### 1. System-Sent OTP Auth
+- Generic participant URL + system-sent OTP email
+- **Rejected for MVP**: Participant communications are USPS-owned; participant auth uses USPS-delivered access codes instead.
 
 ### 2. Backend-First Foundation
 - Build entire backend before wiring frontend
@@ -920,17 +889,17 @@ if (lastNudge && Date.now() - lastNudge.sentAt.getTime() < 3600_000) {
 
 ### Functional Requirements
 
-- [ ] ~60 participants (first cohort) can authenticate via generic link + OTP
-- [ ] Participants see 3 capacity-weighted randomized coaches (no filters), select one, receive Calendly link
+- [ ] ~60 participants (first cohort) can authenticate via USPS-delivered coach-selector link + email + access code
+- [ ] Participants see 3 capacity-weighted randomized coaches (no filters), select one, and receive scheduling link/fallback message
 - [ ] Coaches can sign in via magic link and log structured sessions
 - [ ] Session logging enforces program track limits (2 or 5 sessions)
 - [ ] Admins can view KPIs, manage engagements, import participants, and manage coaches
-- [ ] Automated nudge emails (Day 5, Day 10 reminders) + Day 15 auto-assignment, surfaced in dashboard "Needs Attention" tab
+- [ ] Participant reminders are manual by USPS/FC Ops; system provides "Needs Attention" visibility and ops escalation support
 - [ ] CSV export works with all filters applied
 
 ### Non-Functional Requirements
 
-- [ ] OTP brute force protected (rate limiting + lockout)
+- [ ] Access-code brute force protected (rate limiting + lockout)
 - [ ] Coach/admin sessions timeout after 30 minutes idle
 - [ ] Private notes excluded from all admin-facing API responses
 - [ ] All database writes use transactions (no partial state)
@@ -952,7 +921,7 @@ if (lastNudge && Date.now() - lastNudge.sentAt.getTime() < 3600_000) {
 Minimal but targeted — cover the flows where bugs cause the most damage:
 
 **Slice 1 (must-have before March 2):**
-- [ ] OTP request/verify API routes — unit tests covering: valid email, unknown email (identical response), expired code, 3-attempt lockout, rate limiting
+- [ ] Access-code verify API routes — unit tests covering: valid email/code, unknown email (identical response), expired code, lockout, rate limiting
 - [ ] Coach selection API — unit tests covering: capacity enforcement, race condition (two concurrent selects for last slot), inactive coach rejection, filter combinations
 - [ ] Engagement state machine — unit tests for all valid transitions + rejection of invalid transitions
 
@@ -960,8 +929,8 @@ Minimal but targeted — cover the flows where bugs cause the most damage:
 - [ ] Session logging — unit tests for: session number auto-increment, totalSessions limit, draft→submit transition, private notes exclusion from admin responses
 
 **Slice 3:**
-- [ ] Bulk import — unit test for: duplicate email handling, Phase A rollback on failure, CSV validation edge cases
-- [ ] Nudge flag cron — unit test for: cooldown enforcement, advisory lock idempotency, correct flag types set for overdue thresholds (7/14/21 days)
+- [ ] Bulk import — unit test for: duplicate email handling, Phase A rollback on failure, CSV validation edge cases, access-code export generation
+- [ ] Needs-attention cron — unit test for: cooldown enforcement, idempotency, correct flag types set for ALP/MLP deadlines and EF/EL exceptions
 
 **Tooling:** Vitest (already compatible with Next.js 15) for unit tests.
 
@@ -973,8 +942,8 @@ Minimal but targeted — cover the flows where bugs cause the most damage:
 
 **Test Helper Endpoints** (guarded by `NODE_ENV !== 'production'`):
 
-- [ ] `GET /api/test/latest-otp?email=` — returns latest unhashed OTP code for email — `src/app/api/test/latest-otp/route.ts`
-  - Returns `{ code: "123456", expiresAt: "...", used: false }` or 404 if none exists
+- [ ] `GET /api/test/latest-access-code?email=` — returns current test access code metadata for a participant — `src/app/api/test/latest-access-code/route.ts`
+  - Returns code metadata or 404 if none exists
   - **Production guard**: returns 404 in production, enforced by middleware + env check
 - [ ] `GET /api/test/latest-magic-link?email=` — returns latest magic link URL — `src/app/api/test/latest-magic-link/route.ts`
   - Returns `{ url: "https://...", expiresAt: "..." }` or 404
@@ -1005,16 +974,16 @@ Minimal but targeted — cover the flows where bugs cause the most damage:
 
 ---
 
-**Suite 1: Participant OTP Auth** (Slice 1 — run before March 2)
+**Suite 1: Participant Access-Code Auth** (Slice 1 — run before March 2)
 
 | # | Scenario | Steps | Pass Criteria |
 |---|----------|-------|---------------|
-| 1.1 | Happy path OTP | 1. Navigate to `/participant` 2. Enter `alice@test.franklincovey.com` 3. Submit email form 4. Call `/api/test/latest-otp?email=alice@test.franklincovey.com` 5. Enter OTP code 6. Wait for redirect | Redirects to `/participant/select-coach`. Session cookie is set. Page shows coach cards. |
-| 1.2 | Unknown email (no enumeration) | 1. Navigate to `/participant` 2. Enter `unknown@test.franklincovey.com` 3. Submit | Same "Check your email" message as 1.1. No error, no difference in response time (±500ms). |
-| 1.3 | Expired OTP | 1. Request OTP for `alice@...` 2. Wait 6 minutes (or mock via test endpoint) 3. Enter code | "Invalid or expired code" message. "Resend code" button visible. |
-| 1.4 | Wrong OTP × 3 (lockout) | 1. Request OTP 2. Enter `000000` three times | After 3rd attempt: "Too many attempts. Try again in 15 minutes." OTP input disabled. |
-| 1.5 | Resend OTP | 1. Request OTP 2. Click "Resend code" (after 30s cooldown) 3. Verify new OTP via test endpoint 4. Enter new code | New code works. Old code is invalidated (verify via test endpoint: `used: true`). |
-| 1.6 | Returning participant (session valid) | 1. Complete 1.1 (get session cookie) 2. Close tab 3. Navigate to `/participant` again | Skips email/OTP entry. Redirects directly to `/participant/select-coach` or `/participant/engagement` based on engagement status. |
+| 1.1 | Happy path access code | 1. Navigate to `/participant` 2. Enter `alice@test.franklincovey.com` 3. Enter valid access code from test fixture 4. Submit | Redirects to `/participant/select-coach`. Session cookie is set. Page shows coach cards. |
+| 1.2 | Unknown email (no enumeration) | 1. Navigate to `/participant` 2. Enter `unknown@test.franklincovey.com` + any code 3. Submit | Generic invalid/expired response. No detail leak, no timing side-channel > ±500ms. |
+| 1.3 | Expired code | 1. Use expired access code for `alice@...` 2. Submit | "Invalid or expired code" message appears. |
+| 1.4 | Wrong code × 3 (lockout) | 1. Enter invalid code three times | After 3rd attempt: lockout message shown; attempts blocked for cooldown interval. |
+| 1.5 | Ops reset code | 1. Invalidate participant code 2. Generate reset code via ops/test utility 3. Retry login with new code | New code works and old code is rejected. |
+| 1.6 | Returning participant (session valid) | 1. Complete 1.1 (get session cookie) 2. Close tab 3. Navigate to `/participant` again | Skips auth form. Redirects directly to `/participant/select-coach` or `/participant/confirmation` based on engagement state. |
 | 1.7 | Invalid email format | 1. Enter `not-an-email` 2. Submit | Client-side validation prevents submission. No API call made (verify via network tab or console). |
 
 **Recording**: GIF of scenarios 1.1 and 1.4 for stakeholder review.
@@ -1026,13 +995,13 @@ Minimal but targeted — cover the flows where bugs cause the most damage:
 | # | Scenario | Steps | Pass Criteria |
 |---|----------|-------|---------------|
 | 2.1 | View coaches | 1. Auth as `alice@test...` (Suite 1.1) 2. Land on `/participant/select-coach` | Exactly 3 coach cards displayed. Each card shows: name, bio, photo, specialties, languages, location, credentials. `meetingBookingUrl` NOT visible (verify DOM). |
-| 2.2 | Filter coaches | 1. Select a language filter 2. Observe coach cards | Cards update. All displayed coaches match filter. Loading skeleton shown during fetch. |
+| 2.2 | No participant filters in MVP | 1. Load `/participant/select-coach` 2. Inspect UI controls | No participant-facing filter controls are shown in MVP. |
 | 2.3 | Remix coaches | 1. Click "See Different Coaches" 2. Observe new coaches | 3 different coach cards appear (none from previous set). "See Different Coaches" button changes to disabled or shows "No more remixes." |
 | 2.4 | Second remix blocked | 1. After 2.3, try remix again | Button disabled or returns error. Text: "You've already refreshed your coach options." |
-| 2.5 | Select coach (happy path) | 1. Click "Select Coach" on a coach card 2. Confirm selection (if confirmation dialog exists) | Redirects to `/participant/engagement`. Page shows selected coach's name, bio, `meetingBookingUrl` as "Book Next Session" button. Verify engagement status via `/api/test/engagement`: `status = COACH_SELECTED`. |
+| 2.5 | Select coach (happy path) | 1. Click "Select Coach" on a coach card 2. Confirm selection (if confirmation dialog exists) | Redirects to `/participant/confirmation`. Page shows selected coach details + booking link/fallback message. Verify engagement status via `/api/test/engagement`: `status = COACH_SELECTED`. |
 | 2.6 | Coach at capacity | 1. Auth as `alice@test...` 2. Select `coach2@test...` (full capacity) | Error message: "This coach is no longer available." Coach card refreshes or disappears. Other coaches still selectable. |
 | 2.7 | Zero coaches available | 1. Set all test coaches to inactive/full (via test endpoint or pre-configured seed state) 2. Load coach selector | Message: "No coaches are currently available. We'll notify the team." Verify ops notification is created (check via test endpoint or admin dashboard). |
-| 2.8 | Already selected (re-visit) | 1. Auth as `bob@test...` (already has coach) 2. Navigate to `/participant/select-coach` | Redirects to `/participant/engagement` (not back to selection). |
+| 2.8 | Already selected (re-visit) | 1. Auth as `bob@test...` (already has coach) 2. Navigate to `/participant/select-coach` | Redirects to `/participant/confirmation` (not back to selection). |
 
 **Recording**: GIF of scenario 2.5 (full selection flow) and 2.6 (capacity error).
 
@@ -1083,7 +1052,7 @@ Minimal but targeted — cover the flows where bugs cause the most damage:
 | 5.3 | Unauthorized access — admin routes | 1. Auth as coach 2. Navigate to `/admin/dashboard` | 403 or redirect to `/auth/signin`. Coach cannot access admin routes. |
 | 5.4 | Role boundary — coach accessing admin API | 1. Auth as coach 2. Fetch `/api/admin/dashboard/kpis` | Returns 403 Forbidden. |
 | 5.5 | Health endpoint | 1. Fetch `/api/health` | Returns `{ status: "ok" }` with 200. Database connectivity verified. |
-| 5.6 | Rate limiting — OTP brute force | 1. Send 11 OTP requests for same IP in 1 hour | 11th request returns 429 Too Many Requests. |
+| 5.6 | Rate limiting — access-code brute force | 1. Submit repeated invalid access-code attempts from same IP | Requests are throttled and lockout is enforced. |
 
 ---
 
@@ -1123,7 +1092,7 @@ Suites are designed to run **in order** — each suite builds on state created b
 
 #### Implementation Checklist
 
-- [ ] Create `/api/test/latest-otp` endpoint — `src/app/api/test/latest-otp/route.ts`
+- [ ] Create `/api/test/latest-access-code` endpoint — `src/app/api/test/latest-access-code/route.ts`
 - [ ] Create `/api/test/latest-magic-link` endpoint — `src/app/api/test/latest-magic-link/route.ts`
 - [ ] Create `/api/test/reset` endpoint — `src/app/api/test/reset/route.ts`
 - [ ] Create `/api/test/engagement` endpoint — `src/app/api/test/engagement/route.ts`
@@ -1139,7 +1108,7 @@ Suites are designed to run **in order** — each suite builds on state created b
 | Metric | Target | Measurement |
 |--------|--------|-------------|
 | Coach selector uptime on March 2 | 99.9% | Health endpoint monitoring |
-| Participant auth success rate | >95% | OTP verify success / total attempts |
+| Participant auth success rate | >95% | Access-code verify success / total attempts |
 | Time to select coach | <3 minutes | `coachSelectedAt` - session start |
 | Session logging completion | >90% of sessions logged within 48h | `Session.completedAt` vs `occurredAt` |
 | Nudge flag coverage | 100% overdue engagements flagged within 24h | Cron run logs + NudgeLog count vs overdue query |
@@ -1153,20 +1122,20 @@ Suites are designed to run **in order** — each suite builds on state created b
 
 | Decision | Options | Impact |
 |----------|---------|--------|
-| **Email provider** | Resend (recommend paid tier at launch) vs AWS SES | OTP + magic link + nudge emails all depend on this; free-tier daily caps may throttle launch-day traffic |
+| **Email provider** | Resend (recommend paid tier at launch) vs AWS SES | Coach/admin magic-link emails and ops escalations depend on this; free-tier daily caps may throttle busy days |
 | **Cloud provider** | **Resolved: Vercel + Supabase (confirmed 2026-02-18)** | MVP hosting and database target locked; remove infra ambiguity |
 | **Domain / DNS** | Who manages? What subdomain? | Deployment URL, email sender domain |
-| **Real coach data entry** | Admin CSV upload vs manual entry vs seed script | 35 coaches need real bios, photos, booking URLs, and video URLs before March 2. Seed script only covers dev data. Options: (a) FC provides a CSV and we import via a one-off script, (b) build a minimal coach profile edit form in admin portal (pulls Slice 3 work forward), or (c) Kari/Andrea enter data directly in the database via a simple admin form. **Recommend option (a)** — CSV from FC ops, imported with a script. |
+| **Real coach data entry** | Admin CSV upload vs manual entry vs seed script | 35 coaches need real bios, photos, and booking URLs before March 2 (video is de-scoped for MVP). Seed script only covers dev data. Options: (a) FC provides a CSV and we import via a one-off script, (b) build a minimal coach profile edit form in admin portal (pulls Slice 3 work forward), or (c) Kari/Andrea enter data directly in the database via a simple admin form. **Recommend option (a)** — CSV from FC ops, imported with a script. |
 | **Blocking decision turnaround** | **Resolved: FC 24-hour owner through Mar 16 (confirmed 2026-02-18)** | Protects critical path when implementation questions arise |
 | **Contract status** | **Resolved: signed (confirmed 2026-02-18)** | Removes pre-launch legal/commercial execution risk |
-| **Participant counts by cohort** | Pending clarification from Kari/FC | Required to validate capacity assumptions and overlap load with panel split fixed at 15 (MLP/ALP) and 16 (EF/EL) |
+| **Participant counts by cohort** | Baseline confirmed at 400; per-cohort allocations pending final file lock | Required to validate capacity assumptions and overlap load (EF/EL capacity locked at 20) |
 
 ### Must Resolve Before Slice 3 (by March 9)
 
 | Decision | Options | Impact |
 |----------|---------|--------|
 | **Session window reporting rule** | Display-only deadline tracking vs hide from MVP | Affects dashboard messaging only; does not trigger automatic session status updates |
-| **Nudge recipients** | Hardcoded vs configurable | Ops escalation email targets |
+| **Manual reminder tracking fields** | Track in system vs track externally | Ops execution transparency across cohorts |
 | **Executive summary scope** | What metrics matter to Kari vs Greg? | Dashboard content |
 | **Import duplicate handling** | Skip existing vs error on duplicate | CSV import behavior |
 
@@ -1176,11 +1145,11 @@ Suites are designed to run **in order** — each suite builds on state created b
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
-| Email provider DPA not signed by March 2 | Medium | High — no OTP, no auth | Start with Resend trial, fallback to AWS SES (no DPA needed for internal tool) |
-| Resend free-tier daily cap throttles launch-day emails | Medium | High — OTP/magic link delays during spikes | Use Resend paid tier for launch window or SES fallback; monitor send rate on first cohort days |
+| Email provider DPA not signed by March 2 | Medium | Medium — coach/admin auth delays | Start with Resend trial, fallback to AWS SES |
+| Resend free-tier daily cap throttles launch-day emails | Medium | Medium — magic-link delays during spikes | Use Resend paid tier for launch window or SES fallback; monitor send rate on high-volume days |
 | ~60 first-cohort users overwhelm coach selector | Low | High — launch day failure | Load test before March 2, validate with first-cohort concurrency assumptions |
 | Coach capacity race condition | Medium | Medium — two participants get same coach | Serialized transaction with capacity recheck (implemented above) |
-| OTP email deliverability issues | Medium | High — participants can't log in | Monitor Resend deliverability, add "Resend code" UX, ops has manual workaround |
+| USPS participant email execution issues | Medium | High — participants may not have access codes on time | Provide USPS-ready export early, include checklist + send-date tracking, and define exception-handling path with FC Ops |
 | Schema migration needed mid-slice | Low | Medium — deployment complexity | Ship full schema in Phase 0, even for models used in later slices |
 | Feb 18 workshop reveals new requirements | High | Medium — scope creep | Brainstorm decisions are firm; new requirements go to post-launch backlog |
 

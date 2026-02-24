@@ -108,6 +108,7 @@ Icons are inline SVGs throughout — no icon library is imported at the componen
 - `src/lib/config.ts` — Domain constants: `SESSION_TOPICS`, `SESSION_OUTCOMES`, `DURATION_OPTIONS`, `NUDGE_THRESHOLDS`, `PROGRAM_TRACK_SESSIONS`. These match the PRD spec.
 - `src/app/globals.css` — CSS variables (HSL values without `hsl()` wrapper), custom utility classes, status colors.
 - `docs/solutions/` — Documented solutions knowledge base. **Check here first** before investigating issues — past root causes, fixes, and prevention strategies are indexed by category and tags. See `docs/solutions/README.md` for the full index.
+- `docs/research/participant-workflow-research.md` — Complete participant flow reference: all 4 pages in depth, API contract, business rules, session state, error codes, edge cases, and design decisions log.
 
 ## Demo Readiness
 

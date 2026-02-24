@@ -13,10 +13,20 @@
   - MLP/ALP: 15 coaches total
   - EF/EL: 16 coaches total
   - No cross-pool matching in MVP
+- **Coach capacity policy:** EF/EL capacity is confirmed at **20 participants per coach** (aligned with MLP/ALP capacity target).
+- **Planning baseline:** MVP planning baseline is confirmed at **400 total participants** across cohorts.
 - **Participant flow model:** One visit, one coach decision, then done (no participant dashboard).
+- **Participant access boundary:** USPS sends participant access email with coach-selector link and access code; CIL system does **not** send participant emails in MVP.
 - **Coach/admin access model:** shared `/auth/signin` entry; request a fresh magic link when session expires (do not reuse old email links).
 - **Nudge anchor:** Day 0 = cohort start date.
 - **Session outcomes are coach-entered only:** no automatic Session 1 lock/expiry in MVP.
+- **Coach booking links are tool-agnostic:** direct booking URLs can be Calendly, Acuity, or equivalent.
+- **Coach visibility + fallback rule:** coaches without an active booking URL may still be selected in MVP. If selected coach has no booking URL, confirmation shows "Your coach will reach out within 2 business days" (no booking CTA), coach is expected to follow up, and delayed follow-up should surface in "Needs Attention".
+- **Coach bio video in selector:** de-scoped from MVP.
+- **ALP-138 Session 2 start date:** Aug 7, 2026 (confirmed).
+- **EF/EL 5-session workflow:** same logging model as MLP/ALP; only differences are 5 sessions and flexible pacing.
+- **EF/EL reporting window anchor:** coach-selection-window start + 9 months.
+- **Use-it-or-lose-it model:** manual only for ALP/MLP; no automatic lock/forfeit. Overdue Session 1/2 items surface as "Needs Attention" for ops follow-up. EF/EL does not use this deadline model in MVP.
 - **Environment isolation:** separate staging and production projects for Vercel and Supabase (no shared secrets/keys/DB URLs).
 - **Staging data policy:** sanitized-only data in staging; no raw production participant/coach PII imports.
 - **Staging email safety:** `EMAIL_MODE=sandbox` + hard allowlist; block non-allowlisted recipients.
@@ -29,10 +39,10 @@
 ## 2) Frozen User Flows (MVP)
 
 ### Participant Flow (Slice 1)
-1. Participant enters email -> receives OTP.  
-2. Participant verifies OTP -> sees 3 coach cards.  
+1. USPS sends participant access email with coach-selector link + participant access code.
+2. Participant enters email + access code -> sees 3 coach cards.
 3. Participant can remix once.  
-4. Participant selects coach -> confirmation page with Calendly link.  
+4. Participant selects coach -> confirmation page with coach booking link (Calendly/Acuity/etc.) when available; otherwise show coach-outreach fallback message.
 5. Flow ends. No return dashboard in MVP.
 
 ### Coach Flow (Slice 2)
@@ -45,7 +55,7 @@
 ### Admin Flow (Slice 3)
 1. Ops uploads participant CSV (validate first, then execute import).  
 2. Dashboard tracks enrollment, progress, forfeiture, needs-attention.  
-3. Nudge cron sends Day 5/10 reminders and Day 15 auto-assign (from cohort start date).  
+3. Reminder ownership model is manual in MVP: USPS/FC Ops send participant reminders; system-owned behavior is dashboard flagging + coach/admin magic-link emails only.  
 4. Admin exports CSV / print-friendly reports.
 5. Returning admin uses `/auth/signin` to request a new magic link after idle timeout.
 
@@ -55,8 +65,8 @@
 
 These endpoints and payload shapes are the implementation baseline:
 
-- `POST /api/participant/auth/request-otp`
-- `POST /api/participant/auth/verify-otp`
+- `POST /api/participant/auth/request-access-code`
+- `POST /api/participant/auth/verify-access-code`
 - `GET /api/participant/coaches`
 - `POST /api/participant/coaches/remix`
 - `POST /api/participant/coaches/select`
@@ -81,21 +91,21 @@ These endpoints and payload shapes are the implementation baseline:
   - `FORFEITED_CANCELLED` -> Session forfeited - canceled within 24 hours
   - `FORFEITED_NOT_USED` -> Session forfeited - not taken advantage of
 - **Capacity counting (confirmed):** include `COACH_SELECTED`, `IN_PROGRESS`, `ON_HOLD`; exclude `INVITED`, `COMPLETED`, `CANCELED`
-- **Nudge thresholds:** Day 5 reminder, Day 10 reminder, Day 15 auto-assign
+- **Nudge thresholds:** participant reminder sends are manual in MVP (USPS/FC Ops). System-owned behavior is dashboard flagging and coach/admin access emails only.
 - **Timing basis:** all day thresholds measured from `cohortStartDate`
 
 ---
 
 ## 5) Open Items (Non-blocking or P1 unless noted)
 
-1. **Participant counts per cohort (capacity validation risk).**
-2. **EF/EL window-close date** (reporting/calendar clarity).
-3. **Session window reporting rule** (show as reporting-only vs hide in MVP).
-4. **Nudge recipient setup** (hardcoded vs configurable).
-5. **Executive summary KPI set** (Kari/Greg dashboard preferences).
-6. **CSV duplicate handling** (skip/report vs fail import).
-7. **Coach access timing** (all 31 at once vs phased enablement; training lead time).
-8. **ALP-138 Session 2 date correction** (schedule consistency).
+1. **Participant counts per cohort (capacity validation risk)** — 400 total baseline is confirmed; per-cohort allocations still need final lock.
+2. **Coach-selection window file maintenance** — confirm update process/owner for timeline changes after launch.
+3. **Participant access-code reset workflow** — confirm FC Ops owner + SLA for reset requests.
+4. **Session window reporting rule** (show as reporting-only vs hide in MVP).
+5. **Reminder ownership implementation detail** — confirm whether dashboard should track manual reminder checkpoints (week 1/week 2/week 3 assignment) as optional ops fields.
+6. **Cohort communication tracking fields** (participant send date, coach send date, owner, status).
+7. **Executive summary KPI set** (Kari/Greg dashboard preferences).
+8. **CSV duplicate handling** (skip/report vs fail import).
 
 ---
 

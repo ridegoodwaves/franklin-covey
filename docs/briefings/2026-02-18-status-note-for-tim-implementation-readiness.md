@@ -10,10 +10,10 @@ It matches the "tiered plan" format built for Tim (FC-shareable top section + in
 ## What Is Ready on Auth Scope (Decision-Ready and Frozen)
 
 These are locked and ready for implementation:
-- Participant auth is fixed to generic link + OTP (`request-otp`, `verify-otp`).
+- Participant access is fixed to USPS-sent coach-selector link + participant access code (no system-sent participant email in MVP).
 - Coach/admin auth model is fixed to shared `/auth/signin` magic-link flow with fresh-link re-auth after timeout.
 - Auth-related API contract paths are frozen for MVP.
-- Participant flow is frozen: OTP -> 3 coaches -> optional remix -> select -> confirmation (no return dashboard).
+- Participant flow is frozen: access code -> 3 coaches -> optional remix -> select -> confirmation (no return dashboard).
 - Nudge timing anchor is frozen: Day 0 = `cohortStartDate`.
 
 Source refs:
@@ -32,7 +32,18 @@ Source refs:
 - Session status policy confirmed (coach-entered outcomes only; no auto expiry lock).
 - Forfeiture label language clarified.
 - Nudge Day 0 anchor clarified (cohort start date).
+- EF/EL coach capacity confirmed: 20 participants per coach.
+- MVP participant planning baseline confirmed: 400 total participants.
+- EF/EL reporting window anchor confirmed: coach-selection-window start + 9 months.
 - Capacity counting rule confirmed: count `COACH_SELECTED`, `IN_PROGRESS`, `ON_HOLD`; exclude `INVITED`, `COMPLETED`, `CANCELED`.
+- Scheduling-link policy clarified: MVP supports direct booking URLs from Calendly, Acuity, or equivalent (no Calendly-only requirement).
+- Booking-link fallback policy clarified: coaches without active links may still be selected; confirmation shows coach-outreach message and coach is expected to contact participant within 2 business days (ops follows via "Needs Attention" if delayed).
+- Coach bio videos are de-scoped from MVP coach selector.
+- ALP-138 Session 2 start date confirmed: Aug 7, 2026.
+- Participant welcome comms owner confirmed: USPS sends on first day of each coach-selection window.
+- Coach access comms owner confirmed: Andrea and/or Kari, sent as soon as portal is available and before Mar 2.
+- Participant communication boundary confirmed: CIL system does not send participant emails in MVP.
+- Use-it-or-lose-it behavior confirmed as manual for ALP/MLP only: no auto-lock/forfeit; overdue Session 1/2 items should surface as "Needs Attention". EF/EL does not use this model.
 
 Source refs:
 - `franklin-covey/docs/plans/2026-02-18-fc-project-plan.md:4`
@@ -44,21 +55,33 @@ Source refs:
 
 These are critical-path items for Slice 1 timeline integrity:
 
-1. FC coach data package by Feb 21
+1. FC coach data package by Feb 23, 2026
 - Bios, photos, scheduling links for MLP/ALP panel.
-- Without this, real seed load and beta realism are blocked.
+- Coach bio videos are not required for MVP.
+- Accept direct booking URLs from Calendly, Acuity, or equivalent.
+- Send available batch now; remaining links due Monday, Feb 23, 2026.
+- Without this, self-serve booking coverage drops and manual coach-outreach load increases in Slice 1.
 
 2. First participant lists by Feb 24
 - ALP-135 + MLP-80 with name/email/cohort code/cohort start date.
-- Without this, invitation/auth and cohort-based nudge timing cannot be validated on real data.
+- Current confirmed count for each is 30 participants.
+- Without this, access-code auth and cohort-based timing/flag logic cannot be validated on real data.
 
 3. Sender domain decision by Feb 21
 - Tim + Blaine to confirm sending identity (proposed `coaching@franklincovey.com`).
 - Needed for launch-email trust/deliverability setup.
 
-4. Keep MVP contract freeze in effect (no breaking scope churn)
+4. Communication tracker execution confirmation
+- Confirm FC preference on whether CIL tracks participant/coach send status fields internally and FC only confirms exceptions.
+- Needed for clean per-cohort comms accountability once windows open.
+
+5. Keep MVP contract freeze in effect (no breaking scope churn)
 - If edits are needed, constrain them to open-items/change-control sections only.
 - Protects March 2 date from late API/state-model changes.
+
+6. FC path decision by end of day Feb 23, 2026
+- Explicitly choose between Path A (build directly in FC AWS from day one; higher March launch risk) and Path B (recommended: launch on Vercel + Supabase bridge with conditional controls while VSA is in progress, then migrate to FC AWS ~30 days post-launch, dependency-driven).
+- Without this decision, launch-risk ownership remains ambiguous.
 
 Source refs:
 - `franklin-covey/docs/plans/2026-02-18-fc-project-plan.md:120`
@@ -71,11 +94,9 @@ Source refs:
 ## Can Wait (Does Not Block Starting Build Today)
 
 - Blaine IT approval for production infrastructure (important, but explicitly not an MVP blocker).
-- EF/EL coaching window close date.
-- ALP-138 date correction.
 - KPI preference tuning for executive summary.
 - Session window reporting presentation rule.
-- Nudge recipient configurability details.
+- Cohort comms tracking fields (participant send date, coach send date, owner, status).
 - CSV duplicate strategy nuance.
 
 Source refs:
@@ -93,11 +114,11 @@ Source refs:
 
 ### Feedback Priority System
 
-| Priority | Definition | Expected Turnaround |
-|----------|------------|---------------------|
-| **P0** | Blocking/critical issue that prevents launch-critical work or breaks core flow | Immediate triage same day |
-| **P1** | Urgent fix needed for upcoming milestone quality or timeline protection | Prioritize in next build window (typically within 24 hours) |
-| **P2** | Nice-to-have or non-blocking enhancement | Backlog and schedule against milestone capacity |
+| Priority | Definition | Example (FC MVP) | Expected Turnaround |
+|----------|------------|------------------|---------------------|
+| **P0** | Blocking/critical issue that prevents launch-critical work or breaks core flow | Participants cannot complete access-code login, or coach selection API fails for all users | Immediate triage same day |
+| **P1** | Urgent fix needed for upcoming milestone quality or timeline protection | USPS participant access emails are delayed for some users, or coach session logging fails intermittently | Prioritize in next build window (typically within 24 hours) |
+| **P2** | Nice-to-have or non-blocking enhancement | Add a dashboard filter, refine report formatting, or polish UI copy | Backlog and schedule against milestone capacity |
 
 ### Feedback Workflow
 
@@ -146,7 +167,7 @@ Meaning: requirements are sufficiently locked to start implementation now; remai
 ### Release gates before production sends
 
 1. Staging proves zero accidental sends to non-allowlisted recipients.
-2. OTP and magic-link end-to-end auth flows pass in staging.
+2. Participant access-code and coach/admin magic-link auth flows pass in staging.
 3. Production sender identity/domain and pilot inbox checks are complete.
 
 ## Environment Variable Matrix (Staging vs Production)
@@ -164,9 +185,7 @@ Meaning: requirements are sufficiently locked to start implementation now; remai
 | `EMAIL_FROM` | Staging sender identity | Production sender identity | Tim + Blaine | Before launch emails | Production identity should be FC-approved |
 | `EMAIL_MODE` | `sandbox` | `live` | Build Team | Before staging tests | Hard send gate |
 | `EMAIL_ALLOWLIST` | Internal test inbox list | Optional safety list | Amit + Build Team | Before staging tests | Required in staging |
-| `OTP_TTL_MINUTES` | `10` (default) | `10` (default) | Build Team | Auth setup | Keep aligned unless policy changes |
-| `OTP_RESEND_COOLDOWN_SEC` | `60` (default) | `60` (default) | Build Team | Auth setup | Abuse protection |
-| `OTP_MAX_ATTEMPTS` | `5` (default) | `5` (default) | Build Team | Auth setup | Lockout threshold |
+| `ACCESS_CODE_MAX_ATTEMPTS` | `5` (default) | `5` (default) | Build Team | Auth setup | Lockout threshold for participant access code attempts |
 | `MAGIC_LINK_TTL_MINUTES` | `30` (default) | `30` (default) | Build Team | Auth setup | Coach/admin auth behavior |
 | `NUDGE_CRON_ENABLED` | `false` until QA signoff | `true` | Build Team | Before cron run | Prevent accidental nudge sends |
 | `CRON_SECRET` | Unique staging secret | Unique production secret | Amit | Before cron setup | Required for protected cron routes |

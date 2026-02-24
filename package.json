@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "env:validate": "node scripts/validate-env-safety.mjs",
+    "env:validate:staging": "node scripts/validate-env-safety.mjs --env-file .env.staging.example --target staging",
+    "env:validate:production": "node scripts/validate-env-safety.mjs --env-file .env.production.example --target production"
   },
   "dependencies": {
     "next": "^15.1.0",
