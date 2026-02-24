@@ -22,6 +22,7 @@ changelog:
   - 2026-02-18f: "Email delivery planning note added: Resend free-tier daily limits can throttle launch-day auth/magic-link traffic; recommend paid tier for launch window."
   - 2026-02-18g: "Capacity counting rule confirmed by Kari: count COACH_SELECTED, IN_PROGRESS, and ON_HOLD; exclude INVITED, COMPLETED, and CANCELED."
   - 2026-02-24: "Applied post-workshop decision lock to remove cross-doc ambiguity: participant auth now uses USPS-delivered email + participant access code (no system participant emails), EF/EL capacity confirmed at 20, planning baseline locked at 400, EF/EL reporting anchor locked to selection-window start + 9 months, and use-it-or-lose-it locked as ALP/MLP manual model only. MLP/ALP capacity updated from 15 to 20 — all pools now COACH_CAPACITY = 20 (Kari confirmed)."
+  - 2026-02-24b: "Applied two P0 security corrections from technical review: (1) Replace NODE_ENV test-endpoint guard with TEST_ENDPOINTS_ENABLED env var — NODE_ENV is always 'production' on Vercel including staging, so the old guard would disable E2E tests. Added TEST_ENDPOINTS_SECRET header check as secondary gate. (2) Correct access-code hashing: use HMAC-SHA256 (not bcrypt) since bcrypt offers no precomputation resistance for a 6-digit numeric space. Defense-in-depth stays: strict expiry + one-time-use + per-IP rate limiting + per-participant lockout. Moved failedAttempts + lockedUntil from VerificationCode row to Participant model so code resets cannot bypass lockout."
 ---
 
 # feat: Ship MVP Backend — 3 Vertical Slices (March 2/9/16)
@@ -157,17 +158,20 @@ erDiagram
         String firstName
         String lastName
         String org
+        Int failedAttempts "auth lockout counter — scoped to participant not to code row"
+        DateTime lockedUntil "null when not locked"
     }
 
     VerificationCode {
         String id PK
         String participantId FK
-        String code "6-digit hashed"
-        DateTime expiresAt "5 min"
-        Int attempts "max 3"
-        Boolean used
+        String codeHash "HMAC-SHA256 of 6-digit code"
+        DateTime expiresAt "coachSelectionWindowEnd"
+        Boolean used "one-time-use flag"
         DateTime createdAt
     }
+    %% NOTE: attempts/lockout are tracked on Participant (failedAttempts + lockedUntil),
+    %% NOT on VerificationCode — so a code reset cannot bypass the lockout.
 
     Engagement {
         String id PK
@@ -347,7 +351,7 @@ NEXTAUTH_SECRET=
 NEXTAUTH_URL=http://localhost:3000
 
 # Participant Auth
-ACCESS_CODE_SECRET= # For hashing/verifying participant access codes
+ACCESS_CODE_SECRET= # HMAC-SHA256 key for participant access codes. Use crypto.createHmac('sha256', secret).update(code).digest('hex').
 
 # Email
 RESEND_API_KEY= # Or AWS SES credentials
@@ -355,6 +359,12 @@ EMAIL_FROM=noreply@franklincovey-coaching.com
 
 # Cron
 CRON_SECRET= # Shared secret for /api/cron/* endpoints
+
+# Test endpoints (staging only — never set in production)
+# On Vercel, NODE_ENV is always "production" — even on staging deployments.
+# TEST_ENDPOINTS_ENABLED is the only safe discriminator between staging and production.
+TEST_ENDPOINTS_ENABLED=   # Set to "true" in staging Vercel project only. Leave blank/absent in production.
+TEST_ENDPOINTS_SECRET=    # Shared secret required as X-Test-Secret header on all /api/test/* requests.
 
 # Monitoring
 SENTRY_DSN=
@@ -409,7 +419,8 @@ USPS welcome email
 
 - [ ] Access-code generation + export utility — `scripts/generate-participant-access-codes.ts`
   - Generate high-entropy codes for participants before each cohort window
-  - Store hashed codes in `VerificationCode` (or equivalent auth table)
+  - Store **HMAC-SHA256** hashes in `VerificationCode.codeHash` (not bcrypt — bcrypt's work-factor provides no meaningful protection against precomputation on a 6-digit numeric space of only 1,000,000 values; HMAC-SHA256 with `ACCESS_CODE_SECRET` as the key is the correct primitive for this use case)
+  - **Defense-in-depth for short codes**: the code space is small, so security comes from the combination of (1) strict `coachSelectionWindowEnd` expiry, (2) `used` one-time-use flag, (3) per-IP rate limiting, and (4) per-participant lockout — not from the hash algorithm alone
   - Export USPS-ready file: participant email + code + cohort + selection-window dates
   - Support one-click code reset/regeneration for FC Ops
 
@@ -431,7 +442,8 @@ USPS welcome email
 
 **SpecFlow resolutions baked in:**
 - Email not found → identical response (issue #6)
-- Access-code brute force → global IP rate limit + per-email lockout (issue #16)
+- Access-code brute force → global IP rate limit + per-**participant** lockout (issue #16)
+  - **Lockout scoped to `Participant`**, not to the `VerificationCode` row: `failedAttempts` + `lockedUntil` live on `Participant` so that issuing a code reset cannot reset the attempt counter. A participant who has exhausted attempts on one code stays locked regardless of which code they try next.
 - Expired access code → generic "Invalid or expired code" + FC Ops reset path
 - USPS delivery delay/error → participant follows USPS support path; system does not send participant mail in MVP
 - Returning participant → check session cookie first, skip auth (issue #3)
@@ -951,11 +963,13 @@ Minimal but targeted — cover the flows where bugs cause the most damage:
 
 #### Test Infrastructure
 
-**Test Helper Endpoints** (guarded by `NODE_ENV !== 'production'`):
+**Test Helper Endpoints** (guarded by `TEST_ENDPOINTS_ENABLED=true` + `X-Test-Secret` header):
+
+> **Why not `NODE_ENV`?** On Vercel, `NODE_ENV` is always `"production"` in all deployed environments — including staging. Using `NODE_ENV !== "production"` as the guard would disable test endpoints on staging (breaking E2E tests) or require mis-configuring the env var. Use `TEST_ENDPOINTS_ENABLED=true` (set only in the staging Vercel project) combined with a shared `X-Test-Secret` header check to ensure the endpoints are never reachable in production.
 
 - [ ] `GET /api/test/latest-access-code?email=` — returns current test access code metadata for a participant — `src/app/api/test/latest-access-code/route.ts`
   - Returns code metadata or 404 if none exists
-  - **Production guard**: returns 404 in production, enforced by middleware + env check
+  - **Production guard**: check `process.env.TEST_ENDPOINTS_ENABLED !== 'true'` → return 404. Also verify `X-Test-Secret` header matches `process.env.TEST_ENDPOINTS_SECRET`.
 - [ ] `GET /api/test/latest-magic-link?email=` — returns latest magic link URL — `src/app/api/test/latest-magic-link/route.ts`
   - Returns `{ url: "https://...", expiresAt: "..." }` or 404
   - Reads from Auth.js `VerificationToken` table
@@ -1108,6 +1122,8 @@ Suites are designed to run **in order** — each suite builds on state created b
 - [ ] Create `/api/test/reset` endpoint — `src/app/api/test/reset/route.ts`
 - [ ] Create `/api/test/engagement` endpoint — `src/app/api/test/engagement/route.ts`
 - [ ] Add production guard middleware for `/api/test/*` routes — `src/middleware.ts`
+  - Guard: `TEST_ENDPOINTS_ENABLED !== 'true'` → return 404 (do NOT use `NODE_ENV` — always `"production"` on Vercel)
+  - Secondary: require `X-Test-Secret` header to match `TEST_ENDPOINTS_SECRET` env var
 - [ ] Add test seed data to `prisma/seed.ts` (8 test entities above)
 - [ ] Add Mailpit to `docker-compose.yml` for local email inspection
 - [ ] Document test execution runbook in `docs/qa/automated-testing-runbook.md`
