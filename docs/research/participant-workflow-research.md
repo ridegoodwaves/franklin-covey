@@ -376,8 +376,7 @@ Backend: `POST /api/participant/coaches/select`
 
 ### Coach Capacity
 
-- **MLP/ALP coaches**: 15 participants per coach max (`COACH_CAPACITY = 15` in `config.ts`)
-- **EF/EL coaches**: 20 participants per coach max (confirmed Feb 24 P0 decision)
+- **All coaches**: 20 participants per coach max (`COACH_CAPACITY = 20` in `config.ts` — MLP/ALP updated from 15 to 20, Kari confirmed 2026-02-24)
 - Capacity = count of engagements with status `COACH_SELECTED`, `IN_PROGRESS`, or `ON_HOLD`
 - Excludes: `INVITED`, `COMPLETED`, `CANCELED`
 
@@ -514,8 +513,8 @@ cohortId        String
 
 | Code | Full Name | Track | Sessions | Coach Panel | Panel Size | Capacity/Coach |
 |------|-----------|-------|----------|-------------|------------|----------------|
-| MLP | Managerial Leadership Program | TWO_SESSION | 2 | MLP_ALP | 15 coaches | 15 |
-| ALP | Advanced Leadership Program | TWO_SESSION | 2 | MLP_ALP | 15 coaches | 15 |
+| MLP | Managerial Leadership Program | TWO_SESSION | 2 | MLP_ALP | 15 coaches | 20 |
+| ALP | Advanced Leadership Program | TWO_SESSION | 2 | MLP_ALP | 15 coaches | 20 |
 | EF | Executive Foundations | FIVE_SESSION | 5 | EF_EL | 16 coaches | 20 |
 | EL | Executive Leadership | FIVE_SESSION | 5 | EF_EL | 16 coaches | 20 |
 
@@ -639,7 +638,7 @@ Target: Feb 25 staging deploy, Feb 26 beta test with Kari.
 | `PROGRAM_TRACK_SESSIONS.TWO_SESSION` | `2` | MLP/ALP |
 | `PROGRAM_TRACK_SESSIONS.FIVE_SESSION` | `5` | EF/EL |
 
-**Config change needed:** `COACH_CAPACITY = 15` only covers MLP/ALP. Add `EF_EL_COACH_CAPACITY = 20` constant.
+**Config status:** `COACH_CAPACITY = 20` applies to all pools. Done.
 
 ---
 
@@ -687,7 +686,7 @@ npm run lint   # ESLint
 | 1 remix max | Feb 17 workshop | One-way door simplifies ops |
 | Booking URL fallback copy | Feb 17 workshop | "Within 2 business days" — not all coaches have scheduling software |
 | Coach videos de-scoped | Feb 24 P0 decision | Reduces Slice 1 scope; video links removed from card rendering |
-| EF/EL capacity = 20 | Feb 24 P0 confirmation | Confirmed by Kari; different from MLP/ALP's 15 |
+| All coach capacity = 20 | Feb 24 P0 confirmation + Kari follow-up | MLP/ALP updated from 15 to 20; all pools now uniform |
 | EF/EL pool = 16 coaches | Feb 24 P0 confirmation | Separate from MLP/ALP's 15-coach pool |
 | `SELECT FOR UPDATE` (not Serializable) | Feb 14 technical review | Row-level lock sufficient; Serializable overkill |
 | Day 0 = cohort start date | Feb 18 stakeholder clarification | Consistent nudge timing per cohort |
