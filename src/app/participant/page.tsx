@@ -4,17 +4,17 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { requestOtp } from "@/lib/api-client";
+import { verifyAccessCode } from "@/lib/api-client";
 
 export default function ParticipantEntryPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
+  const [accessCode, setAccessCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expiredBanner, setExpiredBanner] = useState(false);
 
   useEffect(() => {
-    // Check if redirected here due to expired session
     const params = new URLSearchParams(window.location.search);
     if (params.get("expired") === "true") {
       setExpiredBanner(true);
@@ -23,19 +23,24 @@ export default function ParticipantEntryPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!email.trim() || !accessCode.trim()) return;
     setLoading(true);
     setError(null);
 
     try {
-      const response = await requestOtp({ email: email.trim() });
+      const response = await verifyAccessCode({ email: email.trim(), accessCode: accessCode.trim() });
       if (response.success) {
         sessionStorage.setItem("participant-email", email.trim());
-        router.push("/participant/verify-otp");
+        sessionStorage.setItem("participant-verified", "true");
+        if (response.alreadySelected) {
+          router.push("/participant/confirmation?already=true");
+        } else {
+          router.push("/participant/select-coach");
+        }
       } else {
         switch (response.error) {
-          case "EMAIL_NOT_FOUND":
-            setError("Email not found — check your invitation letter");
+          case "INVALID_CREDENTIALS":
+            setError("Email or access code not recognized — check your invitation letter");
             break;
           case "WINDOW_CLOSED":
             setError(
@@ -70,7 +75,7 @@ export default function ParticipantEntryPage() {
             className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 opacity-0 animate-fade-in"
             style={{ animationDelay: "50ms" }}
           >
-            Your session expired. Please enter your email to start again.
+            Your session expired. Please enter your email and access code to start again.
           </div>
         )}
 
@@ -83,7 +88,7 @@ export default function ParticipantEntryPage() {
             Welcome to Your Coaching Journey
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Enter your email address from your invitation letter to get started
+            Enter your email address and access code from your invitation letter
           </p>
         </div>
 
@@ -110,6 +115,27 @@ export default function ParticipantEntryPage() {
             />
           </div>
 
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-foreground">
+              Access Code
+            </label>
+            <Input
+              type="text"
+              inputMode="text"
+              placeholder="ABC123"
+              value={accessCode}
+              onChange={(e) => {
+                setAccessCode(e.target.value);
+                if (error) setError(null);
+              }}
+              className="h-12 w-full text-base"
+              autoComplete="off"
+              maxLength={6}
+              disabled={loading}
+              required
+            />
+          </div>
+
           {/* Inline error */}
           {error && (
             <p className="text-sm text-destructive leading-snug">{error}</p>
@@ -119,30 +145,15 @@ export default function ParticipantEntryPage() {
             type="submit"
             size="lg"
             className="w-full gap-2"
-            disabled={loading || !email.trim()}
+            disabled={loading || !email.trim() || !accessCode.trim()}
           >
             {loading ? (
               <>
-                <svg
-                  className="h-4 w-4 animate-spin"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                Sending code...
+                Verifying...
               </>
             ) : (
               "Continue"

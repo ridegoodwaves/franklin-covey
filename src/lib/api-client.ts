@@ -28,6 +28,23 @@ export interface ParticipantCoachCard {
 
 // ─── Request / Response Contracts ────────────────────────────────────────────
 
+// POST /api/participant/auth/verify-access-code  ← PRIMARY AUTH (Slice 1)
+export interface VerifyAccessCodeInput {
+  email: string;
+  accessCode: string;
+}
+export type VerifyAccessCodeErrorCode =
+  | "INVALID_CREDENTIALS" // Bad email or bad code — same message for both (enumeration prevention)
+  | "WINDOW_CLOSED"       // Cohort selection window has closed
+  | "RATE_LIMITED";       // Too many attempts
+
+export interface VerifyAccessCodeResponse {
+  success: boolean;
+  /** True when participant has already selected a coach. */
+  alreadySelected?: boolean;
+  error?: VerifyAccessCodeErrorCode;
+}
+
 // POST /api/participant/auth/request-otp
 export interface RequestOtpInput {
   email: string;
@@ -86,11 +103,6 @@ export interface SelectCoachResponse {
   success: boolean;
   /** Present on success — the confirmed coach record. */
   coach?: ParticipantCoachCard;
-  /**
-   * The coach's booking URL. May be absent even on success.
-   * When absent, UI must show the coach-outreach fallback message.
-   * Per policy: "Your coach will reach out within 2 business days."
-   */
   bookingUrl?: string;
   error?: SelectCoachErrorCode;
 }
@@ -139,9 +151,38 @@ async function apiFetch<T>(
 // ─── Endpoint Functions ───────────────────────────────────────────────────────
 
 /**
- * POST /api/participant/auth/request-otp
- * Sends a 6-digit OTP to the participant's email.
+ * POST /api/participant/auth/verify-access-code
+ * PRIMARY AUTH for Slice 1. Verifies email + USPS-delivered access code.
+ * On success: sets participant session. Returns alreadySelected if coach already chosen.
+ * Security: INVALID_CREDENTIALS covers both bad email and bad code to prevent enumeration.
  */
+export async function verifyAccessCode(
+  input: VerifyAccessCodeInput
+): Promise<VerifyAccessCodeResponse> {
+  // TODO: uncomment when backend is live
+  // return apiFetch<VerifyAccessCodeResponse>("POST", "/api/participant/auth/verify-access-code", input);
+
+  // ── Stub: any valid email + access code "A1B2C3" = success ──
+  // Use "CLOSED1" as access code to trigger WINDOW_CLOSED for QA testing.
+  await delay(800);
+  const normalizedCode = input.accessCode.toUpperCase();
+  if (normalizedCode === "CLOSED1") {
+    return { success: false, error: "WINDOW_CLOSED" };
+  }
+  if (normalizedCode === "RATEME1") {
+    return { success: false, error: "RATE_LIMITED" };
+  }
+  if (input.email.toLowerCase() === "already@test.com") {
+    return { success: true, alreadySelected: true };
+  }
+  // Any other email + any non-empty code = success for dev/QA
+  if (!input.accessCode.trim()) {
+    return { success: false, error: "INVALID_CREDENTIALS" };
+  }
+  return { success: true };
+}
+
+/** @deprecated STALE — OTP auth model superseded by verifyAccessCode (access-code model, Feb 24 P0). Delete when Slice 1 backend ships. */
 export async function requestOtp(
   input: RequestOtpInput
 ): Promise<RequestOtpResponse> {
@@ -156,10 +197,7 @@ export async function requestOtp(
   return { success: true };
 }
 
-/**
- * POST /api/participant/auth/verify-otp
- * Verifies the OTP and establishes a participant session.
- */
+/** @deprecated STALE — OTP auth model superseded by verifyAccessCode (access-code model, Feb 24 P0). Delete when Slice 1 backend ships. */
 export async function verifyOtp(
   input: VerifyOtpInput
 ): Promise<VerifyOtpResponse> {
@@ -176,56 +214,39 @@ export async function verifyOtp(
 
 /**
  * GET /api/participant/coaches
- * Returns 3 capacity-weighted randomized coaches for this participant's pool.
  */
 export async function fetchCoaches(): Promise<CoachesResponse> {
   // TODO: uncomment when backend is live
   // return apiFetch<CoachesResponse>("GET", "/api/participant/coaches");
-
-  // ── Stub: returns empty — UI should fall back to local demo data ──
   await delay(600);
   return { coaches: [], allAtCapacity: false };
 }
 
 /**
  * POST /api/participant/coaches/remix
- * Returns 3 entirely new coaches with zero overlap from the prior batch.
- * Only available once per participant.
  */
 export async function remixCoaches(): Promise<RemixResponse> {
   // TODO: uncomment when backend is live
   // return apiFetch<RemixResponse>("POST", "/api/participant/coaches/remix");
-
-  // ── Stub ──
   await delay(600);
   return { coaches: [], poolExhausted: false };
 }
 
 /**
  * POST /api/participant/coaches/select
- * Finalizes coach selection. Idempotent — safe to call once.
- * Returns bookingUrl when coach has an active scheduling link.
- * When bookingUrl is absent, UI must show outreach fallback message.
  */
 export async function selectCoach(
   input: SelectCoachInput
 ): Promise<SelectCoachResponse> {
   // TODO: uncomment when backend is live
   // return apiFetch<SelectCoachResponse>("POST", "/api/participant/coaches/select", input);
-
-  // ── Stub: alternates between booking-URL and fallback paths for QA coverage ──
-  // Odd-indexed coach IDs (c1, c3, c5...) simulate coaches WITH a booking URL.
-  // Even-indexed (c2, c4, c6...) simulate coaches WITHOUT — triggering fallback.
-  // This lets QA test both confirmation paths without backend.
   await delay(1000);
   const lastChar = input.coachId.slice(-1);
   const coachIndex = parseInt(lastChar, 10);
   const hasBookingUrl = !isNaN(coachIndex) ? coachIndex % 2 !== 0 : Math.random() > 0.5;
   return {
     success: true,
-    bookingUrl: hasBookingUrl
-      ? "https://calendly.com/stub-coach/30min"
-      : undefined,
+    bookingUrl: hasBookingUrl ? "https://calendly.com/stub-coach/30min" : undefined,
   };
 }
 
