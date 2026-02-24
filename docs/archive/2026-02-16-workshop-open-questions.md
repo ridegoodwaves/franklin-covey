@@ -13,10 +13,10 @@ The shift: instead of "pick Option A or B," ask questions that explore their wor
 **Decision**: No participant-facing filters. 3 coaches shown via capacity-weighted randomization. 1 remix allowed (one-way door). Single selection → Calendly link. Participant flow ends at selection.
 
 - **"Walk us through what happens today when a new participant gets matched with a coach. What does that process look like manually?"**
-  - ANSWERED: Currently manual assignment by Andrea/Carrie. Participants have no choice today — this platform gives them choice for the first time.
+  - ANSWERED: Currently manual assignment by Andrea/Kari. Participants have no choice today — this platform gives them choice for the first time.
 
 - **"When a participant is looking for a coach, what matters most to them? Is it location? Language? Specialty? Or is it more of a gut feeling from the bio and video?"**
-  - ANSWERED: Bio and video are the primary drivers. Carrie confirmed "our coaches are all excellent" — gut feeling from profile is sufficient. No filters needed.
+  - ANSWERED: Bio and video are the primary drivers. Kari confirmed "our coaches are all excellent" — gut feeling from profile is sufficient. No filters needed.
 
 - **"How do you think about coach-participant fit? Is it something the participant should drive, or is it something your team has better judgment on?"**
   - ANSWERED: Participant-driven from 3 randomized options. FC trusts all coaches on the panel. The 3-card randomized selection gives participant agency without overwhelming choice.
@@ -61,7 +61,7 @@ The shift: instead of "pick Option A or B," ask questions that explore their wor
 **Decision**: Email nudges ARE in scope (reverses 2026-02-13 de-scoping). Day 5 reminder, Day 10 second reminder, Day 15 auto-assign coach. Dashboard flags PLUS email nudges.
 
 - **"Andrea, when an engagement stalls today, how do you find out about it? What does your current process look like?"**
-  - ANSWERED: Andrea and Carrie both confirmed they need proactive outreach, not just dashboard visibility. Participants who never log in can't see dashboard flags — email is the only channel to reach them.
+  - ANSWERED: Andrea and Kari both confirmed they need proactive outreach, not just dashboard visibility. Participants who never log in can't see dashboard flags — email is the only channel to reach them.
 
 - **"When a participant goes quiet — hasn't logged in, hasn't booked a session — what's the ideal way to re-engage them? What's worked in the past?"**
   - ANSWERED: Email reminders, with escalation to auto-assignment at Day 15. FC wants the system to handle re-engagement automatically rather than relying on ops to manually chase participants.
@@ -73,16 +73,16 @@ The shift: instead of "pick Option A or B," ask questions that explore their wor
 
 ## Decision Speed & Data Handoff — ANSWERED
 
-**Decision**: Carrie Sadler is primary contact. `@CarrieSadler` in email body = same-day response. Text cell for critical blockers only. Andrea handles day-to-day coach/participant comms.
+**Decision**: Kari Sadler is primary contact. `@CarrieSadler` in email body = same-day response. Text cell for critical blockers only. Andrea handles day-to-day coach/participant comms.
 
 - **"Between now and March 2, there are going to be moments where we need a quick answer to keep moving. How does your team prefer to handle those? Who's the best person to go to?"**
-  - ANSWERED: Carrie Sadler. She's covering two roles for 3 months (her own + Abby's while on maternity leave). Email with `@CarrieSadler` in body gets same-day response. Text her cell only for critical blockers.
+  - ANSWERED: Kari Sadler. She's covering two roles for 3 months (her own + Abby's while on maternity leave). Email with `@CarrieSadler` in body gets same-day response. Text her cell only for critical blockers.
 
 - **"For the coach data — the names, bios, photos, booking links — who on your side owns that information? Is it centralized or spread across different people?"**
-  - ANSWERED: Carrie owns it. Coach bios exist, 32 of 34 videos already recorded. Participant data and competency list coming from Carrie. Data is centralized on FC's side.
+  - ANSWERED: Kari owns it. Coach bios exist, 32 of 34 videos already recorded. Participant data and competency list coming from Kari. Data is centralized on FC's side.
 
 - **"What does your ideal timeline look like for getting us that data? We want to make sure we're building against real information, not placeholders."**
-  - ANSWERED: Feb 17-18 for coach bios, videos, participant data, competency list. Carrie committed to delivering this week.
+  - ANSWERED: Feb 17-18 for coach bios, videos, participant data, competency list. Kari committed to delivering this week.
 
 ---
 
@@ -93,8 +93,8 @@ The shift: instead of "pick Option A or B," ask questions that explore their wor
 - **"Beyond this first engagement, what does success look like for the coaching platform a year from now? What would make this a home run for your organization?"**
   - ANSWERED: Greg confirmed scalable platform vision, not one-off tool. Multi-org architecture is the right direction. Greg left at ~60 min mark but his vision was clear.
 
-- **"Carrie, you built a prototype on Lovable. What was the one thing it got right that you'd want us to keep? And what was the biggest gap?"**
-  - ANSWERED (name corrected: Carrie, not Kari): Not discussed in detail during meeting. Focus was on decisions and alignment, not prototype comparison.
+- **"Kari, you built a prototype on Lovable. What was the one thing it got right that you'd want us to keep? And what was the biggest gap?"**
+  - ANSWERED (name corrected: Kari, not Kari): Not discussed in detail during meeting. Focus was on decisions and alignment, not prototype comparison.
 
 - **"What's the biggest risk you see between now and March 2? What keeps you up at night about this launch?"**
   - ANSWERED: Getting Blaine/IT engaged. He was not present at the meeting and has been unreachable. Feb 18 is the target for green light. Without Blaine, contract can't be signed.

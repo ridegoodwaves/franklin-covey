@@ -12,7 +12,7 @@
 All product decisions are locked (Feb 17 workshop). The schema ERD is finalized. The frontend has 9 pages with hardcoded demo data. Zero backend code exists.
 
 **Hard deadline**: March 2 — coach selector live for first cohort (~60 USPS participants).
-**Beta testing**: Feb 26 (committed to Carrie).
+**Beta testing**: Feb 26 (committed to Kari).
 
 ---
 
@@ -69,7 +69,7 @@ The technical sequence to get from zero backend → March 2 launch, using Vercel
 | 3 | Feb 21–22 | Coach selection API (list with panel scoping, remix, select with row lock) + error classes + state machine |
 | 4 | Feb 23–24 | Wire frontend: update select-coach page, add confirmation page, remove old engagement page from participant flow |
 | **5** | **Feb 25** | **Deploy to Vercel + Supabase staging, run full Slice 1 smoke test** |
-| **6** | **Feb 26** | **Beta testing with Carrie — staging already running, full day of buffer for fixes** |
+| **6** | **Feb 26** | **Beta testing with Kari — staging already running, full day of buffer for fixes** |
 | 7–13 | Feb 27–Mar 2 | Bug fixes, load test, production deploy |
 
 ---

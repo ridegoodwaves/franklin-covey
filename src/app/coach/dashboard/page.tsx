@@ -333,7 +333,7 @@ function SessionRow({
 
   return (
     <a
-      href={`/coach/engagement?id=${session.engagementId}`}
+      href={`/coach/engagements/${session.engagementId}`}
       className={cn(
         "group flex items-center gap-4 rounded-xl px-4 py-3.5 transition-all duration-200 hover:bg-fc-50/60 opacity-0 animate-fade-in",
         isToday && "bg-amber-50/50 hover:bg-amber-50"
@@ -402,7 +402,7 @@ function AttentionItem({
 }) {
   return (
     <a
-      href={`/coach/engagement?id=${item.engagementId}`}
+      href={`/coach/engagements/${item.engagementId}`}
       className="group flex items-center gap-4 rounded-xl border border-amber-200/60 bg-amber-50/30 px-4 py-3.5 transition-all duration-200 hover:border-amber-300/80 hover:bg-amber-50/60 hover:shadow-sm opacity-0 animate-fade-in"
       style={{ animationDelay: `${delay}ms` }}
     >
@@ -457,7 +457,7 @@ function EngagementCard({
 
   return (
     <a
-      href={`/coach/engagement?id=${engagement.id}`}
+      href={`/coach/engagements/${engagement.id}`}
       className="group block opacity-0 animate-fade-in"
       style={{ animationDelay: `${delay}ms` }}
     >
@@ -639,25 +639,17 @@ export default function CoachDashboard() {
     >
       {/* Welcome Header */}
       <div className="mb-8 opacity-0 animate-fade-in" style={{ animationDelay: "50ms" }}>
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
-          <div>
-            <p className="text-sm text-muted-foreground mb-1">
-              {new Date().toLocaleDateString("en-US", {
-                weekday: "long",
-                month: "long",
-                day: "numeric",
-              })}
-            </p>
-            <h1 className="font-display text-2xl sm:text-3xl font-semibold text-fc-900 tracking-tight">
-              Welcome back,{" "}
-              <span className="text-fc-700">Dr. Sarah Chen</span>
-            </h1>
-          </div>
-          <Button variant="outline" size="sm" className="self-start sm:self-auto">
-            <CalendarIcon />
-            <span className="ml-1.5">View Calendar</span>
-          </Button>
-        </div>
+        <p className="text-sm text-muted-foreground mb-1">
+          {new Date().toLocaleDateString("en-US", {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+          })}
+        </p>
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold text-fc-900 tracking-tight">
+          Welcome back,{" "}
+          <span className="text-fc-700">Dr. Sarah Chen</span>
+        </h1>
       </div>
 
       {/* Summary Stats */}
@@ -684,15 +676,36 @@ export default function CoachDashboard() {
         />
       </div>
 
+      {/* Needs Attention */}
+      {needsAttention.length > 0 && (
+        <section className="mb-10">
+          <SectionHeader
+            title="Needs Attention"
+            count={needsAttention.length}
+            countVariant="attention"
+            delay={250}
+          />
+          <div className="space-y-2">
+            {needsAttention.map((item, i) => (
+              <AttentionItem
+                key={item.id}
+                item={item}
+                delay={280 + i * 60}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Upcoming Sessions */}
       <section className="mb-10">
         <SectionHeader
           title="Upcoming Sessions"
           count={upcomingSessions.length}
           action={{ label: "View All", href: "/coach/calendar", disabled: true }}
-          delay={250}
+          delay={400}
         />
-        <Card className="opacity-0 animate-fade-in" style={{ animationDelay: "270ms" }}>
+        <Card className="opacity-0 animate-fade-in" style={{ animationDelay: "420ms" }}>
           <CardContent className="p-2">
             {upcomingSessions.length > 0 ? (
               <div className="divide-y divide-border/40">
@@ -700,7 +713,7 @@ export default function CoachDashboard() {
                   <SessionRow
                     key={session.id}
                     session={session}
-                    delay={300 + i * 60}
+                    delay={450 + i * 60}
                   />
                 ))}
               </div>
@@ -711,33 +724,12 @@ export default function CoachDashboard() {
         </Card>
       </section>
 
-      {/* Needs Attention */}
-      {needsAttention.length > 0 && (
-        <section className="mb-10">
-          <SectionHeader
-            title="Needs Attention"
-            count={needsAttention.length}
-            countVariant="attention"
-            delay={500}
-          />
-          <div className="space-y-2">
-            {needsAttention.map((item, i) => (
-              <AttentionItem
-                key={item.id}
-                item={item}
-                delay={540 + i * 60}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* My Engagements */}
       <section>
         <SectionHeader
           title="My Engagements"
           count={engagements.length}
-          action={{ label: "See All", href: "/coach/engagements", disabled: true }}
+          action={{ label: "See All", href: "/coach/engagements" }}
           delay={650}
         />
 

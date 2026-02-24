@@ -1,4 +1,4 @@
-// Session topics by program type — from Carrie Sadler (Feb 17, 2026)
+// Session topics by program type — from Kari Sadler (Feb 17, 2026)
 // "OTHER" shows static note: "Please email the coaching practice" (no free-text input)
 
 export const MLP_SESSION_TOPICS = [
@@ -55,7 +55,9 @@ export const SESSION_OUTCOMES = [
 
 export const DURATION_OPTIONS = [15, 30, 45, 60, 90] as const;
 
-// Updated Feb 17 workshop: email nudges at Day 5/10, auto-assign at Day 15
+// Updated workshop decisions:
+// - Day 0 for nudge timing = cohort start date
+// - Email nudges at Day 5/10, auto-assign at Day 15
 export const NUDGE_THRESHOLDS = {
   participantReminder1Days: 5,   // Day 5: gentle reminder email
   participantReminder2Days: 10,  // Day 10: firmer reminder email

@@ -54,7 +54,7 @@
 - **Brief says**: "bio, video, Calendly link"
 - **Impact**: Coach profiles need video embed/link support. Likely a YouTube/Vimeo URL displayed as embedded player.
 - **Action**: Add `videoUrl` field to CoachProfile schema.
-- **Resolution (Feb 17)**: 32 of 34 coach videos already recorded. `videoUrl` field already in schema. Videos are a primary driver of participant coach selection (confirmed by Carrie).
+- **Resolution (Feb 17)**: 32 of 34 coach videos already recorded. `videoUrl` field already in schema. Videos are a primary driver of participant coach selection (confirmed by Kari).
 
 ### 8. Sponsor teams (NEW concept) — RESOLVED (DEFERRED)
 - **PRD says**: Not mentioned
@@ -79,10 +79,10 @@
 
 ### 11. Multiple dashboard views by role — RESOLVED
 - **PRD says**: Single admin dashboard
-- **Brief says**: Dashboards for ops (all engagements), Carrie (per-coach status across clients), Greg (portfolio-level quality)
+- **Brief says**: Dashboards for ops (all engagements), Kari (per-coach status across clients), Greg (portfolio-level quality)
 - **Impact**: Need at least 3 dashboard views, not 1. Role-based dashboard customization.
 - **Action**: Clarify which dashboards are MVP vs. future.
-- **Resolution (Feb 17)**: Ops dashboard (Andrea's daily workflow) + Executive summary view (Carrie/Greg). Two views, not three. "Needs Attention" as default dashboard view (top of page). Filtering by status and coach for MVP.
+- **Resolution (Feb 17)**: Ops dashboard (Andrea's daily workflow) + Executive summary view (Kari/Greg). Two views, not three. "Needs Attention" as default dashboard view (top of page). Filtering by status and coach for MVP.
 
 ## Confirmed Alignments (Brief matches PRD)
 
@@ -102,7 +102,7 @@
 
 ### Stakeholders
 - **Greg Smith** — VP, budget authority. Success metric: "Do more with less."
-- **Carrie Sadler** — Director of Coaching (master coach). Built Lovable prototypes. Success metric: "stability → space to disrupt"
+- **Kari Sadler** — Director of Coaching (master coach). Built Lovable prototypes. Success metric: "stability → space to disrupt"
 - **Andrea Sherman** — Director of Operations. Success metric: "proactive instead of reactive"
 - **Blaine** — CTO (technical questions sent to him)
 - **Abby** — Ops coordinator (on maternity leave)
@@ -115,10 +115,10 @@
 - Manual reporting: 2+ weeks per cycle, Abby spends 40% of job on PDF reports
 - CIL = Coaching Innovation Lab (Tim's entity)
 
-### Carrie's Lovable Prototype
+### Kari's Lovable Prototype
 - URL: https://lovable.dev/projects/e91f5432-4586-4210-a51d-f66e8b54378a
 - Features she uses: Supervision workspace, Coaches page, Milestone report, Group Coaching, SurveyMonkey dashboard
-- Main dashboard "not helpful" per Carrie
+- Main dashboard "not helpful" per Kari
 - Must review before Feb 18 discovery workshop
 
 ### Technical Questions for Blaine (CTO) — Already Sent
@@ -142,7 +142,7 @@ These overlap heavily with our Q13-Q27. Many may get answered simultaneously.
 - ~~Q35: What are the "top 20 objectives" for session topic dropdowns?~~ **ANSWERED (Feb 17)**: Two competency lists by program type (see `src/lib/config.ts`).
 - Q36: Does "printable reports" mean browser print CSS or generated PDF? **→ Browser print CSS** (already in plan)
 - Q37: What methodologies need to be configurable? **→ Deferred post-MVP**
-- Q38: Carrie's Lovable prototype — which features to match? **→ Not discussed in workshop. Deferred.**
+- Q38: Kari's Lovable prototype — which features to match? **→ Not discussed in workshop. Deferred.**
 - ~~Q39: NDA/IT procurement timeline?~~ **ANSWERED (Feb 18)**: Tim to email `datasecurity@franklincovey.com` to start process.
 - Q40: March 9 week (Amit at Mayo Clinic) — continuity plan? **→ Still open. Slice 2 deadline is March 9.**
 

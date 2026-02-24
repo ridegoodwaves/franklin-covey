@@ -195,3 +195,64 @@
     scroll-behavior: smooth;
   }
 }
+
+/* ── Print Styles ─────────────────────────────────────────── */
+@media print {
+  /* Hide navigation sidebar */
+  .portal-sidebar,
+  [class*="sidebar"],
+  nav {
+    display: none !important;
+  }
+
+  /* Expand main content to full width */
+  .portal-main,
+  main,
+  [class*="flex-1"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0.5rem !important;
+  }
+
+  /* Hide action buttons */
+  .no-print,
+  button:not([data-print-keep]),
+  [role="button"] {
+    display: none !important;
+  }
+
+  /* Clean up cards */
+  .card,
+  [class*="shadow"] {
+    box-shadow: none !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+
+  /* Table cleanup */
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+    font-size: 11px !important;
+  }
+
+  td, th {
+    border: 1px solid #e2e8f0 !important;
+    padding: 4px 8px !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  /* Page margins */
+  @page {
+    margin: 1cm;
+  }
+}
