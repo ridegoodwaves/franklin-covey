@@ -99,6 +99,9 @@ export default function ParticipantEntryPage() {
           style={{ animationDelay: "200ms" }}
         >
           <div>
+            <label className="mb-1.5 block text-sm font-medium text-foreground">
+              Email Address
+            </label>
             <Input
               type="email"
               placeholder="your.email@agency.gov"

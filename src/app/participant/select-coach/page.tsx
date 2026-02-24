@@ -307,6 +307,8 @@ export default function SelectCoachPage() {
   const [selectionDisabled, setSelectionDisabled] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [bioModalCoach, setBioModalCoach] = useState<Coach | null>(null);
+  const [participantDisplayName, setParticipantDisplayName] = useState<string>(CURRENT_PARTICIPANT.name);
+  const [participantInitials, setParticipantInitials] = useState<string>(CURRENT_PARTICIPANT.initials);
 
   useEffect(() => {
     const verified = sessionStorage.getItem("participant-verified");
@@ -317,6 +319,16 @@ export default function SelectCoachPage() {
     if (sessionStorage.getItem("selected-coach")) {
       router.replace("/participant/confirmation");
       return;
+    }
+    const storedEmail = sessionStorage.getItem("participant-email");
+    if (storedEmail) {
+      const emailPrefix = storedEmail.split("@")[0];
+      // Capitalize first letter, replace dots/underscores with spaces for display
+      const displayName = emailPrefix
+        .replace(/[._-]/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+      setParticipantDisplayName(displayName || storedEmail);
+      setParticipantInitials(emailPrefix[0]?.toUpperCase() ?? CURRENT_PARTICIPANT.initials);
     }
     loadInitialCoaches();
   }, []);
@@ -388,6 +400,9 @@ export default function SelectCoachPage() {
     setTimeout(() => setMounted(true), 200);
   }, [remixUsed, shownIds]);
 
+  const availableCount = displayedCoaches.filter((c) => !c.atCapacity).length;
+  const canRemix = !remixUsed && availableCount > 0;
+
   const handleRemixClick = useCallback(() => {
     if (remixUsed || !canRemix || selectionDisabled) return;
     if (!remixPending) {
@@ -397,7 +412,7 @@ export default function SelectCoachPage() {
         setRemixPending(false);
       }, 8000);
     }
-  }, [remixUsed, selectionDisabled, remixPending]);
+  }, [remixUsed, selectionDisabled, remixPending, canRemix]);
 
   const handleRemixCancel = useCallback(() => {
     setRemixPending(false);
@@ -468,9 +483,6 @@ export default function SelectCoachPage() {
     [selectionDisabled, selectingCoachId, router]
   );
 
-  const availableCount = displayedCoaches.filter((c) => !c.atCapacity).length;
-  const canRemix = !remixUsed && availableCount > 0;
-
   return (
     <div className="relative min-h-screen bg-background">
       <header className="sticky top-0 z-40 border-b border-fc-100 bg-white">
@@ -481,10 +493,10 @@ export default function SelectCoachPage() {
           </div>
           <div className="flex items-center gap-4">
             <span className="hidden text-sm text-muted-foreground sm:inline">
-              Welcome, {CURRENT_PARTICIPANT.name}
+              Welcome, {participantDisplayName}
             </span>
             <Avatar className="h-8 w-8">
-              <AvatarFallback className="text-xs">{CURRENT_PARTICIPANT.initials}</AvatarFallback>
+              <AvatarFallback className="text-xs">{participantInitials}</AvatarFallback>
             </Avatar>
           </div>
         </div>

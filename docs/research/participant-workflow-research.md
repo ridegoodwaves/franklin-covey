@@ -102,7 +102,7 @@ The existing frontend page only collects an email and calls `requestOtp()`. This
 - On success: sessionStorage set, redirect to select-coach (or confirmation if already selected)
 
 **On mount:**
-- Checks `?expired=true` in URL query params → shows amber banner: "Your session expired. Please enter your email to start again."
+- Checks `?expired=true` in URL query params → shows amber banner: "Your session expired. Please enter your email and access code to start again."
 
 **Form behavior:**
 - Email `<Input>` with `autoFocus`, `autoComplete="email"`, `type="email"`
@@ -218,7 +218,7 @@ All use `opacity-0 translate-y-8` → `opacity-100 translate-y-0` driven by `mou
 
 **Error state**: shows "Something went wrong — Start over" button
 
-**`alreadySelected` without coach data**: shows "Coach Already Selected" headline + "Check your email for details or contact your program administrator"
+**`alreadySelected` without coach data**: shows "Coach Already Selected" headline + "Your selection is confirmed. Contact your program administrator if you have any questions."
 
 **Coach card (shown when coach data available):**
 - Avatar 80px, ring-4 ring-fc-100 ring-offset-4
@@ -721,9 +721,9 @@ Full end-to-end walkthrough of the deployed Vercel preview using Claude in Chrom
 
 | # | Gap | File | Priority |
 |---|-----|------|----------|
-| 1 | **Missing remix warning** — fires immediately, no confirmation | `select-coach/page.tsx:360` | High |
-| 2 | **No "Step 2 of 2" on confirmation** | `confirmation/page.tsx` | Low |
-| 3 | **Bio not expandable** — `line-clamp-3` only, no hover/expand | Both selector + confirmation | Medium |
+| 1 | **Remix warning stale closure** — `handleRemixClick` had `canRemix` missing from deps; UI was implemented but not triggered | `select-coach/page.tsx` | High — **Fixed 2026-02-24** |
+| 2 | **No "Step 2 of 2" on confirmation** | `confirmation/page.tsx` | Low — **Fixed** |
+| 3 | **Bio not expandable** — resolved via "Read full bio →" modal link | Both selector + confirmation | Medium — **Fixed** |
 
 ### Implementation Notes from Source
 
@@ -734,4 +734,4 @@ Full end-to-end walkthrough of the deployed Vercel preview using Claude in Chrom
 
 ---
 
-*Last updated: 2026-02-23 | Branch: feat/phase-0-backend | Auth model: email + USPS access code (OTP model superseded)*
+*Last updated: 2026-02-24 | Branch: main | Auth model: email + USPS access code (OTP model superseded)*
