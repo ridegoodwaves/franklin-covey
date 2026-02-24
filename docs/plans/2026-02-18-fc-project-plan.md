@@ -241,7 +241,7 @@ Phase 2 roadmap (April+) is available upon request — covers platform hardening
 | Write full Prisma schema (11 models, all enums + indexes) | Amit | ERD finalized in vertical slices plan |
 | Create Supabase project, run first migration | Amit | Needs Supabase account setup |
 | docker-compose.yml (PostgreSQL + Mailpit) | Amit | Local dev email interception |
-| Dockerfile — 3-stage build, ECS-ready | Amit | Design-for-portability requirement |
+| ~~Dockerfile~~ — **deferred post-MVP** | — | Deployment target is Vercel; no Dockerfile needed. Add if/when ECS migration is scoped. |
 | Seed script — 1 org, 4 programs, 5 sample coaches, 8 test participants | Amit | Uses anonymized data; real coaches imported separately |
 | `.env.example` with all required vars documented | Amit | |
 

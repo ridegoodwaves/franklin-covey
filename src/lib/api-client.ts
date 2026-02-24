@@ -45,37 +45,6 @@ export interface VerifyAccessCodeResponse {
   error?: VerifyAccessCodeErrorCode;
 }
 
-// POST /api/participant/auth/request-otp
-export interface RequestOtpInput {
-  email: string;
-}
-export type RequestOtpErrorCode =
-  | "EMAIL_NOT_FOUND"   // Email not in participant list
-  | "WINDOW_CLOSED"     // Cohort selection window has passed
-  | "RATE_LIMITED";     // Too many OTP requests
-
-export interface RequestOtpResponse {
-  success: boolean;
-  error?: RequestOtpErrorCode;
-}
-
-// POST /api/participant/auth/verify-otp
-export interface VerifyOtpInput {
-  email: string;
-  otp: string;
-}
-export type VerifyOtpErrorCode =
-  | "INVALID_OTP"      // Wrong code
-  | "EXPIRED_OTP"      // Code older than 10 minutes
-  | "MAX_ATTEMPTS";    // Too many wrong attempts — must re-request
-
-export interface VerifyOtpResponse {
-  success: boolean;
-  /** True when this participant has already selected a coach. */
-  alreadySelected?: boolean;
-  error?: VerifyOtpErrorCode;
-}
-
 // GET /api/participant/coaches
 export interface CoachesResponse {
   coaches: ParticipantCoachCard[];
@@ -179,36 +148,6 @@ export async function verifyAccessCode(
   if (!input.accessCode.trim()) {
     return { success: false, error: "INVALID_CREDENTIALS" };
   }
-  return { success: true };
-}
-
-/** @deprecated STALE — OTP auth model superseded by verifyAccessCode (access-code model, Feb 24 P0). Delete when Slice 1 backend ships. */
-export async function requestOtp(
-  input: RequestOtpInput
-): Promise<RequestOtpResponse> {
-  // TODO: uncomment when backend is live
-  // return apiFetch<RequestOtpResponse>("POST", "/api/participant/auth/request-otp", input);
-
-  // ── Stub: simulates network call ──
-  await delay(800);
-  if (input.email.toLowerCase() === "unknown@test.com") {
-    return { success: false, error: "EMAIL_NOT_FOUND" };
-  }
-  return { success: true };
-}
-
-/** @deprecated STALE — OTP auth model superseded by verifyAccessCode (access-code model, Feb 24 P0). Delete when Slice 1 backend ships. */
-export async function verifyOtp(
-  input: VerifyOtpInput
-): Promise<VerifyOtpResponse> {
-  // TODO: uncomment when backend is live
-  // return apiFetch<VerifyOtpResponse>("POST", "/api/participant/auth/verify-otp", input);
-
-  // ── Stub ──
-  await delay(800);
-  if (input.otp === "000000") return { success: false, error: "EXPIRED_OTP" };
-  if (input.otp === "999999") return { success: false, error: "MAX_ATTEMPTS" };
-  if (input.otp !== "123456") return { success: false, error: "INVALID_OTP" };
   return { success: true };
 }
 

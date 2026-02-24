@@ -355,12 +355,12 @@ Backend: `POST /api/participant/coaches/select`
 }
 ```
 
-### Stale Stub Endpoints (to be removed)
+### Removed Stub Functions (2026-02-24)
 
 | Stub Function | Status | Notes |
 |--------------|--------|-------|
-| `requestOtp` | **STALE** — delete when backend ships | Old OTP model; system never sends participant emails |
-| `verifyOtp` | **STALE** — delete when backend ships | Replaced by `verifyAccessCode` |
+| `requestOtp` | **DELETED** from `api-client.ts` | Old OTP model; system never sends participant emails |
+| `verifyOtp` | **DELETED** from `api-client.ts` | Replaced by `verifyAccessCode` |
 
 ### Test Helper Endpoints (non-production only)
 
@@ -491,7 +491,6 @@ cohortStartDate DateTime → Day 0 for nudge timing
 status          EngagementStatus
 statusVersion   Int     → optimistic lock field
 totalSessions   Int     → 2 (TWO_SESSION) or 5 (FIVE_SESSION)
-autoAssigned    Boolean → true if coach was auto-assigned at Day 15
 coachSelectedAt DateTime?
 lastActivityAt  DateTime
 ```
@@ -560,7 +559,7 @@ In MVP, **USPS/FC Ops own all participant reminder communications**. The CIL sys
 | Day 0 | Participants imported; engagements created at `INVITED`. USPS sends welcome email separately. |
 | Day 5 (no selection) | **Dashboard flag only** — "Needs Attention" for ops. USPS/FC Ops may send manual reminder. |
 | Day 10 (no selection) | **Dashboard flag only** — escalated "Needs Attention" for ops. |
-| Day 15 (no selection) | **Auto-assign**: system assigns coach (capacity-weighted, same panel). Sets `autoAssigned = true`. Coach is notified (system email). |
+| Day 15 (no selection) | **Dashboard flag only** — ops manually assigns coach from admin dashboard. System does NOT auto-assign in MVP. |
 | 14+ days stalled | Dashboard flag for coach attention (engagement `IN_PROGRESS`, no session logged). |
 | 21+ days stalled | Dashboard flag + ops escalation (system emails Andrea/Kari). |
 
@@ -631,11 +630,11 @@ Target: Feb 25 staging deploy, Feb 26 beta test with Kari.
 
 | Constant | Value | Usage |
 |----------|-------|-------|
-| `COACH_CAPACITY` | `15` | Default `maxEngagements` for MLP/ALP coaches |
-| EF/EL capacity | `20` | Confirmed Feb 24; add `EF_EL_COACH_CAPACITY = 20` to config |
+| `MLP_ALP_COACH_CAPACITY` | `15` | `maxEngagements` for MLP/ALP coaches |
+| `EF_EL_COACH_CAPACITY` | `20` | `maxEngagements` for EF/EL coaches (locked Feb 24) |
 | `NUDGE_THRESHOLDS.participantReminder1Days` | `5` | Dashboard flag (not system email) |
 | `NUDGE_THRESHOLDS.participantReminder2Days` | `10` | Dashboard flag (not system email) |
-| `NUDGE_THRESHOLDS.autoAssignDays` | `15` | Coach auto-assign (system action) |
+| `NUDGE_THRESHOLDS.opsManualAssignThresholdDays` | `15` | Ops manually assigns coach from dashboard (no system auto-assign in MVP) |
 | `NUDGE_THRESHOLDS.coachAttentionDays` | `14` | Coach attention flag |
 | `NUDGE_THRESHOLDS.opsEscalationDays` | `21` | Ops escalation email |
 | `PROGRAM_TRACK_SESSIONS.TWO_SESSION` | `2` | MLP/ALP |

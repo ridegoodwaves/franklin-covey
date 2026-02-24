@@ -178,7 +178,6 @@ erDiagram
         EngagementStatus status
         Int statusVersion "optimistic lock"
         Int totalSessions
-        Boolean autoAssigned "default false"
         DateTime coachSelectedAt
         DateTime lastActivityAt
     }
@@ -209,7 +208,6 @@ erDiagram
         NudgeType nudgeType "SELECTION_WINDOW_NEEDS_ATTENTION | COACH_ATTENTION | OPS_ESCALATION"
         Boolean emailSent "default false"
         DateTime sentAt
-        String assignedCoachId FK "nullable, reserved for future matching workflows"
     }
 
     Organization ||--o{ Program : "has many"
@@ -243,11 +241,11 @@ erDiagram
 - **Changed** `SessionNote.topics/outcomes` arrays → `SessionNote.topicDiscussed` (single string from program competency list) + `SessionNote.sessionOutcome` (single string)
 - **Changed** `NudgeLog.nudgeType` enum: now tracks dashboard attention flags for manual FC follow-up (no participant reminder sends in MVP)
 - **Added** `NudgeLog.emailSent` boolean (tracks coach/admin/ops email sends where applicable)
-- **Added** `NudgeLog.assignedCoachId` FK (nullable — reserved for future matching workflows)
 - **Renamed** `NudgeLog.flaggedAt` → `NudgeLog.sentAt` (single timestamp for flags/emails)
 - **Removed** `NudgeLog.acknowledged/acknowledgedAt` (ops workflow doesn't need explicit acknowledgment for MVP)
 - **Removed** `Participant.programTrack` (track is now on `Program.track` — derived via `Engagement.programId`)
-- **Added** `Engagement.autoAssigned` boolean (reserved for future use; MVP matching is participant-selected/manual ops flow)
+- ~~`NudgeLog.assignedCoachId`~~ — removed (reserved field with no MVP use; add when matching workflows ship)
+- ~~`Engagement.autoAssigned`~~ — removed (reserved field with no MVP use; add when auto-assignment feature ships)
 - **Added** `Engagement.cohortStartDate` (Day 0 anchor from cohort schedule)
 
 ---
@@ -315,11 +313,12 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 #### 0.3 Shared Utilities
 
 - [ ] Engagement state machine — `src/lib/engagement-state.ts`
-  - `transitionEngagement(tx: Prisma.TransactionClient, engagementId, targetStatus, currentStatusVersion)` — accepts transaction client so it composes inside existing transactions
+  - `transitionEngagement(tx: Prisma.TransactionClient, engagementId, targetStatus, currentStatusVersion): Promise<{ newStatusVersion: number }>` — accepts transaction client so it composes inside existing transactions; **returns new statusVersion** so callers can chain transitions without stale version reads
   - Valid transitions: `INVITED→COACH_SELECTED`, `COACH_SELECTED→IN_PROGRESS`, `IN_PROGRESS→COMPLETED`, any→`CANCELED`/`ON_HOLD`
   - Updates `lastActivityAt` on every transition
   - Always checks `statusVersion` in WHERE clause (enforces optimistic locking in one place)
   - Throws `InvalidTransitionError` on invalid transition (with current + target status)
+  - **Important**: when calling `transitionEngagement` twice in one transaction (e.g., `IN_PROGRESS` then `COMPLETED`), thread the returned `newStatusVersion` into the second call — never reuse the version from transaction start
 - [ ] Validation schemas (Zod) — `src/lib/validations.ts`
   - `participantEmailSchema` — lowercase, trim, valid format
   - `participantAccessCodeSchema` — code format/length for participant auth
@@ -362,9 +361,10 @@ SENTRY_DSN=
 LOG_LEVEL=info
 ```
 
-- [ ] Create `Dockerfile` (3-stage build, non-root user) — `Dockerfile`
-- [ ] Create `docker-compose.yml` (PostgreSQL 16 + PgBouncer + Mailpit) — `docker-compose.yml`
+- ~~`Dockerfile`~~ — **Deferred post-MVP** (deployment target is Vercel; ECS migration not scoped for MVP). Write when/if container deployment is needed.
+- [ ] Create `docker-compose.yml` (PostgreSQL 16 + Mailpit) — `docker-compose.yml`
   - Mailpit: SMTP on port 1025, web UI on port 8025. Catches all non-production email.
+  - **Note**: remove PgBouncer from local docker-compose — Supabase provides pooling in production; direct Postgres locally is simpler and matches actual prod topology
 - [ ] Add `/api/health` endpoint — `src/app/api/health/route.ts`
   - Returns `{ status: "ok", version: process.env.npm_package_version }`
   - Database connectivity check (Prisma `$queryRaw('SELECT 1')`)
@@ -640,13 +640,17 @@ await prisma.$transaction(async (tx) => {
   })
 
   // 4. Transition engagement if first session (uses transitionEngagement helper)
+  let currentStatusVersion = engagement.statusVersion
   if (count === 0 && engagement.status === 'COACH_SELECTED') {
-    await transitionEngagement(tx, engagementId, 'IN_PROGRESS', engagement.statusVersion)
+    const { newStatusVersion } = await transitionEngagement(tx, engagementId, 'IN_PROGRESS', currentStatusVersion)
+    currentStatusVersion = newStatusVersion
   }
 
-  // 5. Auto-complete engagement if all sessions done (fixed 2026-02-14: was missing statusVersion check)
+  // 5. Auto-complete engagement if all sessions done
+  // Thread currentStatusVersion from step 4 — do NOT reuse engagement.statusVersion here;
+  // step 4 may have already incremented it and the optimistic lock check would fail.
   if (sessionNumber === engagement.totalSessions && !isDraft) {
-    await transitionEngagement(tx, engagementId, 'COMPLETED', engagement.statusVersion)
+    await transitionEngagement(tx, engagementId, 'COMPLETED', currentStatusVersion)
   }
 
   return session
@@ -764,8 +768,14 @@ await prisma.$transaction(async (tx) => {
   - Return validation results with row-level errors
   - **CSV injection prevention**: strip leading `=`, `+`, `-`, `@` from all text fields
 
+- [ ] Import validation — generates a batch token on success
+  - Validation endpoint returns `{ batchToken: string, rows: ValidatedRow[], errors: RowError[] }` on success
+  - `batchToken` is a short-lived server-side token (stored in a `ImportBatch` table or signed JWT, expires in 1 hour) that references the validated rows
+  - Token prevents double-submit: executing the same batch token twice returns `{ created: 0, skipped: N, alreadyExecuted: true }` rather than creating duplicates
 - [ ] Import execution — `src/app/api/admin/import/execute/route.ts`
-  - `POST /api/admin/import/execute { rows: ValidatedRow[], programId }`
+  - `POST /api/admin/import/execute { batchToken: string }` — **not** the raw rows; token is consumed server-side
+  - Check `batchToken` status: if already executed, return idempotency response immediately
+  - Mark token as `EXECUTING` before transaction begins (prevents concurrent double-submit)
   - **Phase A**: Atomic transaction — create all `Participant` + `Engagement` records
     - Engagement created with `status: INVITED`, `coachId: null`, `totalSessions` from `programTrack`, `cohortStartDate` from CSV
     - Transaction timeout: 30s (fail-safe for large imports)
@@ -773,7 +783,8 @@ await prisma.$transaction(async (tx) => {
     - Build export with participant email + cohort + access code + selection window
     - No participant email send from system in MVP
     - Mark package timestamp for ops auditability
-  - Return: `{ created: number, skipped: number, exportGenerated: boolean, exportPath?: string }`
+  - Mark token as `EXECUTED` on success
+  - Return: `{ created: number, skipped: number, exportGenerated: boolean, exportPath?: string, alreadyExecuted?: boolean }`
 
 #### 3.3 Needs-Attention Workflow (Manual Reminders in MVP)
 
