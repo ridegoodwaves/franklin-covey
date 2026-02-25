@@ -9,6 +9,7 @@
     "lint": "next lint",
     "data:build:staging": "node scripts/build-staging-import-artifacts.mjs",
     "data:seed:staging": "node scripts/seed-staging-from-artifacts.mjs",
+    "data:backfill:bios": "node scripts/backfill-coach-bios.mjs",
     "headshots:verify": "node scripts/verify-headshot-mappings.mjs",
     "env:validate": "node scripts/validate-env-safety.mjs",
     "env:validate:staging": "node scripts/validate-env-safety.mjs --env-file .env.staging.example --target staging",
