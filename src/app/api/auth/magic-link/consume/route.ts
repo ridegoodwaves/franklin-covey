@@ -1,6 +1,8 @@
 import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getRequestIpAddress } from "@/lib/server/rate-limit";
+import { consumeMagicLinkOneTime } from "@/lib/server/security-guards";
 import { verifyMagicLinkToken, writePortalSession } from "@/lib/server/session";
 
 function dashboardPathForRole(role: UserRole): string {
@@ -11,7 +13,7 @@ function resolveSiteUrl(request: NextRequest): URL {
   return new URL("/", request.url);
 }
 
-async function consumeToken(token: string | null) {
+async function consumeToken(token: string | null, request: NextRequest) {
   if (!token) {
     return { ok: false as const, error: "INVALID_TOKEN" as const };
   }
@@ -40,6 +42,19 @@ async function consumeToken(token: string | null) {
     return { ok: false as const, error: "INVALID_TOKEN" as const };
   }
 
+  const firstUse = await consumeMagicLinkOneTime({
+    token,
+    userId: user.id,
+    email: user.email,
+    role: user.role,
+    ipAddress: getRequestIpAddress(request.headers),
+    userAgent: request.headers.get("user-agent") || undefined,
+  });
+
+  if (!firstUse) {
+    return { ok: false as const, error: "INVALID_TOKEN" as const };
+  }
+
   return {
     ok: true as const,
     user,
@@ -48,7 +63,7 @@ async function consumeToken(token: string | null) {
 
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get("token");
-  const consumed = await consumeToken(token);
+  const consumed = await consumeToken(token, request);
 
   if (!consumed.ok) {
     const target = new URL("/auth/signin", resolveSiteUrl(request));
@@ -76,7 +91,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: "INVALID_TOKEN" }, { status: 400 });
   }
 
-  const consumed = await consumeToken(token);
+  const consumed = await consumeToken(token, request);
   if (!consumed.ok) {
     return NextResponse.json({ success: false, error: "INVALID_TOKEN" }, { status: 400 });
   }
