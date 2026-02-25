@@ -585,7 +585,7 @@ export default function SelectCoachPage() {
                           {coach.photo && <AvatarImage src={coach.photo} alt={coach.name} />}
                           <AvatarFallback className={cn(
                             "text-lg font-display font-semibold",
-                            coach.atCapacity ? "bg-fc-50 text-fc-400" : "bg-gradient-to-br from-fc-100 to-fc-50 text-fc-700"
+                            coach.atCapacity ? "bg-fc-100 text-fc-400" : "bg-gradient-to-br from-fc-600 to-fc-800 text-white"
                           )}>
                             {coach.initials}
                           </AvatarFallback>
@@ -599,12 +599,15 @@ export default function SelectCoachPage() {
 
                       <CardTitle className="mt-4 text-lg text-fc-900">{coach.name}</CardTitle>
 
-                      <div className="mt-1 flex items-center gap-1.5">
-                        {coach.credentials.map((cred) => (
-                          <span key={cred} className="text-[10px] font-semibold tracking-wider text-fc-600 uppercase">{cred}</span>
-                        ))}
-                        <span className="text-fc-300">&middot;</span>
-                        <span className="text-xs text-muted-foreground">{coach.yearsExperience} yrs</span>
+                      <div className="mt-2 flex flex-col items-center gap-1">
+                        {coach.credentials.length > 0 && (
+                          <p className="text-[11px] leading-snug text-muted-foreground line-clamp-2 px-2 text-center">
+                            {coach.credentials.join(' · ')}
+                          </p>
+                        )}
+                        <span className="inline-flex items-center rounded-full bg-fc-50 border border-fc-100 px-2.5 py-0.5 text-[10px] font-semibold text-fc-700">
+                          {coach.yearsExperience} yrs experience
+                        </span>
                       </div>
 
                       <div className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
@@ -625,9 +628,12 @@ export default function SelectCoachPage() {
                         <button
                           type="button"
                           onClick={(e) => { e.stopPropagation(); setBioModalCoach(coach); }}
-                          className="mt-2 text-xs font-medium text-fc-600 hover:text-fc-800 hover:underline underline-offset-2"
+                          className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-fc-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-fc-700 shadow-sm transition-all hover:border-fc-400 hover:bg-fc-50 hover:text-fc-900 hover:shadow"
                         >
-                          Read full bio →
+                          Read full bio
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+                          </svg>
                         </button>
                       )}
                     </CardContent>

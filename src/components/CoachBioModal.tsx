@@ -87,7 +87,7 @@ export function CoachBioModal({
               coach.atCapacity ? "ring-fc-100" : "ring-fc-100"
             )}>
               {coach.photo && <AvatarImage src={coach.photo} alt={coach.name} />}
-              <AvatarFallback className="text-lg font-display font-semibold bg-gradient-to-br from-fc-100 to-fc-50 text-fc-700">
+              <AvatarFallback className="text-lg font-display font-semibold bg-gradient-to-br from-fc-600 to-fc-800 text-white">
                 {coach.initials}
               </AvatarFallback>
             </Avatar>
@@ -95,9 +95,9 @@ export function CoachBioModal({
             <div>
               <h2 className="font-display text-xl font-medium text-fc-900">{coach.name}</h2>
               {coach.credentials.length > 0 && (
-                <p className="mt-0.5 text-xs font-semibold tracking-wider text-fc-600 uppercase">
+                <p className="mt-1 text-xs text-muted-foreground leading-snug">
                   {coach.credentials.join(" · ")}
-                  {coach.yearsExperience ? ` · ${coach.yearsExperience} yrs` : ""}
+                  {coach.yearsExperience ? ` · ${coach.yearsExperience} yrs experience` : ""}
                 </p>
               )}
               {coach.location && (
