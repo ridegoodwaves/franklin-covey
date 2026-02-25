@@ -23,6 +23,8 @@ export interface ParticipantCoachCard {
   atCapacity: boolean;
   remainingCapacity: number;
   yearsExperience: number;
+  /** Client testimonial quotes for the bio modal. */
+  quotes: Array<{ quote: string; attribution?: string }>;
 }
 
 // ─── Request / Response Contracts ────────────────────────────────────────────

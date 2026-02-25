@@ -1,5 +1,6 @@
 import type {
   CoachCertification,
+  CoachClientQuote,
   CoachHighlight,
   CoachPool,
   EngagementStatus,
@@ -50,6 +51,7 @@ interface CoachProfileBundle {
   photoPath?: string;
   atCapacity: boolean;
   remainingCapacity: number;
+  quotes: Array<{ quote: string; attribution?: string }>;
 }
 
 interface OrganizationCoachWithProfile
@@ -58,6 +60,7 @@ interface OrganizationCoachWithProfile
     user: User;
     highlights: CoachHighlight[];
     certifications: CoachCertification[];
+    clientQuotes: CoachClientQuote[];
   };
   _count: {
     engagements: number;
@@ -119,6 +122,13 @@ function mapCoachRecord(record: OrganizationCoachWithProfile, pool: CoachPool): 
     .filter(Boolean)
     .slice(0, 3);
 
+  const quotes = (record.coachProfile.clientQuotes ?? [])
+    .map((q) => ({
+      quote: q.quote.trim(),
+      attribution: q.attribution?.trim() ?? undefined,
+    }))
+    .filter((q) => q.quote.length > 0);
+
   return {
     id: record.id,
     organizationId: record.organizationId,
@@ -135,6 +145,7 @@ function mapCoachRecord(record: OrganizationCoachWithProfile, pool: CoachPool): 
     photoPath: record.coachProfile.photoPath ?? undefined,
     atCapacity,
     remainingCapacity,
+    quotes,
   };
 }
 
@@ -249,6 +260,7 @@ export async function listCoachPool(input: {
           user: true,
           highlights: { where: { archivedAt: null }, orderBy: { sortOrder: "asc" } },
           certifications: { where: { archivedAt: null }, orderBy: { sortOrder: "asc" } },
+          clientQuotes: { where: { archivedAt: null }, orderBy: { sortOrder: "asc" } },
         },
       },
       _count: {
@@ -323,6 +335,7 @@ export async function toParticipantCoachCards(
   remainingCapacity: number;
   yearsExperience: number;
   meetingBookingUrl?: string;
+  quotes: Array<{ quote: string; attribution?: string }>;
 }>> {
   return Promise.all(
     coaches.map(async (coach) => {
@@ -348,6 +361,7 @@ export async function toParticipantCoachCards(
         remainingCapacity: coach.remainingCapacity,
         yearsExperience: coach.yearsExperience,
         meetingBookingUrl: includeBookingLink ? coach.bookingLinkPrimary : undefined,
+        quotes: coach.quotes,
       };
     })
   );

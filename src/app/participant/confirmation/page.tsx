@@ -13,6 +13,8 @@ interface StoredCoach {
   photo?: string;
   bio: string;
   credentials: string[];
+  specialties: string[];
+  quotes?: Array<{ quote: string; attribution?: string }>;
   location: string;
   bookingUrl?: string;
 }
@@ -106,9 +108,13 @@ function ConfirmationContent() {
                 <div>
                   <p className="font-display text-xl font-medium text-fc-900">{coach.name}</p>
                   {coach.credentials.length > 0 && (
-                    <p className="mt-1 text-xs text-muted-foreground leading-snug">
-                      {coach.credentials.join(" · ")}
-                    </p>
+                    <div className="mt-1 flex flex-col items-center gap-0.5">
+                      {coach.credentials.slice(0, 2).map((cred, i) => (
+                        <p key={i} className="text-xs text-muted-foreground leading-snug line-clamp-1 text-center max-w-[240px]">
+                          {cred}
+                        </p>
+                      ))}
+                    </div>
                   )}
                   {coach.location && (
                     <div className="mt-1.5 flex items-center justify-center gap-1 text-xs text-muted-foreground">

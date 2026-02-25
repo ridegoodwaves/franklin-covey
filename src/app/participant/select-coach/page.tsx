@@ -39,6 +39,7 @@ interface Coach {
   atCapacity: boolean;
   yearsExperience: number;
   sessionCount: number;
+  quotes?: Array<{ quote: string; attribution?: string }>;
 }
 
 type ProgramTrack = "TWO_SESSION" | "FIVE_SESSION";
@@ -292,6 +293,7 @@ function apiCoachToLocal(c: ParticipantCoachCard): Coach {
     atCapacity: c.atCapacity,
     yearsExperience: c.yearsExperience,
     sessionCount: 0,
+    quotes: c.quotes ?? [],
   };
 }
 
@@ -620,13 +622,13 @@ export default function SelectCoachPage() {
 
                       <CardTitle className="mt-4 text-lg text-fc-900">{coach.name}</CardTitle>
 
-                      <div className="mt-2 flex flex-col items-center gap-1">
-                        {coach.credentials.length > 0 && (
-                          <p className="text-[11px] leading-snug text-muted-foreground line-clamp-2 px-2 text-center">
-                            {coach.credentials.join(' · ')}
+                      <div className="mt-2 flex flex-col items-center gap-1 w-full px-2">
+                        {coach.credentials.slice(0, 2).map((cred, i) => (
+                          <p key={i} className="text-[11px] leading-snug text-muted-foreground line-clamp-1 text-center w-full">
+                            {cred}
                           </p>
-                        )}
-                        <span className="inline-flex items-center rounded-full bg-fc-50 border border-fc-100 px-2.5 py-0.5 text-[10px] font-semibold text-fc-700">
+                        ))}
+                        <span className="mt-0.5 inline-flex items-center rounded-full bg-fc-50 border border-fc-100 px-2.5 py-0.5 text-[10px] font-semibold text-fc-700">
                           {coach.yearsExperience} yrs experience
                         </span>
                       </div>
