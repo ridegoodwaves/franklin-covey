@@ -10,7 +10,7 @@ import { readParticipantSession } from "@/lib/server/session";
 
 interface SelectionResult {
   ok: boolean;
-  error?: "CAPACITY_FULL" | "ALREADY_SELECTED" | "INVALID_SESSION";
+  error?: "CAPACITY_FULL" | "ALREADY_SELECTED" | "INVALID_SESSION" | "WINDOW_CLOSED";
   coachId?: string;
 }
 
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (context.cohort.coachSelectionEnd < new Date()) {
-    return NextResponse.json({ success: false, error: "INVALID_SESSION" });
+    return NextResponse.json({ success: false, error: "WINDOW_CLOSED" });
   }
 
   const selection = await prisma.$transaction(async (tx): Promise<SelectionResult> => {
@@ -85,6 +85,9 @@ export async function POST(request: NextRequest) {
     if (!selectedCoach) {
       return { ok: false, error: "CAPACITY_FULL" };
     }
+
+    // Serialize selection attempts for this coach to avoid over-assignment races.
+    await tx.$queryRaw`select pg_advisory_xact_lock(hashtext(${selectedCoach.id}))`;
 
     const activeCount = await tx.engagement.count({
       where: {

@@ -65,7 +65,8 @@ export interface SelectCoachInput {
 export type SelectCoachErrorCode =
   | "CAPACITY_FULL"    // Coach filled between render and submit
   | "ALREADY_SELECTED" // Participant already has a coach (idempotency guard)
-  | "INVALID_SESSION"; // Session expired mid-flow
+  | "INVALID_SESSION"  // Session expired mid-flow
+  | "WINDOW_CLOSED";   // Selection window closed after session creation
 
 export interface SelectCoachResponse {
   success: boolean;
@@ -170,7 +171,8 @@ export async function selectCoach(
       if (
         error.code === "CAPACITY_FULL" ||
         error.code === "ALREADY_SELECTED" ||
-        error.code === "INVALID_SESSION"
+        error.code === "INVALID_SESSION" ||
+        error.code === "WINDOW_CLOSED"
       ) {
         return { success: false, error: error.code };
       }

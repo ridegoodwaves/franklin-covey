@@ -360,6 +360,14 @@ export default function SelectCoachPage() {
           router.replace("/participant/?expired=true");
           return;
         }
+        if (error.code === "WINDOW_CLOSED") {
+          setInlineError("The selection window for your cohort has closed. Contact your program administrator.");
+          setDisplayedCoaches([]);
+          setShownIds(new Set());
+          setSelectionDisabled(true);
+          setMounted(true);
+          return;
+        }
         if (error.code === "ALREADY_SELECTED") {
           router.replace("/participant/confirmation?already=true");
           return;
@@ -391,6 +399,14 @@ export default function SelectCoachPage() {
       if (error instanceof ApiError) {
         if (error.code === "INVALID_SESSION") {
           router.replace("/participant/?expired=true");
+          return;
+        }
+        if (error.code === "WINDOW_CLOSED") {
+          setInlineError("The selection window for your cohort has closed. Contact your program administrator.");
+          setDisplayedCoaches([]);
+          setShownIds(new Set());
+          setSelectionDisabled(true);
+          setMounted(true);
           return;
         }
         if (error.code === "ALREADY_SELECTED") {
@@ -475,6 +491,11 @@ export default function SelectCoachPage() {
               break;
             case "INVALID_SESSION":
               router.push("/participant/?expired=true");
+              break;
+            case "WINDOW_CLOSED":
+              setInlineError("The selection window for your cohort has closed. Contact your program administrator.");
+              setSelectionDisabled(true);
+              setSelectingCoachId(null);
               break;
             default:
               setInlineError("Something went wrong — please try again");
