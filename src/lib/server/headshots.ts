@@ -124,7 +124,12 @@ export async function resolveCoachPhotoUrl(photoPath: string | null | undefined)
     if (signedPath.startsWith("http://") || signedPath.startsWith("https://")) {
       return signedPath;
     }
-    return `${supabaseUrl}${signedPath}`;
+    // Supabase returns signedURL relative to /storage/v1 (e.g. "/object/sign/...")
+    // so we must prepend the full storage base, not just supabaseUrl.
+    const storagePath = signedPath.startsWith("/storage/v1")
+      ? signedPath
+      : `/storage/v1${signedPath}`;
+    return `${supabaseUrl}${storagePath}`;
   }
 
   return undefined;
