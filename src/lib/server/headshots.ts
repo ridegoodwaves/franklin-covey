@@ -4,6 +4,10 @@ import generatedMap from "@/lib/headshots/generated-map.json";
 const HEADSHOTS_BUCKET = "headshots";
 const EXEC_FOLDER = "executive-coach-photos";
 const MLP_FOLDER = "mlp-alp-coach-photos";
+const LEGACY_FOLDER_ALIASES: Record<string, string> = {
+  "executive-coach-photos": "executive coach photos",
+  "mlp-alp-coach-photos": "mlp alp coach photos",
+};
 
 const PUBLIC_MODE = (process.env.SUPABASE_HEADSHOTS_BUCKET_MODE || "private").toLowerCase() === "public";
 const SIGNED_URL_TTL_SECONDS = Number(process.env.SUPABASE_HEADSHOTS_SIGNED_URL_TTL_SECONDS || 3600);
@@ -69,10 +73,22 @@ export async function resolveCoachPhotoUrl(photoPath: string | null | undefined)
   if (!supabaseUrl) return undefined;
 
   const normalizedPath = normalizeStoredPhotoPath(photoPath);
-  const encodedPath = encodeStoragePath(normalizedPath);
+
+  const pathCandidates = new Set<string>([normalizedPath]);
+  for (const [canonical, legacy] of Object.entries(LEGACY_FOLDER_ALIASES)) {
+    if (normalizedPath.startsWith(`${canonical}/`)) {
+      pathCandidates.add(normalizedPath.replace(`${canonical}/`, `${legacy}/`));
+    } else if (normalizedPath.startsWith(`${legacy}/`)) {
+      pathCandidates.add(normalizedPath.replace(`${legacy}/`, `${canonical}/`));
+    }
+  }
 
   if (PUBLIC_MODE) {
-    return `${supabaseUrl}/storage/v1/object/public/${HEADSHOTS_BUCKET}/${encodedPath}`;
+    for (const candidate of pathCandidates) {
+      const encodedPath = encodeStoragePath(candidate);
+      return `${supabaseUrl}/storage/v1/object/public/${HEADSHOTS_BUCKET}/${encodedPath}`;
+    }
+    return undefined;
   }
 
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
@@ -82,27 +98,34 @@ export async function resolveCoachPhotoUrl(photoPath: string | null | undefined)
     ? Math.max(60, SIGNED_URL_TTL_SECONDS)
     : 3600;
 
-  const signUrl = `${supabaseUrl}/storage/v1/object/sign/${HEADSHOTS_BUCKET}/${encodedPath}`;
-  const response = await fetch(signUrl, {
-    method: "POST",
-    headers: {
-      apikey: serviceRoleKey,
-      Authorization: `Bearer ${serviceRoleKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ expiresIn: ttlSeconds }),
-    cache: "no-store",
-  });
+  for (const candidate of pathCandidates) {
+    const encodedPath = encodeStoragePath(candidate);
+    const signUrl = `${supabaseUrl}/storage/v1/object/sign/${HEADSHOTS_BUCKET}/${encodedPath}`;
+    const response = await fetch(signUrl, {
+      method: "POST",
+      headers: {
+        apikey: serviceRoleKey,
+        Authorization: `Bearer ${serviceRoleKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ expiresIn: ttlSeconds }),
+      cache: "no-store",
+    });
 
-  if (!response.ok) {
-    return undefined;
+    if (!response.ok) {
+      continue;
+    }
+
+    const payload = (await response.json()) as { signedURL?: string; signedUrl?: string };
+    const signedPath = payload.signedURL || payload.signedUrl;
+    if (!signedPath) {
+      continue;
+    }
+    if (signedPath.startsWith("http://") || signedPath.startsWith("https://")) {
+      return signedPath;
+    }
+    return `${supabaseUrl}${signedPath}`;
   }
 
-  const payload = (await response.json()) as { signedURL?: string; signedUrl?: string };
-  const signedPath = payload.signedURL || payload.signedUrl;
-  if (!signedPath) return undefined;
-  if (signedPath.startsWith("http://") || signedPath.startsWith("https://")) {
-    return signedPath;
-  }
-  return `${supabaseUrl}${signedPath}`;
+  return undefined;
 }
