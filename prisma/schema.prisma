@@ -1,0 +1,405 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  COACH
+}
+
+enum ProgramCode {
+  MLP
+  ALP
+  EF
+  EL
+}
+
+enum ProgramTrack {
+  TWO_SESSION
+  FIVE_SESSION
+}
+
+enum CoachPool {
+  MLP_ALP
+  EF_EL
+}
+
+enum EngagementStatus {
+  INVITED
+  COACH_SELECTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+  ON_HOLD
+}
+
+enum SessionStatus {
+  COMPLETED
+  FORFEITED_CANCELLED
+  FORFEITED_NOT_USED
+}
+
+enum NeedsAttentionType {
+  SELECTION_OVERDUE
+  SESSION_WINDOW_OVERDUE
+  COACH_ATTENTION
+  OPS_ESCALATION
+}
+
+enum NeedsAttentionStatus {
+  OPEN
+  RESOLVED
+  IGNORED
+}
+
+enum ImportType {
+  PARTICIPANT_ROSTER
+  COACH_PROFILE
+  COHORT_TIMELINE
+  ADMIN_USERS
+}
+
+enum ImportStatus {
+  VALIDATED
+  EXECUTED
+  FAILED
+}
+
+model Organization {
+  id               String              @id @default(cuid())
+  code             String              @unique
+  name             String
+  active           Boolean             @default(true)
+  programs         Program[]
+  cohorts          Cohort[]
+  participants     Participant[]
+  coachMemberships OrganizationCoach[]
+  engagements      Engagement[]
+  importBatches    ImportBatch[]
+  auditEvents      AuditEvent[]
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  createdBy        String?
+  updatedBy        String?
+  archivedAt       DateTime?
+}
+
+model User {
+  id         String        @id @default(cuid())
+  email      String        @unique
+  role       UserRole
+  active     Boolean       @default(true)
+  coach      CoachProfile?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  createdBy  String?
+  updatedBy  String?
+  archivedAt DateTime?
+
+  auditEvents AuditEvent[]
+}
+
+model Program {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  code            ProgramCode
+  name            String
+  track           ProgramTrack
+  defaultSessions Int
+  pool            CoachPool
+  active          Boolean      @default(true)
+  cohorts         Cohort[]
+  engagements     Engagement[]
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  createdBy       String?
+  updatedBy       String?
+  archivedAt      DateTime?
+
+  @@unique([organizationId, code])
+  @@index([organizationId, pool])
+}
+
+model Cohort {
+  id                      String        @id @default(cuid())
+  organizationId          String
+  organization            Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  code                    String
+  programId               String
+  program                 Program       @relation(fields: [programId], references: [id], onDelete: Restrict)
+  participantCountPlanned Int?
+  coachSelectionStart     DateTime
+  coachSelectionEnd       DateTime
+  session1Start           DateTime?
+  session1End             DateTime?
+  session2Start           DateTime?
+  session2End             DateTime?
+  reportingWindowEnd      DateTime?
+  active                  Boolean       @default(true)
+  participants            Participant[]
+  engagements             Engagement[]
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+  createdBy               String?
+  updatedBy               String?
+  archivedAt              DateTime?
+
+  @@unique([organizationId, code])
+  @@index([organizationId, programId, coachSelectionStart])
+}
+
+model Participant {
+  id             String       @id @default(cuid())
+  email          String
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  cohortId       String
+  cohort         Cohort       @relation(fields: [cohortId], references: [id], onDelete: Restrict)
+  sourceFile     String?
+  sourcePayload  Json?
+  engagement     Engagement?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  createdBy      String?
+  updatedBy      String?
+  archivedAt     DateTime?
+
+  @@unique([cohortId, email])
+  @@index([organizationId, email])
+}
+
+model CoachProfile {
+  id                      String               @id @default(cuid())
+  userId                  String               @unique
+  user                    User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
+  displayName             String
+  firstName               String?
+  lastName                String?
+  location                String?
+  shortBio                String?
+  photoPath               String?
+  bookingLinkPrimary      String?
+  bookingLinkSecondary    String?
+  active                  Boolean              @default(true)
+  sourceFile              String?
+  sourcePayload           Json?
+  organizationMemberships OrganizationCoach[]
+  highlights              CoachHighlight[]
+  certifications          CoachCertification[]
+  clientQuotes            CoachClientQuote[]
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  createdBy               String?
+  updatedBy               String?
+  archivedAt              DateTime?
+}
+
+model OrganizationCoach {
+  id              String                @id @default(cuid())
+  organizationId  String
+  organization    Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  coachProfileId  String
+  coachProfile    CoachProfile          @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+  maxEngagements  Int                   @default(20)
+  active          Boolean               @default(true)
+  poolMemberships CoachPoolMembership[]
+  engagements     Engagement[]
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  createdBy       String?
+  updatedBy       String?
+  archivedAt      DateTime?
+
+  @@unique([organizationId, coachProfileId])
+  @@index([organizationId, active])
+}
+
+model CoachPoolMembership {
+  id                  String            @id @default(cuid())
+  organizationCoachId String
+  pool                CoachPool
+  organizationCoach   OrganizationCoach @relation(fields: [organizationCoachId], references: [id], onDelete: Cascade)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  createdBy           String?
+  updatedBy           String?
+  archivedAt          DateTime?
+
+  @@unique([organizationCoachId, pool])
+  @@index([pool])
+}
+
+model CoachHighlight {
+  id             String       @id @default(cuid())
+  coachProfileId String
+  coachProfile   CoachProfile @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+  sortOrder      Int          @default(0)
+  text           String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  createdBy      String?
+  updatedBy      String?
+  archivedAt     DateTime?
+
+  @@index([coachProfileId, sortOrder])
+}
+
+model CoachCertification {
+  id             String       @id @default(cuid())
+  coachProfileId String
+  coachProfile   CoachProfile @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+  sortOrder      Int          @default(0)
+  text           String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  createdBy      String?
+  updatedBy      String?
+  archivedAt     DateTime?
+
+  @@index([coachProfileId, sortOrder])
+}
+
+model CoachClientQuote {
+  id             String       @id @default(cuid())
+  coachProfileId String
+  coachProfile   CoachProfile @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+  sortOrder      Int          @default(0)
+  quote          String
+  attribution    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  createdBy      String?
+  updatedBy      String?
+  archivedAt     DateTime?
+
+  @@index([coachProfileId, sortOrder])
+}
+
+model Engagement {
+  id                  String               @id @default(cuid())
+  organizationId      String
+  organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  participantId       String               @unique
+  participant         Participant          @relation(fields: [participantId], references: [id], onDelete: Restrict)
+  programId           String
+  program             Program              @relation(fields: [programId], references: [id], onDelete: Restrict)
+  cohortId            String
+  cohort              Cohort               @relation(fields: [cohortId], references: [id], onDelete: Restrict)
+  organizationCoachId String?
+  organizationCoach   OrganizationCoach?   @relation(fields: [organizationCoachId], references: [id], onDelete: Restrict)
+  status              EngagementStatus     @default(INVITED)
+  statusVersion       Int                  @default(1)
+  totalSessions       Int
+  coachSelectedAt     DateTime?
+  lastActivityAt      DateTime?
+  sessions            Session[]
+  needsAttention      NeedsAttentionFlag[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  createdBy           String?
+  updatedBy           String?
+  archivedAt          DateTime?
+
+  @@index([organizationId, programId, cohortId, status])
+  @@index([organizationCoachId, status])
+}
+
+model Session {
+  id              String        @id @default(cuid())
+  engagementId    String
+  engagement      Engagement    @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  sessionNumber   Int
+  status          SessionStatus
+  occurredAt      DateTime?
+  topic           String?
+  outcome         String?
+  durationMinutes Int?
+  privateNotes    String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  createdBy       String?
+  updatedBy       String?
+  archivedAt      DateTime?
+
+  @@unique([engagementId, sessionNumber])
+}
+
+model NeedsAttentionFlag {
+  id           String               @id @default(cuid())
+  engagementId String
+  engagement   Engagement           @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  type         NeedsAttentionType
+  status       NeedsAttentionStatus @default(OPEN)
+  triggeredAt  DateTime             @default(now())
+  resolvedAt   DateTime?
+  ownerEmail   String?
+  notes        String?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  createdBy    String?
+  updatedBy    String?
+  archivedAt   DateTime?
+
+  @@index([status, type, triggeredAt])
+}
+
+model ImportBatch {
+  id              String           @id @default(cuid())
+  organizationId  String
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  type            ImportType
+  status          ImportStatus
+  sourceFile      String
+  sourceHash      String?
+  rowCountValid   Int?
+  rowCountInvalid Int?
+  summary         Json?
+  errors          ImportRowIssue[]
+  executedAt      DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  createdBy       String?
+  updatedBy       String?
+  archivedAt      DateTime?
+
+  @@index([organizationId, type, status])
+}
+
+model ImportRowIssue {
+  id        String      @id @default(cuid())
+  batchId   String
+  batch     ImportBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  rowNumber Int
+  errorCode String
+  message   String
+  rawRow    Json?
+  createdAt DateTime    @default(now())
+
+  @@index([batchId, rowNumber])
+}
+
+model AuditEvent {
+  id             String        @id @default(cuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  actorUserId    String?
+  actorUser      User?         @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorEmail     String?
+  actorRole      String?
+  eventType      String
+  entityType     String
+  entityId       String?
+  metadata       Json?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime      @default(now())
+
+  @@index([eventType, createdAt])
+  @@index([entityType, entityId])
+}

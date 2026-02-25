@@ -93,6 +93,7 @@ const required = [
   "RESEND_API_KEY",
   "EMAIL_FROM",
   "EMAIL_MODE",
+  "EMAIL_OUTBOUND_ENABLED",
   "NUDGE_CRON_ENABLED",
   "CRON_SECRET",
   "LOG_REDACTION_ENABLED",
@@ -122,6 +123,9 @@ if (appEnv === "staging") {
   if (isBlank(env.EMAIL_ALLOWLIST)) {
     failures.push("Staging requires EMAIL_ALLOWLIST to be set");
   }
+  if (String(env.EMAIL_OUTBOUND_ENABLED).toLowerCase() !== "false") {
+    failures.push('Staging requires EMAIL_OUTBOUND_ENABLED="false"');
+  }
   if (String(env.NUDGE_CRON_ENABLED).toLowerCase() !== "false") {
     failures.push('Staging requires NUDGE_CRON_ENABLED="false"');
   }
@@ -130,17 +134,28 @@ if (appEnv === "staging") {
       "EMAIL_FROM uses @franklincovey.com in staging; confirm DNS authorization and sandbox safety."
     );
   }
+  if (String(env.TEST_ENDPOINTS_ENABLED).toLowerCase() === "true" && isBlank(env.TEST_ENDPOINTS_SECRET)) {
+    failures.push(
+      'Staging requires TEST_ENDPOINTS_SECRET when TEST_ENDPOINTS_ENABLED="true"'
+    );
+  }
 }
 
 if (appEnv === "production") {
   if (env.EMAIL_MODE !== "live") {
     failures.push('Production requires EMAIL_MODE="live"');
   }
+  if (String(env.EMAIL_OUTBOUND_ENABLED).toLowerCase() !== "true") {
+    failures.push('Production requires EMAIL_OUTBOUND_ENABLED="true"');
+  }
   if (String(env.NUDGE_CRON_ENABLED).toLowerCase() !== "true") {
     failures.push('Production requires NUDGE_CRON_ENABLED="true"');
   }
   if (String(env.DATABASE_URL || "").includes("localhost")) {
     failures.push("Production DATABASE_URL must not point to localhost");
+  }
+  if (String(env.TEST_ENDPOINTS_ENABLED).toLowerCase() === "true") {
+    failures.push('Production must not enable TEST_ENDPOINTS_ENABLED');
   }
 }
 
