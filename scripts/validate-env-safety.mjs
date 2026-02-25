@@ -81,11 +81,16 @@ if (envFile) {
 }
 
 const env = { ...process.env, ...fileEnv };
+const databaseUrl = String(env.DATABASE_URL || "");
+const usingSupabasePooler =
+  databaseUrl.includes(".pooler.supabase.com") || databaseUrl.includes(":6543/");
+const hasPgbouncerFlag = /[?&]pgbouncer=true(?:&|$)/i.test(databaseUrl);
 
 const required = [
   "NEXT_PUBLIC_APP_ENV",
   "NEXT_PUBLIC_SITE_URL",
   "DATABASE_URL",
+  "DIRECT_URL",
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
   "SUPABASE_SERVICE_ROLE_KEY",
@@ -107,6 +112,12 @@ const appEnv = env.NEXT_PUBLIC_APP_ENV;
 if (appEnv !== "staging" && appEnv !== "production") {
   failures.push(
     `NEXT_PUBLIC_APP_ENV must be "staging" or "production" (got "${appEnv ?? ""}")`
+  );
+}
+
+if (usingSupabasePooler && !hasPgbouncerFlag) {
+  failures.push(
+    'DATABASE_URL uses Supabase pooler and must include "?pgbouncer=true" to avoid PgBouncer prepared statement conflicts (42P05).'
   );
 }
 
@@ -141,7 +152,7 @@ if (appEnv === "staging") {
   }
 }
 
-if (appEnv === "production") {
+  if (appEnv === "production") {
   if (env.EMAIL_MODE !== "live") {
     failures.push('Production requires EMAIL_MODE="live"');
   }
@@ -154,6 +165,9 @@ if (appEnv === "production") {
   if (String(env.DATABASE_URL || "").includes("localhost")) {
     failures.push("Production DATABASE_URL must not point to localhost");
   }
+  if (String(env.DIRECT_URL || "").includes("localhost")) {
+    failures.push("Production DIRECT_URL must not point to localhost");
+  }
   if (String(env.TEST_ENDPOINTS_ENABLED).toLowerCase() === "true") {
     failures.push('Production must not enable TEST_ENDPOINTS_ENABLED');
   }
@@ -161,6 +175,7 @@ if (appEnv === "production") {
 
 const secretKeys = [
   "DATABASE_URL",
+  "DIRECT_URL",
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
   "SUPABASE_SERVICE_ROLE_KEY",
