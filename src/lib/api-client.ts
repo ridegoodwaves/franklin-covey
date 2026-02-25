@@ -1,9 +1,11 @@
 // ---------------------------------------------------------------------------
-// Participant Portal API Client — Sub-agent D
+// Participant Portal API Client
 // Typed fetch wrappers for all participant API endpoints.
 // All functions return typed responses and normalize errors.
 // TODO: Replace stub implementations with real fetch calls once
 //       backend endpoints are live at /api/participant/...
+//
+// Auth model: roster-matched email entry (no access codes — de-scoped 2026-02-24d)
 // ---------------------------------------------------------------------------
 
 // ─── Shared Types ────────────────────────────────────────────────────────────
@@ -28,21 +30,21 @@ export interface ParticipantCoachCard {
 
 // ─── Request / Response Contracts ────────────────────────────────────────────
 
-// POST /api/participant/auth/verify-access-code  ← PRIMARY AUTH (Slice 1)
-export interface VerifyAccessCodeInput {
+// POST /api/participant/auth/verify-email  ← PRIMARY AUTH (Slice 1)
+// Roster-matched email entry — no access code (de-scoped 2026-02-24d per Kari confirmation)
+export interface VerifyEmailInput {
   email: string;
-  accessCode: string;
 }
-export type VerifyAccessCodeErrorCode =
-  | "INVALID_CREDENTIALS" // Bad email or bad code — same message for both (enumeration prevention)
-  | "WINDOW_CLOSED"       // Cohort selection window has closed
-  | "RATE_LIMITED";       // Too many attempts
+export type VerifyEmailErrorCode =
+  | "UNRECOGNIZED_EMAIL" // Email not found in participant roster
+  | "WINDOW_CLOSED"      // Cohort selection window has closed
+  | "RATE_LIMITED";      // Too many attempts
 
-export interface VerifyAccessCodeResponse {
+export interface VerifyEmailResponse {
   success: boolean;
   /** True when participant has already selected a coach. */
   alreadySelected?: boolean;
-  error?: VerifyAccessCodeErrorCode;
+  error?: VerifyEmailErrorCode;
 }
 
 // GET /api/participant/coaches
@@ -120,33 +122,37 @@ async function apiFetch<T>(
 // ─── Endpoint Functions ───────────────────────────────────────────────────────
 
 /**
- * POST /api/participant/auth/verify-access-code
- * PRIMARY AUTH for Slice 1. Verifies email + USPS-delivered access code.
+ * POST /api/participant/auth/verify-email
+ * PRIMARY AUTH for Slice 1. Roster-matched email entry — no access code.
  * On success: sets participant session. Returns alreadySelected if coach already chosen.
- * Security: INVALID_CREDENTIALS covers both bad email and bad code to prevent enumeration.
+ * Decision: access codes de-scoped 2026-02-24d (USPS group-email workflow + FC sender restrictions).
  */
-export async function verifyAccessCode(
-  input: VerifyAccessCodeInput
-): Promise<VerifyAccessCodeResponse> {
+export async function verifyParticipantEmail(
+  input: VerifyEmailInput
+): Promise<VerifyEmailResponse> {
   // TODO: uncomment when backend is live
-  // return apiFetch<VerifyAccessCodeResponse>("POST", "/api/participant/auth/verify-access-code", input);
+  // return apiFetch<VerifyEmailResponse>("POST", "/api/participant/auth/verify-email", input);
 
-  // ── Stub: any valid email + access code "A1B2C3" = success ──
-  // Use "CLOSED1" as access code to trigger WINDOW_CLOSED for QA testing.
+  // ── Stub: any email not in the rejection list = success ──
+  // QA trigger values:
+  //   unknown@test.com        → UNRECOGNIZED_EMAIL
+  //   closed@test.com         → WINDOW_CLOSED
+  //   ratelimited@test.com    → RATE_LIMITED
+  //   already@test.com        → success + alreadySelected: true
+  //   any other email         → success
   await delay(800);
-  const normalizedCode = input.accessCode.toUpperCase();
-  if (normalizedCode === "CLOSED1") {
+  const normalizedEmail = input.email.toLowerCase().trim();
+  if (normalizedEmail === "unknown@test.com") {
+    return { success: false, error: "UNRECOGNIZED_EMAIL" };
+  }
+  if (normalizedEmail === "closed@test.com") {
     return { success: false, error: "WINDOW_CLOSED" };
   }
-  if (normalizedCode === "RATEME1") {
+  if (normalizedEmail === "ratelimited@test.com") {
     return { success: false, error: "RATE_LIMITED" };
   }
-  if (input.email.toLowerCase() === "already@test.com") {
+  if (normalizedEmail === "already@test.com") {
     return { success: true, alreadySelected: true };
-  }
-  // Any other email + any non-empty code = success for dev/QA
-  if (!input.accessCode.trim()) {
-    return { success: false, error: "INVALID_CREDENTIALS" };
   }
   return { success: true };
 }

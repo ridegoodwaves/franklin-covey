@@ -23,6 +23,9 @@ changelog:
   - 2026-02-18g: "Capacity counting rule confirmed by Kari: count COACH_SELECTED, IN_PROGRESS, and ON_HOLD; exclude INVITED, COMPLETED, and CANCELED."
   - 2026-02-24: "Applied post-workshop decision lock to remove cross-doc ambiguity: participant auth now uses USPS-delivered email + participant access code (no system participant emails), EF/EL capacity confirmed at 20, planning baseline locked at 400, EF/EL reporting anchor locked to selection-window start + 9 months, and use-it-or-lose-it locked as ALP/MLP manual model only. MLP/ALP capacity updated from 15 to 20 — all pools now COACH_CAPACITY = 20 (Kari confirmed)."
   - 2026-02-24b: "Applied two P0 security corrections from technical review: (1) Replace NODE_ENV test-endpoint guard with TEST_ENDPOINTS_ENABLED env var — NODE_ENV is always 'production' on Vercel including staging, so the old guard would disable E2E tests. Added TEST_ENDPOINTS_SECRET header check as secondary gate. (2) Correct access-code hashing: use HMAC-SHA256 (not bcrypt) since bcrypt offers no precomputation resistance for a 6-digit numeric space. Defense-in-depth stays: strict expiry + one-time-use + per-IP rate limiting + per-participant lockout. Moved failedAttempts + lockedUntil from VerificationCode row to Participant model so code resets cannot bypass lockout."
+  - 2026-02-24c: "FC delivered ALP-135 roster for MVP import. Additional participant-context spreadsheet (`FY26 ALP 136_EF 1 Coaching Bios.xlsx`) was clarified as optional context for later coach visibility; explicitly locked out of MVP selector/matching logic and moved to post-MVP backlog."
+  - 2026-02-24d: "Participant auth decision updated per Kari confirmation: MVP uses roster-matched email-entry only (no participant access codes) due USPS cohort group-email workflow + FC sender restrictions. Access-code references in this backlog are now historical unless explicitly re-approved."
+  - 2026-02-24e: "Applied 2026-02-24d auth decision to frontend and API client: removed access code field from participant entry page, renamed verifyAccessCode → verifyParticipantEmail, updated endpoint to POST /api/participant/auth/verify-email, replaced INVALID_CREDENTIALS error code with UNRECOGNIZED_EMAIL (specific messaging per product decision). VerificationCode model removal delegated to schema owner. Research doc updated to match."
 ---
 
 # feat: Ship MVP Backend — 3 Vertical Slices (March 2/9/16)
@@ -39,12 +42,12 @@ Connect the existing polished frontend (~60% built, hardcoded demo data) to a re
 
 | Slice | Scope | Deadline | Users Impacted |
 |-------|-------|----------|----------------|
-| **1** | Coach Selector + Participant Access-Code Auth | **March 2** | ~60 participants (first cohort) |
+| **1** | Coach Selector + Participant Email Auth (roster-matched) | **March 2** | ~60 participants (first cohort) |
 | **2** | Coach Engagement + Session Logging | **March 9** | ~15 coaches (MLP/ALP panel) |
 | **3** | Admin Portal + Needs-Attention Workflow | **March 16** | 3 admins (Ops, Kari, Greg) |
 
 **Key architectural decisions** (from [brainstorm](docs/brainstorms/2026-02-12-mvp-ship-strategy-brainstorm.md)):
-- Participant auth: USPS-delivered coach-selector link + participant email + access code (no system participant emails in MVP)
+- Participant auth: USPS-delivered coach-selector link + roster-matched participant email entry only (no system participant emails in MVP)
 - Dashboards: 1 Ops dashboard + 1 executive summary view
 - Multi-program: Schema-ready, UI-later (`Program` model seeded, no admin UI)
 - Multi-org: `Organization` model from day 1 — infrastructure for the full platform (Greg's requirement, added 2026-02-13)
@@ -331,7 +334,6 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 - [ ] Email client — `src/lib/email.ts`
   - Resend client wrapper (or AWS SES — **decision needed before Slice 1**)
   - `sendMagicLink(email, url)` — coach/admin auth (via Auth.js)
-  - `sendOpsAlert(type, recipient, engagement)` — optional ops escalation email when needed
   - **Startup assertion**: crash if production SMTP credentials (Resend/SES/SendGrid) detected in non-production `NODE_ENV`. Prevents `.env` mix-ups from sending real emails. Pattern: `if (NODE_ENV !== 'production' && SMTP_HOST matches /resend|ses|sendgrid/) throw Error`
 - [ ] Error classes — `src/lib/errors.ts`
   - `CoachAtCapacityError`, `CoachInactiveError`, `NoInvitedEngagementError`, `AllSessionsCompletedError`, `InvalidTransitionError`
@@ -392,37 +394,33 @@ LOG_LEVEL=info
 
 The critical path. 400 participants arrive on this date.
 
-#### 1.1 Participant Access-Code Auth
+#### 1.1 Participant Email Auth (roster-matched)
+
+> **⚠️ Decision 2026-02-24d:** Access codes de-scoped. MVP uses roster-matched email entry only.
+> Reason: USPS cohort group-email workflow + FC sender restrictions make per-participant code delivery unworkable.
+> Access-code tasks below are historical — do not implement unless explicitly re-approved.
 
 **Flow:**
 
 ```
 USPS welcome email
-    → participant gets coach-selector URL + access code
-    → participant opens /participant and enters email + access code
-    → POST /api/participant/auth/verify-access-code { email, code }
-    → server verifies participant + code + expiry window (cohort selection window end)
+    → participant gets coach-selector link only (no access code)
+    → participant opens /participant and enters their email address
+    → POST /api/participant/auth/verify-email { email }
+    → server checks email exists in Participant roster AND cohort window is open
     → server sets httpOnly session cookie
     → Redirect: /participant/select-coach (if no coach selected)
               OR /participant/confirmation (if coach already selected — flow ends at selection)
 ```
 
-- [ ] Access-code verification endpoint — `src/app/api/participant/auth/verify-access-code/route.ts`
-  - Validate email + code format
+- [ ] Email verification endpoint — `src/app/api/participant/auth/verify-email/route.ts`
+  - Input: `{ email: string }`
   - Normalize email (lowercase, trim)
-  - Lookup participant by email
-  - Validate stored hashed code and enforce expiry (`coachSelectionWindowEnd`)
-  - Enforce attempt limits and lockout on repeated failures
-  - On success: create session cookie (iron-session, 30-day rolling)
-  - On failure: return generic "Invalid or expired code" (no detail leaking)
-  - **Security: keep response generic regardless of whether participant email exists**
-
-- [ ] Access-code generation + export utility — `scripts/generate-participant-access-codes.ts`
-  - Generate high-entropy codes for participants before each cohort window
-  - Store **HMAC-SHA256** hashes in `VerificationCode.codeHash` (not bcrypt — bcrypt's work-factor provides no meaningful protection against precomputation on a 6-digit numeric space of only 1,000,000 values; HMAC-SHA256 with `ACCESS_CODE_SECRET` as the key is the correct primitive for this use case)
-  - **Defense-in-depth for short codes**: the code space is small, so security comes from the combination of (1) strict `coachSelectionWindowEnd` expiry, (2) `used` one-time-use flag, (3) per-IP rate limiting, and (4) per-participant lockout — not from the hash algorithm alone
-  - Export USPS-ready file: participant email + code + cohort + selection-window dates
-  - Support one-click code reset/regeneration for FC Ops
+  - Look up `Participant` by email — return `UNRECOGNIZED_EMAIL` if not found
+  - Check cohort window not closed — return `WINDOW_CLOSED` if past end date
+  - Rate limits: 10/IP/hour
+  - On success: create session cookie (iron-session, `{ participantId, email }`), return `alreadySelected` if engagement is `COACH_SELECTED`
+  - On failure: return specific error code (enumeration not a concern — roster is not a secret)
 
 - [ ] Participant session middleware — `src/lib/participant-session.ts`
   - `iron-session` with httpOnly, secure, sameSite=lax cookie
@@ -430,23 +428,20 @@ USPS welcome email
   - `getParticipantSession(req)` — returns session or null
   - `requireParticipantSession(req)` — returns session or 401
 
-- [ ] Remove participant OTP email template dependency from MVP
-  - Participant emails are USPS-owned in MVP
-  - CIL system sends coach/admin magic-link emails only
-
-- [ ] Participant auth page — Update `src/app/participant/page.tsx`
-  - Email input form (currently landing page — convert to auth entry point)
-  - Access-code verification form (email + code fields)
-  - Loading states, generic error messages, lockout message
-  - Redirect logic based on engagement status
+- [ ] Participant auth page — `src/app/participant/page.tsx` ✅ **DONE (frontend)**
+  - Single email input, roster-matched
+  - Error messages: UNRECOGNIZED_EMAIL, WINDOW_CLOSED, RATE_LIMITED
+  - Redirect logic based on alreadySelected flag
 
 **SpecFlow resolutions baked in:**
-- Email not found → identical response (issue #6)
-- Access-code brute force → global IP rate limit + per-**participant** lockout (issue #16)
-  - **Lockout scoped to `Participant`**, not to the `VerificationCode` row: `failedAttempts` + `lockedUntil` live on `Participant` so that issuing a code reset cannot reset the attempt counter. A participant who has exhausted attempts on one code stays locked regardless of which code they try next.
-- Expired access code → generic "Invalid or expired code" + FC Ops reset path
-- USPS delivery delay/error → participant follows USPS support path; system does not send participant mail in MVP
+- Email not found → UNRECOGNIZED_EMAIL with friendly message (issue #6)
+- Rate limiting → global IP rate limit (issue #16)
 - Returning participant → check session cookie first, skip auth (issue #3)
+
+~~**~~HISTORICAL (access-code tasks — do not implement)~~**~~
+~~- Access-code generation + export utility (`scripts/generate-participant-access-codes.ts`)~~
+~~- `VerificationCode` model and `codeHash` / `ACCESS_CODE_SECRET` (removed from schema)~~
+~~- HMAC-SHA256 hashing + per-participant lockout (`failedAttempts`, `lockedUntil`)~~
 
 #### 1.2 Coach Selection API
 
@@ -1149,7 +1144,7 @@ Suites are designed to run **in order** — each suite builds on state created b
 
 | Decision | Options | Impact |
 |----------|---------|--------|
-| **Email provider** | Resend (recommend paid tier at launch) vs AWS SES | Coach/admin magic-link emails and ops escalations depend on this; free-tier daily caps may throttle busy days |
+| **Email provider** | Resend (recommend paid tier at launch) vs AWS SES | Coach/admin magic-link emails depend on this; free-tier daily caps may throttle busy days |
 | **Cloud provider** | **Resolved: Vercel + Supabase (confirmed 2026-02-18)** | MVP hosting and database target locked; remove infra ambiguity |
 | **Domain / DNS** | Who manages? What subdomain? | Deployment URL, email sender domain |
 | **Real coach data entry** | Admin CSV upload vs manual entry vs seed script | 35 coaches need real bios, photos, and booking URLs before March 2 (video is de-scoped for MVP). Seed script only covers dev data. Options: (a) FC provides a CSV and we import via a one-off script, (b) build a minimal coach profile edit form in admin portal (pulls Slice 3 work forward), or (c) Kari/Andrea enter data directly in the database via a simple admin form. **Recommend option (a)** — CSV from FC ops, imported with a script. |

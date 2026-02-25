@@ -4,12 +4,11 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { verifyAccessCode } from "@/lib/api-client";
+import { verifyParticipantEmail } from "@/lib/api-client";
 
 export default function ParticipantEntryPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [accessCode, setAccessCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expiredBanner, setExpiredBanner] = useState(false);
@@ -23,12 +22,12 @@ export default function ParticipantEntryPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email.trim() || !accessCode.trim()) return;
+    if (!email.trim()) return;
     setLoading(true);
     setError(null);
 
     try {
-      const response = await verifyAccessCode({ email: email.trim(), accessCode: accessCode.trim() });
+      const response = await verifyParticipantEmail({ email: email.trim() });
       if (response.success) {
         sessionStorage.setItem("participant-email", email.trim());
         sessionStorage.setItem("participant-verified", "true");
@@ -39,8 +38,8 @@ export default function ParticipantEntryPage() {
         }
       } else {
         switch (response.error) {
-          case "INVALID_CREDENTIALS":
-            setError("Email or access code not recognized — check your invitation letter");
+          case "UNRECOGNIZED_EMAIL":
+            setError("We couldn't find your email. Contact your program administrator.");
             break;
           case "WINDOW_CLOSED":
             setError(
@@ -75,7 +74,7 @@ export default function ParticipantEntryPage() {
             className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 opacity-0 animate-fade-in"
             style={{ animationDelay: "50ms" }}
           >
-            Your session expired. Please enter your email and access code to start again.
+            Your session expired. Please enter your email to start again.
           </div>
         )}
 
@@ -88,7 +87,7 @@ export default function ParticipantEntryPage() {
             Welcome to Your Coaching Journey
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Enter your email address and access code from your invitation letter
+            Enter the email address from your USPS invitation
           </p>
         </div>
 
@@ -118,27 +117,6 @@ export default function ParticipantEntryPage() {
             />
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-foreground">
-              Access Code
-            </label>
-            <Input
-              type="text"
-              inputMode="text"
-              placeholder="ABC123"
-              value={accessCode}
-              onChange={(e) => {
-                setAccessCode(e.target.value);
-                if (error) setError(null);
-              }}
-              className="h-12 w-full text-base"
-              autoComplete="off"
-              maxLength={6}
-              disabled={loading}
-              required
-            />
-          </div>
-
           {/* Inline error */}
           {error && (
             <p className="text-sm text-destructive leading-snug">{error}</p>
@@ -148,7 +126,7 @@ export default function ParticipantEntryPage() {
             type="submit"
             size="lg"
             className="w-full gap-2"
-            disabled={loading || !email.trim() || !accessCode.trim()}
+            disabled={loading || !email.trim()}
           >
             {loading ? (
               <>
