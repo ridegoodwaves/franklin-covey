@@ -3,6 +3,8 @@
 **Date Sent:** 2026-02-22  
 **Status:** Sent
 
+**Status Update:** ALP-135 roster is now received for MVP import, and the `FY26 ALP 136_EF 1 Coaching Bios.xlsx` participant-context file is explicitly logged as post-MVP (not integrated into selector/matching logic for March launch). As of 2026-02-25, staging schema migration is applied, USPS baseline data is seeded, and staging email controls now enforce outbound kill-switch + shared guard before send.
+
 I’m aligned on all three points and agree that is the best way for us to move forward. It was a good call to hold on sharing dates until we aligned.
 
 To make it unambiguous, I suggest we present two options as follows:
@@ -19,4 +21,3 @@ I agree with you on asking FC to explicitly choose the tradeoff. If they choose 
 - VSA/legal turnaround
 
 And if they are going to select path B, then to protect the March 2 launch plan date, we must request a decision by EOD Feb 23, 2026.
-

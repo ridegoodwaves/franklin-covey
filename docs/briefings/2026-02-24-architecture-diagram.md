@@ -17,13 +17,13 @@ flowchart TD
     end
 
     subgraph ACCESS["Access & Auth"]
-        USPS["USPS\nAccess Email\n(link + access code)"]
+        USPS["USPS\nCohort Welcome Email\n(link only)"]
         ML["Magic Link Email\n(coach/admin only)\nExpires 30 min"]
     end
 
     subgraph APP["Application Layer — Vercel Pro"]
         direction TB
-        PP["Participant Portal\n/participant/*\nAccess code auth\nCoach selector\nBooking confirmation"]
+        PP["Participant Portal\n/participant/*\nRoster-email auth\nCoach selector\nBooking confirmation"]
         CP["Coach Portal\n/coach/*\nSession logging\nEngagement tracking"]
         AP["Admin Portal\n/admin/*\nCSV import\nKPI dashboard\nExport"]
         API["API Routes (Next.js)\n/api/participant/*\n/api/coach/*\n/api/admin/*\n/api/cron/*"]
@@ -38,13 +38,14 @@ flowchart TD
 
     subgraph EMAIL["Email — Transactional Only"]
         ESP["Email Provider\n(Resend or AWS SES)\nCoach + Admin magic links only\nNo participant emails in MVP"]
+        EGUARD["Shared Email Guard\nEMAIL_OUTBOUND_ENABLED +\nEMAIL_MODE + allowlist checks"]
     end
 
     subgraph BOOKING["Scheduling (External)"]
         CAL["Coach Scheduling Links\n(Calendly / Acuity / etc.)\nExternal — no API integration\nDirect URL handoff only"]
     end
 
-    USPS -->|"Access code + link\ndelivered externally"| P
+    USPS -->|"Coach-selector link\ndelivered externally"| P
     P -->|"HTTPS"| PP
     C -->|"HTTPS"| CP
     A -->|"HTTPS"| AP
@@ -60,7 +61,8 @@ flowchart TD
     API --> DB
     DB --> RLS
 
-    API --> ESP
+    API --> EGUARD
+    EGUARD --> ESP
     ESP --> ML
 
     PP -->|"Confirmation page\nexternal link"| CAL
@@ -73,11 +75,12 @@ flowchart TD
 | Data Type | Examples | Storage | PII? |
 |-----------|----------|---------|------|
 | Participant identity | Name, email, cohort | Supabase (encrypted at rest) | Yes |
-| Participant access code | USPS-delivered 6-digit code | Supabase (bcrypt hash only — plaintext never stored) | No |
+| Participant eligibility gate | Imported participant email + cohort window | Supabase (`Participant` + engagement eligibility rules) | Yes |
 | Coach profile | Name, bio, location, credentials, booking URL | Supabase | Minimal |
 | Session notes | Topic, outcome, duration | Supabase | No |
 | Coach private notes | Free-text, coach-only | Supabase (RLS: coach-only read) | Minimal |
 | Engagement status | INVITED → COMPLETED state | Supabase | No |
+| Organization scope | Org-bound programs/cohorts/participants/coach memberships | Supabase | No |
 
 **No AI processing.** The core application does not use AI models to process, store, or analyze any FC client data.
 
@@ -87,11 +90,11 @@ flowchart TD
 
 | Role | Auth Method | Session | Notes |
 |------|-------------|---------|-------|
-| Participant | Email + USPS-delivered access code | `iron-session` cookie, 30-day rolling | One-time flow; no return dashboard in MVP |
+| Participant | Roster-matched email entry | `iron-session` cookie, 30-day rolling | One-time flow; no return dashboard in MVP |
 | Coach | Magic link email (`/auth/signin`) | 30-minute idle expiry | Fresh link on re-auth |
 | Admin | Magic link email (`/auth/signin`) | 30-minute idle expiry | Same flow as coach |
 
-**Access code security:** bcrypt hash stored, never plaintext. 5-attempt lockout per email. Global IP rate limiting.
+**Participant-entry security:** roster-only email allowlist + active cohort-window gating + global/IP rate limiting + generic auth errors + audit logging.
 
 ---
 
@@ -100,9 +103,11 @@ flowchart TD
 ```
 fc-staging (Vercel)  ←──────────────────────────────┐
 fc-staging (Supabase)                                │  Completely separate
-     ↓ sanitized data only                           │  projects, secrets,
+     ↓ MVP staging seed loaded                       │  projects, secrets,
      ↓ EMAIL_MODE=sandbox                            │  and DB URLs
      ↓ hard recipient allowlist                      │
+     ↓ EMAIL_OUTBOUND_ENABLED=false                  │
+     ↓ shared email guard on all sends               │
                                                      │
 fc-production (Vercel)  ←───────────────────────────┘
 fc-production (Supabase)

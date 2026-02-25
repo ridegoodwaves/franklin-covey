@@ -16,7 +16,10 @@
 - **Coach capacity policy:** All coach pools are confirmed at **20 participants per coach** (MLP/ALP updated from 15 to 20; Kari confirmed 2026-02-24).
 - **Planning baseline:** MVP planning baseline is confirmed at **400 total participants** across cohorts.
 - **Participant flow model:** One visit, one coach decision, then done (no participant dashboard).
-- **Participant access boundary:** USPS sends participant access email with coach-selector link and access code; CIL system does **not** send participant emails in MVP.
+- **Participant access boundary:** USPS sends participant cohort welcome email with coach-selector link; participants enter email-only (must match imported roster + active cohort window). CIL system does **not** send participant emails in MVP.
+- **Participant auth risk posture (MVP):** FC accepts email-entry-only residual impersonation risk for March launch, with safeguards: roster-only allowlist, active-window gating, rate limiting, generic auth errors, and audit logging.
+- **ALP-135 roster input:** received from FC and locked as the first cohort import source for MVP.
+- **Client enrichment file scope:** participant detail files used for coach/client matching context (for example `FY26 ALP 136_EF 1 Coaching Bios.xlsx`) are **not integrated into coach selector logic in MVP**; treat as post-MVP enhancement for coach-facing context display.
 - **Coach/admin access model:** shared `/auth/signin` entry; request a fresh magic link when session expires (do not reuse old email links).
 - **Nudge anchor:** Day 0 = cohort start date.
 - **Session outcomes are coach-entered only:** no automatic Session 1 lock/expiry in MVP.
@@ -28,8 +31,11 @@
 - **EF/EL reporting window anchor:** coach-selection-window start + 9 months.
 - **Use-it-or-lose-it model:** manual only for ALP/MLP; no automatic lock/forfeit. Overdue Session 1/2 items surface as "Needs Attention" for ops follow-up. EF/EL does not use this deadline model in MVP.
 - **Environment isolation:** separate staging and production projects for Vercel and Supabase (no shared secrets/keys/DB URLs).
-- **Staging data policy:** sanitized-only data in staging; no raw production participant/coach PII imports.
+- **Staging data policy:** controlled staging data handling; sanitized-by-default for non-launch QA imports, with USPS MVP seed data allowed for launch-realistic testing under strict email/output safety controls.
 - **Staging email safety:** `EMAIL_MODE=sandbox` + hard allowlist; block non-allowlisted recipients.
+- **Staging outbound-email kill switch:** `EMAIL_OUTBOUND_ENABLED=false` is required in staging; staging magic-link tests may temporarily set true only with allowlist controls in place.
+- **Shared email safety guard:** all system email send paths must call the centralized guard (`src/lib/email/guard.ts`, `src/lib/email/send-with-guard.ts`) before provider send.
+- **Platform foundation beyond USPS (schema-level):** multi-org-ready data model is implemented in staging so additional organizations can be onboarded post-MVP without schema redesign.
 - **Forfeiture labels:**
   - Session forfeited - canceled within 24 hours
   - Session forfeited - not taken advantage of
@@ -39,8 +45,8 @@
 ## 2) Frozen User Flows (MVP)
 
 ### Participant Flow (Slice 1)
-1. USPS sends participant access email with coach-selector link + participant access code.
-2. Participant enters email + access code -> sees 3 coach cards.
+1. USPS sends participant cohort welcome email with coach-selector link (group send model).
+2. Participant enters roster-matched email -> sees 3 coach cards.
 3. Participant can remix once.  
 4. Participant selects coach -> confirmation page with coach booking link (Calendly/Acuity/etc.) when available; otherwise show coach-outreach fallback message.
 5. Flow ends. No return dashboard in MVP.
@@ -65,8 +71,7 @@
 
 These endpoints and payload shapes are the implementation baseline:
 
-- `POST /api/participant/auth/request-access-code`
-- `POST /api/participant/auth/verify-access-code`
+- `POST /api/participant/auth/verify-email-entry`
 - `GET /api/participant/coaches`
 - `POST /api/participant/coaches/remix`
 - `POST /api/participant/coaches/select`
@@ -100,7 +105,7 @@ These endpoints and payload shapes are the implementation baseline:
 
 1. **Participant counts per cohort (capacity validation risk)** — 400 total baseline is confirmed; per-cohort allocations still need final lock.
 2. **Coach-selection window file maintenance** — confirm update process/owner for timeline changes after launch.
-3. **Participant access-code reset workflow** — confirm FC Ops owner + SLA for reset requests.
+3. **Participant email-access dispute workflow** — confirm FC Ops owner + SLA for wrong-email / disputed-selection reset requests.
 4. **Session window reporting rule** (show as reporting-only vs hide in MVP).
 5. **Reminder ownership implementation detail** — confirm whether dashboard should track manual reminder checkpoints (week 1/week 2/week 3 assignment) as optional ops fields.
 6. **Cohort communication tracking fields** (participant send date, coach send date, owner, status).
@@ -122,3 +127,11 @@ These endpoints and payload shapes are the implementation baseline:
 Please reply with:
 1. **Approved as-is**, or  
 2. **Edits to sections 5-7 only** before we stamp this as MVP Contract v1.
+
+---
+
+## Implementation Snapshot (2026-02-25)
+
+- Staging schema migration applied and recorded.
+- USPS baseline staging seed complete: 4 programs, 14 cohorts, 32 coach memberships, 175 participants, 175 engagements.
+- Admin staging access seeded for Amit + Tim; Kari + Andrea pending final emails.

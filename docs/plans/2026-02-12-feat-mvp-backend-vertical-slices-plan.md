@@ -2,7 +2,7 @@
 title: "Ship MVP Backend — 3 Vertical Slices"
 type: feat
 date: 2026-02-12
-updated: 2026-02-24
+updated: 2026-02-25
 brainstorm: docs/brainstorms/2026-02-12-mvp-ship-strategy-brainstorm.md
 prd: prd_for_apps/franklincovey-coaching-platform-prd.md
 delta: docs/CIL-BRIEF-DELTA-ANALYSIS.md
@@ -26,6 +26,7 @@ changelog:
   - 2026-02-24c: "FC delivered ALP-135 roster for MVP import. Additional participant-context spreadsheet (`FY26 ALP 136_EF 1 Coaching Bios.xlsx`) was clarified as optional context for later coach visibility; explicitly locked out of MVP selector/matching logic and moved to post-MVP backlog."
   - 2026-02-24d: "Participant auth decision updated per Kari confirmation: MVP uses roster-matched email-entry only (no participant access codes) due USPS cohort group-email workflow + FC sender restrictions. Access-code references in this backlog are now historical unless explicitly re-approved."
   - 2026-02-24e: "Applied 2026-02-24d auth decision to frontend and API client: removed access code field from participant entry page, renamed verifyAccessCode → verifyParticipantEmail, updated endpoint to POST /api/participant/auth/verify-email, replaced INVALID_CREDENTIALS error code with UNRECOGNIZED_EMAIL (specific messaging per product decision). VerificationCode model removal delegated to schema owner. Research doc updated to match."
+  - 2026-02-25: "Staging backend foundation executed: Prisma multi-org-ready schema authored, initial migration applied to staging Supabase, USPS baseline seed loaded (4 programs, 14 cohorts, 32 coach memberships, 175 participants/engagements), and centralized outbound-email guard added with EMAIL_OUTBOUND_ENABLED kill-switch enforcement for staging safety."
 ---
 
 # feat: Ship MVP Backend — 3 Vertical Slices (March 2/9/16)

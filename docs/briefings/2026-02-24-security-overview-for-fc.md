@@ -14,7 +14,7 @@ CIL is delivering a custom coaching platform for FranklinCovey's leadership deve
 
 | Portal | Users | Core Function |
 |--------|-------|---------------|
-| Participant | ~400 USPS employees | One-time coach selection; access via USPS-delivered access code |
+| Participant | ~400 USPS employees | One-time coach selection; access via roster-matched email entry from USPS cohort welcome email |
 | Coach | 31 coaches (MLP/ALP + EF/EL pools) | Session logging, engagement tracking |
 | Admin | Kari Sadler, Andrea (FC Ops) | Participant import, KPI dashboard, CSV export |
 
@@ -38,7 +38,7 @@ The MVP runs on enterprise-grade managed services, purpose-selected for launch s
 
 ### Identity and Access
 
-- **Participants** authenticate via email + USPS-delivered physical access code. Access codes are bcrypt-hashed at rest; plaintext is never stored. Five-attempt lockout per email. Global IP rate limiting.
+- **Participants** authenticate via roster-matched email entry only (MVP, FC-confirmed). Safeguards: cohort-window gating, strict rate limiting, generic auth error responses (no enumeration leakage), and audit logging for selection actions.
 - **Coaches and admins** authenticate via magic link (`/auth/signin`). Sessions expire after 30 minutes of inactivity. No passwords are stored.
 - **Role boundaries** are enforced at the API layer: participants see only their own data, coaches see only their assigned engagements, admins have scoped read and import access.
 
@@ -51,8 +51,9 @@ The MVP runs on enterprise-grade managed services, purpose-selected for launch s
 ### Environment Isolation
 
 - Staging and production run in **completely separate** Vercel and Supabase projects, with separate secrets, API keys, database URLs, and auth configurations. Nothing is shared across environments.
-- **Staging data is sanitized by default.** No raw production PII (participant names, emails, coach data) is ever imported into staging. Real data import requires an explicit `--raw` flag, which triggers a visible warning.
+- **Staging data handling is controlled.** Current staging includes USPS MVP seed data for launch-realistic testing; non-launch QA imports should stay sanitized by default.
 - **Email is sandboxed in staging.** A hard recipient allowlist prevents any email from reaching external addresses during QA. Non-allowlisted sends are blocked, not queued.
+- **Outbound kill switch is enforced.** `EMAIL_OUTBOUND_ENABLED=false` blocks all sends in staging, and all send paths must use the shared guard (`src/lib/email/guard.ts` + `src/lib/email/send-with-guard.ts`).
 
 ### AI and Data Use
 
@@ -64,6 +65,7 @@ The core application **does not use AI** to process, store, or analyze any Frank
 - Secrets are managed via environment variables — no credentials in source code.
 - Log redaction is enabled: participant emails and auth tokens are not written to logs.
 - CSRF protection and `same-origin` credential policies on all authenticated requests.
+- `/api/test/*` endpoints are gated by explicit staging controls (`TEST_ENDPOINTS_ENABLED=true` + `X-Test-Secret`), not `NODE_ENV`, because Vercel deploys run with `NODE_ENV=production` in both staging and production.
 
 ### Incident Response
 
@@ -89,6 +91,7 @@ The core application **does not use AI** to process, store, or analyze any Frank
 | **Sub-processor list** | ✅ Ready | Vercel, Supabase, email provider — with compliance posture |
 | **Incident/SLA model** | ✅ Ready | P0/P1/P2 definitions, response targets, escalation model |
 | **Project plan with security baseline** | ✅ Ready | Includes Vercel Pro + Supabase Pro baseline, RLS, backup posture, log retention |
+| **Staging schema + seed execution record** | ✅ Ready | Prisma migration applied, USPS baseline seeded, environment and email controls validated |
 
 ### Available Upon Formal Engagement
 
