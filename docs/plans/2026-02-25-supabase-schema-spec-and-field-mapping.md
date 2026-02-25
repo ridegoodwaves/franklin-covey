@@ -1,7 +1,7 @@
 # Supabase Schema Spec + Field Mapping (MVP Launch)
 
 **Date:** 2026-02-25  
-**Status:** Schema applied to staging + USPS seed loaded (pending remaining admin emails and EF/EL selection-end confirmation)
+**Status:** Schema + Slice 1 route wiring live on staging; USPS seed loaded; auth/selection security guards shipped
 
 ## 1) Locked Inputs + Decisions
 
@@ -154,7 +154,21 @@ Service-layer guardrails (required):
    - participant.org == cohort.org == program.org == engagement.org
    - engagement.organizationCoach belongs to engagement.org
 
-## 6) Open Inputs Before Applying to `fc-staging`
+## 6) Security Guardrails Added (Feb 25, 2026)
+
+`AuditEvent` is now used for active runtime security controls:
+
+1. Per-email participant auth lockout:
+   - event type: `PARTICIPANT_VERIFY_EMAIL_ATTEMPT`
+   - entity type: `PARTICIPANT_EMAIL`
+   - entity id: SHA-256 hash of normalized email (no raw email in key)
+2. One-time magic-link consume:
+   - event type: `MAGIC_LINK_TOKEN_CONSUMED`
+   - entity type: `MAGIC_LINK_TOKEN`
+   - entity id: SHA-256 hash of token
+3. Advisory-lock pattern is used around these writes to make checks safe under concurrent requests.
+
+## 7) Open Inputs Before Applying to `fc-staging`
 
 1. Launch admin emails for:
    - Kari
@@ -162,7 +176,7 @@ Service-layer guardrails (required):
 2. Remaining cohort roster files (to move from 175 current participants toward 400 total).
 3. Confirm explicit EF/EL coach-selection end dates (current staging seed uses temporary default: `selection start + 19 days` where source end date is blank).
 
-## 7) Notes on Global vs Org/Cohort-Scoped Participant Uniqueness
+## 8) Notes on Global vs Org/Cohort-Scoped Participant Uniqueness
 
 Decision is org-scoped/cohort-scoped uniqueness (`organization + cohort + email`), which supports legitimate re-use of the same participant email in future cohorts and across organizations without data backfills or special casing.  
 If switched to global uniqueness, repeat participants would fail inserts and require additional cross-cohort identity/version logic.

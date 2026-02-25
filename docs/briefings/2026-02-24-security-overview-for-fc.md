@@ -2,6 +2,7 @@
 
 **Prepared by:** CIL (Amit Bhatia)
 **Date:** February 24, 2026
+**Last Updated:** February 25, 2026
 **For:** FranklinCovey Security Review
 
 ---
@@ -38,8 +39,8 @@ The MVP runs on enterprise-grade managed services, purpose-selected for launch s
 
 ### Identity and Access
 
-- **Participants** authenticate via roster-matched email entry only (MVP, FC-confirmed). Safeguards: cohort-window gating, strict rate limiting, generic auth error responses (no enumeration leakage), and audit logging for selection actions.
-- **Coaches and admins** authenticate via magic link (`/auth/signin`). Sessions expire after 30 minutes of inactivity. No passwords are stored.
+- **Participants** authenticate via roster-matched email entry only (MVP, FC-confirmed). Safeguards: cohort-window gating, per-IP limiter plus per-email DB-backed lockout, generic auth error responses (no enumeration leakage), and audit logging for security events.
+- **Coaches and admins** authenticate via magic link (`/auth/signin`). Magic-link tokens expire in 30 minutes and are one-time-use at consume. Signed portal sessions use a 12-hour TTL. No passwords are stored.
 - **Role boundaries** are enforced at the API layer: participants see only their own data, coaches see only their assigned engagements, admins have scoped read and import access.
 
 ### Data Protection
@@ -54,6 +55,7 @@ The MVP runs on enterprise-grade managed services, purpose-selected for launch s
 - **Staging data handling is controlled.** Current staging includes USPS MVP seed data for launch-realistic testing; non-launch QA imports should stay sanitized by default.
 - **Email is sandboxed in staging.** A hard recipient allowlist prevents any email from reaching external addresses during QA. Non-allowlisted sends are blocked, not queued.
 - **Outbound kill switch is enforced.** `EMAIL_OUTBOUND_ENABLED=false` blocks all sends in staging, and all send paths must use the shared guard (`src/lib/email/guard.ts` + `src/lib/email/send-with-guard.ts`).
+- **Supabase pooler safety is enforced.** Pooler `DATABASE_URL` values must include `?pgbouncer=true`; `DIRECT_URL` remains direct Postgres for migration/administrative paths.
 
 ### AI and Data Use
 
@@ -66,6 +68,7 @@ The core application **does not use AI** to process, store, or analyze any Frank
 - Log redaction is enabled: participant emails and auth tokens are not written to logs.
 - CSRF protection and `same-origin` credential policies on all authenticated requests.
 - `/api/test/*` endpoints are gated by explicit staging controls (`TEST_ENDPOINTS_ENABLED=true` + `X-Test-Secret`), not `NODE_ENV`, because Vercel deploys run with `NODE_ENV=production` in both staging and production.
+- Concurrency controls are in place for coach selection to reduce over-assignment race risk under simultaneous requests.
 
 ### Incident Response
 
@@ -128,7 +131,7 @@ This is a dependency-driven cutover — same application, migrated infrastructur
 
 ## A Note on Our Approach
 
-We take the same care with your participants' data that FranklinCovey takes with their development. Every control above is implemented now — not planned for later. The staging environment is live, isolated, and running sanitized data. The production environment will receive its first real participant data only after FC-approved sender identity, Blaine's security sign-off, and a clean staging beta with Kari on February 26.
+We take the same care with your participants' data that FranklinCovey takes with their development. Every control above is implemented now — not planned for later. The staging environment is live, isolated, and running launch-realistic USPS seed data with strict send controls. The production environment will receive its first real participant data only after FC-approved sender identity, Blaine's security sign-off, and a clean staging beta with Kari on February 26.
 
 We are committed to this relationship. The full VSA package is assembled and ready to submit the moment the formal process kicks off.
 

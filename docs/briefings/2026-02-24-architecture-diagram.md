@@ -2,6 +2,7 @@
 
 **Prepared by:** CIL
 **Date:** 2026-02-24
+**Last Updated:** 2026-02-25
 **Audience:** FC Security Review / IT / Blaine
 
 ---
@@ -18,7 +19,7 @@ flowchart TD
 
     subgraph ACCESS["Access & Auth"]
         USPS["USPS\nCohort Welcome Email\n(link only)"]
-        ML["Magic Link Email\n(coach/admin only)\nExpires 30 min"]
+        ML["Magic Link Email\n(coach/admin only)\n30 min TTL + one-time consume"]
     end
 
     subgraph APP["Application Layer — Vercel Pro"]
@@ -90,11 +91,11 @@ flowchart TD
 
 | Role | Auth Method | Session | Notes |
 |------|-------------|---------|-------|
-| Participant | Roster-matched email entry | `iron-session` cookie, 30-day rolling | One-time flow; no return dashboard in MVP |
-| Coach | Magic link email (`/auth/signin`) | 30-minute idle expiry | Fresh link on re-auth |
-| Admin | Magic link email (`/auth/signin`) | 30-minute idle expiry | Same flow as coach |
+| Participant | Roster-matched email entry | Signed `fc_participant_session` cookie (`maxAge=4h`) | One-time flow; no return dashboard in MVP |
+| Coach | Magic link email (`/auth/signin`) | Signed `fc_portal_session` cookie (`maxAge=12h`) + magic-link token TTL (`30 min`) | Magic link is one-time-use |
+| Admin | Magic link email (`/auth/signin`) | Signed `fc_portal_session` cookie (`maxAge=12h`) + magic-link token TTL (`30 min`) | Same flow as coach |
 
-**Participant-entry security:** roster-only email allowlist + active cohort-window gating + global/IP rate limiting + generic auth errors + audit logging.
+**Participant-entry security:** roster-only email allowlist + active cohort-window gating + per-IP limiter + per-email DB-backed limiter + generic auth errors + audit logging.
 
 ---
 
@@ -107,12 +108,16 @@ fc-staging (Supabase)                                │  Completely separate
      ↓ EMAIL_MODE=sandbox                            │  and DB URLs
      ↓ hard recipient allowlist                      │
      ↓ EMAIL_OUTBOUND_ENABLED=false                  │
+     ↓ DATABASE_URL uses pooler `:6543` + `?pgbouncer=true` │
+     ↓ DIRECT_URL uses direct Postgres `:5432`               │
      ↓ shared email guard on all sends               │
                                                      │
 fc-production (Vercel)  ←───────────────────────────┘
 fc-production (Supabase)
      ↓ live data
      ↓ EMAIL_MODE=live
+     ↓ DATABASE_URL uses pooler `:6543` + `?pgbouncer=true`
+     ↓ DIRECT_URL uses direct Postgres `:5432`
      ↓ FC-approved sender identity
 ```
 

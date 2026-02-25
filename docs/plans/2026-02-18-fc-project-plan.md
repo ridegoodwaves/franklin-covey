@@ -1,8 +1,8 @@
 # FranklinCovey Coaching Platform — Project Plan
 
 **Date**: 2026-02-18
-**Last Updated**: 2026-02-25 (Execution updates: staging schema applied and seeded; email outbound kill switch + shared guard added; multi-org foundation implemented in schema)
-**Status**: Active Build — staging backend foundation live
+**Last Updated**: 2026-02-25 (Slice 1 APIs live on staging; headshots/bios repaired; selection/auth security hardening shipped)
+**Status**: Active Build — Slice 1 staging flow live with launch-safety controls
 
 ---
 
@@ -61,6 +61,25 @@ The platform ships in three milestones between now and March 16, aligned to the 
   - shared email guard required for all send paths
   - allowlist + sandbox mode still required
 - Normalized import artifacts are generated from source files for repeatable staging imports (`npm run data:build:staging`).
+- Slice 1 participant route wiring shipped:
+  - `POST /api/participant/auth/verify-email`
+  - `GET /api/participant/coaches`
+  - `POST /api/participant/coaches/remix`
+  - `POST /api/participant/coaches/select`
+- Coach/admin magic-link request + consume flow shipped on live API routes.
+- Headshot pipeline repaired for canonical + legacy storage folder names; signed URL path fixed.
+- Targeted staging bio backfill script added and executed against current coach set.
+- Selection/auth security hardening shipped:
+  - `WINDOW_CLOSED` lock behavior normalized in participant flow
+  - coach selection concurrency lock to reduce over-assignment races
+  - one-time-use magic-link consume
+  - per-email participant auth lockout (in addition to per-IP limiter)
+- Supabase pooler safety enforced:
+  - `DATABASE_URL` must include `?pgbouncer=true`
+  - `DIRECT_URL` retained for direct Postgres migration/admin use
+
+Detailed commit changelog:
+- `docs/briefings/2026-02-25-shipped-changelog.md`
 
 ---
 

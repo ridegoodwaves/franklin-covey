@@ -1,36 +1,50 @@
 # FranklinCovey Coaching Platform — Stakeholder Summary (Feb 25, 2026)
 
-## What changed today
+## What shipped today
 
-- We completed the core staging setup so the platform is now running with real MVP structure and data.
-- We loaded the USPS baseline into staging:
-  - 4 programs
-  - 14 cohorts
-  - 32 coach memberships
-  - 175 participants
-- We seeded admin access for Amit and Tim in staging.
+- We shipped the full Slice 1 participant wiring on staging:
+  - live participant auth (`verify-email`)
+  - live coach list
+  - one-time remix
+  - live coach selection + confirmation
+- We shipped coach/admin magic-link auth routes and guard enforcement.
+- We shipped headshot + bio pipeline fixes so participant coach cards now render from real staging data.
+- We shipped launch-safety hardening:
+  - `WINDOW_CLOSED` and `ALREADY_SELECTED` lock behavior
+  - concurrent coach-selection race protection
+  - one-time magic-link consume (replay blocked)
+  - per-email participant auth lockout (in addition to per-IP limiting)
+  - PgBouncer safety enforcement for Supabase pooler URLs
 
-## Safety and launch controls added
+## Data baseline now active in staging
 
-- Participant emails remain USPS-owned (no participant outbound emails from the system in MVP).
-- We added a strict staging email safety model so test emails cannot accidentally go out broadly:
-  - staging outbound email default is OFF
-  - only allowlisted test inboxes can be used when testing is temporarily enabled
-  - all email sends must pass one shared safety check before sending
+- 4 programs
+- 14 cohorts
+- 32 coach memberships
+- 175 participants
+- 175 engagements
+- Admin users seeded for Amit + Tim
 
-## Platform readiness beyond USPS
+## Launch safety controls now in code
 
-- We implemented the data foundation so this can support additional organizations after USPS without redesigning the database.
-- This keeps MVP focused for March launch while reducing Phase 2 rework risk.
+- No participant outbound emails in MVP.
+- Staging email sends remain gated behind shared guard controls:
+  - `EMAIL_OUTBOUND_ENABLED=false` default
+  - sandbox mode + allowlist required when temporarily enabled
+- Environment validation now enforces `?pgbouncer=true` for Supabase pooler `DATABASE_URL` values.
 
-## What is still needed from FC Ops
+## What remains operational (not architecture)
 
-1. Kari + Andrea admin email addresses (to complete staging admin access setup)
-2. EF/EL coach-selection end dates (currently missing in the shared timeline source)
-3. Remaining cohort roster files (to move from current loaded participants to full planning baseline)
-4. Final confirmation on sender identity target (`coaching@coachinginnovationlab.com`) for coach/admin magic-link communications
+1. Kari + Andrea admin emails (to complete admin access seed for staging acceptance)
+2. Explicit EF/EL coach-selection end dates (replace current fallback defaults)
+3. Remaining roster imports to move from 175 loaded participants toward full launch baseline
+4. Final sender identity confirmation for production coach/admin magic-link communications
 
-## What this means for March launch
+## March 2 launch signal
 
-- The biggest foundation work is now in place.
-- Remaining launch risk is mostly operational inputs/timing (final missing dates, remaining roster files, final admin access setup), not platform architecture.
+- Core Slice 1 architecture and security controls are now implemented in staging.
+- Remaining launch risk is primarily execution inputs/timing from operations.
+
+## Detailed record
+
+- Full commit-level changelog: `docs/briefings/2026-02-25-shipped-changelog.md`

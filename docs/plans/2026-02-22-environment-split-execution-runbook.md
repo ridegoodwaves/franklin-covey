@@ -68,20 +68,31 @@ Minimum required keys:
 1. `NEXT_PUBLIC_APP_ENV`
 2. `NEXT_PUBLIC_SITE_URL`
 3. `DATABASE_URL`
-4. `NEXT_PUBLIC_SUPABASE_URL`
-5. `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-6. `SUPABASE_SERVICE_ROLE_KEY`
-7. `AUTH_SECRET`
-8. `RESEND_API_KEY`
-9. `EMAIL_FROM`
-10. `EMAIL_MODE`
-11. `EMAIL_ALLOWLIST`
-12. `EMAIL_OUTBOUND_ENABLED`
-13. `NUDGE_CRON_ENABLED`
-14. `CRON_SECRET`
-15. `LOG_REDACTION_ENABLED`
-16. `TEST_ENDPOINTS_ENABLED`
-17. `TEST_ENDPOINTS_SECRET` (required when `TEST_ENDPOINTS_ENABLED=true`)
+4. `DIRECT_URL`
+5. `NEXT_PUBLIC_SUPABASE_URL`
+6. `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+7. `SUPABASE_SERVICE_ROLE_KEY`
+8. `AUTH_SECRET`
+9. `RESEND_API_KEY`
+10. `EMAIL_FROM`
+11. `EMAIL_MODE`
+12. `EMAIL_ALLOWLIST`
+13. `EMAIL_OUTBOUND_ENABLED`
+14. `NUDGE_CRON_ENABLED`
+15. `CRON_SECRET`
+16. `LOG_REDACTION_ENABLED`
+17. `TEST_ENDPOINTS_ENABLED`
+18. `TEST_ENDPOINTS_SECRET` (required when `TEST_ENDPOINTS_ENABLED=true`)
+
+### Step 3.1: Supabase DB URL Rules (Required)
+
+For environments using Supabase pooler (`.pooler.supabase.com`, typically port `6543`):
+
+1. `DATABASE_URL` must include `?pgbouncer=true`.
+2. `DIRECT_URL` must stay on direct Postgres host/port (`db.<project>.supabase.co:5432`) with no `pgbouncer=true`.
+3. Run env validation before deploy:
+   - `npm run env:validate:staging`
+   - `npm run env:validate:production`
 
 ## Step 4: Enforce Staging Safety Gates
 
@@ -191,3 +202,4 @@ Stop and fix immediately if any of these happen:
 5. Any email send path bypasses shared guard helpers.
 6. `NUDGE_CRON_ENABLED` is true in staging.
 7. Any production env key is copied into staging.
+8. Supabase pooler `DATABASE_URL` is missing `?pgbouncer=true`.
