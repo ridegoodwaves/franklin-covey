@@ -71,10 +71,9 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    const stack = err instanceof Error ? err.stack : undefined;
-    console.error("[verify-email] Unhandled error for email", email, message, stack);
+    console.error("[verify-email] Unhandled error for email", email, message);
     return NextResponse.json(
-      { success: false, error: "SERVER_ERROR", detail: message },
+      { success: false, error: "SERVER_ERROR" },
       { status: 500 }
     );
   }
