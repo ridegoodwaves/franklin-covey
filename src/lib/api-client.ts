@@ -2,9 +2,6 @@
 // Participant Portal API Client
 // Typed fetch wrappers for all participant API endpoints.
 // All functions return typed responses and normalize errors.
-// TODO: Replace stub implementations with real fetch calls once
-//       backend endpoints are live at /api/participant/...
-//
 // Auth model: roster-matched email entry (no access codes — de-scoped 2026-02-24d)
 // ---------------------------------------------------------------------------
 
@@ -130,51 +127,34 @@ async function apiFetch<T>(
 export async function verifyParticipantEmail(
   input: VerifyEmailInput
 ): Promise<VerifyEmailResponse> {
-  // TODO: uncomment when backend is live
-  // return apiFetch<VerifyEmailResponse>("POST", "/api/participant/auth/verify-email", input);
-
-  // ── Stub: any email not in the rejection list = success ──
-  // QA trigger values:
-  //   unknown@test.com        → UNRECOGNIZED_EMAIL
-  //   closed@test.com         → WINDOW_CLOSED
-  //   ratelimited@test.com    → RATE_LIMITED
-  //   already@test.com        → success + alreadySelected: true
-  //   any other email         → success
-  await delay(800);
-  const normalizedEmail = input.email.toLowerCase().trim();
-  if (normalizedEmail === "unknown@test.com") {
-    return { success: false, error: "UNRECOGNIZED_EMAIL" };
+  try {
+    return await apiFetch<VerifyEmailResponse>("POST", "/api/participant/auth/verify-email", input);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      if (
+        error.code === "UNRECOGNIZED_EMAIL" ||
+        error.code === "WINDOW_CLOSED" ||
+        error.code === "RATE_LIMITED"
+      ) {
+        return { success: false, error: error.code };
+      }
+    }
+    throw error;
   }
-  if (normalizedEmail === "closed@test.com") {
-    return { success: false, error: "WINDOW_CLOSED" };
-  }
-  if (normalizedEmail === "ratelimited@test.com") {
-    return { success: false, error: "RATE_LIMITED" };
-  }
-  if (normalizedEmail === "already@test.com") {
-    return { success: true, alreadySelected: true };
-  }
-  return { success: true };
 }
 
 /**
  * GET /api/participant/coaches
  */
 export async function fetchCoaches(): Promise<CoachesResponse> {
-  // TODO: uncomment when backend is live
-  // return apiFetch<CoachesResponse>("GET", "/api/participant/coaches");
-  await delay(600);
-  return { coaches: [], allAtCapacity: false };
+  return apiFetch<CoachesResponse>("GET", "/api/participant/coaches");
 }
 
 /**
  * POST /api/participant/coaches/remix
  */
 export async function remixCoaches(): Promise<RemixResponse> {
-  // TODO: uncomment when backend is live
-  // return apiFetch<RemixResponse>("POST", "/api/participant/coaches/remix");
-  await delay(600);
-  return { coaches: [], poolExhausted: false };
+  return apiFetch<RemixResponse>("POST", "/api/participant/coaches/remix");
 }
 
 /**
@@ -183,20 +163,18 @@ export async function remixCoaches(): Promise<RemixResponse> {
 export async function selectCoach(
   input: SelectCoachInput
 ): Promise<SelectCoachResponse> {
-  // TODO: uncomment when backend is live
-  // return apiFetch<SelectCoachResponse>("POST", "/api/participant/coaches/select", input);
-  await delay(1000);
-  const lastChar = input.coachId.slice(-1);
-  const coachIndex = parseInt(lastChar, 10);
-  const hasBookingUrl = !isNaN(coachIndex) ? coachIndex % 2 !== 0 : Math.random() > 0.5;
-  return {
-    success: true,
-    bookingUrl: hasBookingUrl ? "https://calendly.com/stub-coach/30min" : undefined,
-  };
-}
-
-// ─── Utility ─────────────────────────────────────────────────────────────────
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  try {
+    return await apiFetch<SelectCoachResponse>("POST", "/api/participant/coaches/select", input);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      if (
+        error.code === "CAPACITY_FULL" ||
+        error.code === "ALREADY_SELECTED" ||
+        error.code === "INVALID_SESSION"
+      ) {
+        return { success: false, error: error.code };
+      }
+    }
+    throw error;
+  }
 }

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
+  ApiError,
   fetchCoaches,
   remixCoaches,
   selectCoach,
@@ -341,6 +342,7 @@ export default function SelectCoachPage() {
 
   async function loadInitialCoaches() {
     setMounted(false);
+    setInlineError(null);
     try {
       const result = await fetchCoaches();
       if (result.allAtCapacity) {
@@ -348,20 +350,25 @@ export default function SelectCoachPage() {
         setMounted(true);
         return;
       }
-      let coaches: Coach[];
-      if (result.coaches.length > 0) {
-        coaches = result.coaches.map(apiCoachToLocal);
-      } else {
-        coaches = pickCoaches(ALL_COACHES, new Set(), COACHES_PER_PAGE);
+      const coaches = result.coaches.map(apiCoachToLocal);
+      setDisplayedCoaches(coaches);
+      setShownIds(new Set(coaches.map((c) => c.id)));
+      setTimeout(() => setMounted(true), 50);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        if (error.code === "INVALID_SESSION") {
+          router.replace("/participant/?expired=true");
+          return;
+        }
+        if (error.code === "ALREADY_SELECTED") {
+          router.replace("/participant/confirmation?already=true");
+          return;
+        }
       }
-      setDisplayedCoaches(coaches);
-      setShownIds(new Set(coaches.map((c) => c.id)));
-      setTimeout(() => setMounted(true), 50);
-    } catch {
-      const coaches = pickCoaches(ALL_COACHES, new Set(), COACHES_PER_PAGE);
-      setDisplayedCoaches(coaches);
-      setShownIds(new Set(coaches.map((c) => c.id)));
-      setTimeout(() => setMounted(true), 50);
+      setInlineError("We could not load coach options. Please refresh and try again.");
+      setDisplayedCoaches([]);
+      setShownIds(new Set());
+      setMounted(true);
     }
   }
 
@@ -372,13 +379,7 @@ export default function SelectCoachPage() {
 
     try {
       const result = await remixCoaches();
-      let coaches: Coach[];
-      if (result.coaches.length > 0) {
-        coaches = result.coaches.map(apiCoachToLocal);
-      } else {
-        const next = pickCoaches(ALL_COACHES, shownIds, COACHES_PER_PAGE);
-        coaches = next.length >= COACHES_PER_PAGE ? next : pickCoaches(ALL_COACHES, new Set(), COACHES_PER_PAGE);
-      }
+      const coaches = result.coaches.map(apiCoachToLocal);
       setDisplayedCoaches(coaches);
       setShownIds((prev) => {
         const next = new Set(prev);
@@ -386,19 +387,26 @@ export default function SelectCoachPage() {
         return next;
       });
       setRemixUsed(true);
-    } catch {
-      const next = pickCoaches(ALL_COACHES, shownIds, COACHES_PER_PAGE);
-      const coaches = next.length >= COACHES_PER_PAGE ? next : pickCoaches(ALL_COACHES, new Set(), COACHES_PER_PAGE);
-      setDisplayedCoaches(coaches);
-      setShownIds((prev) => {
-        const next2 = new Set(prev);
-        coaches.forEach((c) => next2.add(c.id));
-        return next2;
-      });
-      setRemixUsed(true);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        if (error.code === "INVALID_SESSION") {
+          router.replace("/participant/?expired=true");
+          return;
+        }
+        if (error.code === "ALREADY_SELECTED") {
+          router.replace("/participant/confirmation?already=true");
+          return;
+        }
+        if (error.code === "REMIX_ALREADY_USED") {
+          setRemixUsed(true);
+          setMounted(true);
+          return;
+        }
+      }
+      setInlineError("We could not refresh coach options. Please try again.");
     }
     setTimeout(() => setMounted(true), 200);
-  }, [remixUsed, shownIds]);
+  }, [remixUsed, router]);
 
   const availableCount = displayedCoaches.filter((c) => !c.atCapacity).length;
   const canRemix = !remixUsed && availableCount > 0;

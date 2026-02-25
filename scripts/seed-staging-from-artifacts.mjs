@@ -11,6 +11,7 @@ const ORG_CODE = "USPS";
 const COHORTS_CSV = path.join(ROOT, "fc-assets", "normalized", "staging-cohorts.csv");
 const COACHES_CSV = path.join(ROOT, "fc-assets", "normalized", "staging-coaches.csv");
 const PARTICIPANTS_CSV = path.join(ROOT, "fc-assets", "normalized", "staging-participants.csv");
+const HEADSHOT_MAP_JSON = path.join(ROOT, "src", "lib", "headshots", "generated-map.json");
 
 function parseArgs(argv) {
   const out = { adminEmails: [] };
@@ -52,6 +53,23 @@ function parseCsv(filePath) {
 
   return rows;
 }
+
+function loadHeadshotMap() {
+  if (!fs.existsSync(HEADSHOT_MAP_JSON)) {
+    return new Map();
+  }
+
+  const raw = fs.readFileSync(HEADSHOT_MAP_JSON, "utf8");
+  const parsed = JSON.parse(raw);
+  return new Map(
+    Object.entries(parsed).map(([email, photoPath]) => [
+      String(email).toLowerCase(),
+      String(photoPath),
+    ])
+  );
+}
+
+const headshotMap = loadHeadshotMap();
 
 function toDate(value) {
   if (!value) return null;
@@ -169,16 +187,20 @@ async function seedCoaches(organizationId) {
   const rows = parseCsv(COACHES_CSV);
 
   for (const row of rows) {
+    const email = row.email.toLowerCase();
+    const photoPath = headshotMap.get(email) || null;
+
     const user = await prisma.user.upsert({
-      where: { email: row.email.toLowerCase() },
+      where: { email },
       update: { role: "COACH", active: true },
-      create: { email: row.email.toLowerCase(), role: "COACH", active: true },
+      create: { email, role: "COACH", active: true },
     });
 
     const coachProfile = await prisma.coachProfile.upsert({
       where: { userId: user.id },
       update: {
         displayName: row.displayName,
+        photoPath,
         bookingLinkPrimary: row.bookingLinkPrimary || null,
         bookingLinkSecondary: row.bookingLinkSecondary || null,
         sourceFile: row.sourceFile || null,
@@ -187,6 +209,7 @@ async function seedCoaches(organizationId) {
       create: {
         userId: user.id,
         displayName: row.displayName,
+        photoPath,
         bookingLinkPrimary: row.bookingLinkPrimary || null,
         bookingLinkSecondary: row.bookingLinkSecondary || null,
         sourceFile: row.sourceFile || null,
