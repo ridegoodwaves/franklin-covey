@@ -35,7 +35,7 @@ export async function consumeParticipantEmailRateLimit(
   const windowStart = new Date(now - input.windowMs);
 
   return prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`select pg_advisory_xact_lock(hashtext(${`participant-auth:${emailHash}`}))`;
+    await tx.$executeRaw`select pg_advisory_xact_lock(hashtext(${`participant-auth:${emailHash}`}))`;
 
     const currentHits = await tx.auditEvent.count({
       where: {
@@ -102,7 +102,7 @@ export async function consumeMagicLinkOneTime(input: ConsumeMagicLinkOneTimeInpu
   const tokenHash = sha256Hex(input.token);
 
   return prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`select pg_advisory_xact_lock(hashtext(${`magic-link:${tokenHash}`}))`;
+    await tx.$executeRaw`select pg_advisory_xact_lock(hashtext(${`magic-link:${tokenHash}`}))`;
 
     const existing = await tx.auditEvent.findFirst({
       where: {

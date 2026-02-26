@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Serialize selection attempts for this coach to avoid over-assignment races.
-    await tx.$queryRaw`select pg_advisory_xact_lock(hashtext(${selectedCoach.id}))`;
+    await tx.$executeRaw`select pg_advisory_xact_lock(hashtext(${selectedCoach.id}))`;
 
     const activeCount = await tx.engagement.count({
       where: {
