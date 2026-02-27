@@ -57,6 +57,7 @@ function looksPlaceholder(value) {
   const v = String(value ?? "").trim();
   return (
     v.startsWith("[") ||
+    v.includes("[") || // catches embedded placeholders like [project], [region], [REDACTED]
     v.includes("REDACTED") ||
     v.includes("example.com") ||
     v.includes("yourdomain")
