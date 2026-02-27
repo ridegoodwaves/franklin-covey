@@ -22,6 +22,8 @@ export interface ParticipantSession {
   email: string;
   shownCoachIds: string[];
   remixUsed: boolean;
+  /** IDs of the coaches currently displayed to this participant. Pinned until remix or selection. */
+  currentBatchIds: string[];
 }
 
 export interface PortalSession {

@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
   writeParticipantSession(response, {
     ...participantSession,
     shownCoachIds: nextShownIds,
+    currentBatchIds: cards.map((coach) => coach.id),
     remixUsed: true,
   });
 

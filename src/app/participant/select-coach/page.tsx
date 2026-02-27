@@ -119,6 +119,8 @@ export default function SelectCoachPage() {
     setInlineError(null);
     try {
       const result = await fetchCoaches();
+      // Sync remix state from server — prevents browser refresh from resetting the limit.
+      setRemixUsed(result.remixUsed);
       if (result.allAtCapacity) {
         setAllAtCapacity(true);
         setMounted(true);

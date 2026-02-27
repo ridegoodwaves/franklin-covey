@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
       email: match.email,
       shownCoachIds: [],
       remixUsed: false,
+      currentBatchIds: [],
     });
 
     return response;

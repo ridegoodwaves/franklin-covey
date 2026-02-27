@@ -51,6 +51,8 @@ export interface CoachesResponse {
   coaches: ParticipantCoachCard[];
   /** True when every coach in this participant's pool is at capacity. */
   allAtCapacity: boolean;
+  /** True when this participant has already used their one remix. Drives client UI state. */
+  remixUsed: boolean;
 }
 
 // POST /api/participant/coaches/remix
