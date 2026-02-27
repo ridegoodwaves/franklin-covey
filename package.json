@@ -14,7 +14,10 @@
     "env:validate": "node scripts/validate-env-safety.mjs",
     "env:validate:staging": "node scripts/validate-env-safety.mjs --env-file .env.staging.example --target staging",
     "env:validate:production": "node scripts/validate-env-safety.mjs --env-file .env.production.example --target production",
-    "data:backfill:photo-paths": "node scripts/backfill-coach-photo-paths.mjs"
+    "data:backfill:photo-paths": "node scripts/backfill-coach-photo-paths.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
@@ -45,9 +48,14 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@vitest/coverage-v8": "^4.0.18",
     "autoprefixer": "^10.4.0",
+    "next-test-api-route-handler": "^5.0.3",
     "postcss": "^8.4.0",
     "tailwindcss": "^3.4.0",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.0.18",
+    "vitest-mock-extended": "^3.1.0"
   }
 }
