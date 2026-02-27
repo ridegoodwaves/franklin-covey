@@ -85,13 +85,13 @@ function ConfirmationContent() {
           {/* Headline */}
           <div className={`mb-8 text-center transition-all duration-700 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: "100ms" }}>
             <h1 className="font-display text-3xl font-light leading-tight text-fc-950 sm:text-4xl">
-              {alreadySelected && !coach ? "Coach Already Selected" : "Your Coach Has Been Selected"}
+              {alreadySelected && !coach ? "You\u2019re confirmed \u2014 your coach will be in touch" : "Your Coaching Journey Begins"}
             </h1>
-            {alreadySelected && !coach && (
-              <p className="mt-3 text-sm text-muted-foreground">
-                Your selection is confirmed. Contact your program administrator if you have any questions.
-              </p>
-            )}
+            <p className="mt-3 text-sm text-muted-foreground">
+              {alreadySelected && !coach
+                ? "You\u2019ve already selected a coach. Your coach will reach out within 72 hours to schedule your first session."
+                : "Thank you for choosing your coach \u2014 they\u2019re looking forward to partnering with you."}
+            </p>
           </div>
 
           {/* Coach card */}
@@ -154,7 +154,9 @@ function ConfirmationContent() {
                   <Button size="lg" className="w-full" onClick={() => window.open(coach.bookingUrl, "_blank")}>
                     Book your first session
                   </Button>
-                  <p className="text-sm text-muted-foreground">Opens your coach's scheduling page in a new tab</p>
+                  <p className="text-sm text-muted-foreground">
+                    If you do not book your first session now, your coach will reach out to you directly.
+                  </p>
                 </div>
               ) : (
                 <div className="rounded-xl border border-fc-200 bg-fc-50 p-5 text-center">
@@ -166,7 +168,13 @@ function ConfirmationContent() {
           )}
 
           <p className={`mt-10 text-center text-xs text-muted-foreground transition-all duration-700 ${mounted ? "opacity-100" : "opacity-0"}`} style={{ transitionDelay: "400ms" }}>
-            Need help? Contact your program administrator.
+            Need help?{" "}
+            <a
+              href="mailto:Andrea.Sherman@franklincovey.com"
+              className="underline underline-offset-2 hover:text-fc-700 transition-colors"
+            >
+              Contact your program administrator
+            </a>.
           </p>
         </div>
       </main>

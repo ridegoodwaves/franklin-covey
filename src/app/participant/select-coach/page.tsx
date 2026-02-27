@@ -467,7 +467,9 @@ export default function SelectCoachPage() {
                 </Button>
               ) : remixPending ? (
                 <div className="flex flex-col items-center gap-2">
-                  <p className="text-sm text-muted-foreground">You can only do this once.</p>
+                  <p className="text-sm text-muted-foreground">
+                    You can only do this once. After refreshing, you cannot return to this group of coaches.
+                  </p>
                   <div className="flex gap-3">
                     <Button
                       variant="default"

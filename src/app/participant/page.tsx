@@ -83,6 +83,9 @@ export default function ParticipantEntryPage() {
           className="mb-8 text-center opacity-0 animate-fade-in"
           style={{ animationDelay: "100ms" }}
         >
+          <p className="mb-2 text-xs font-medium uppercase tracking-widest text-fc-600">
+            USPS Leadership Coaching Program
+          </p>
           <h1 className="font-display text-3xl font-light leading-tight text-fc-950 sm:text-4xl">
             Welcome to Your Coaching Journey
           </h1>
@@ -147,7 +150,13 @@ export default function ParticipantEntryPage() {
           className="mt-8 text-center text-xs text-muted-foreground opacity-0 animate-fade-in"
           style={{ animationDelay: "350ms" }}
         >
-          Need help? Contact your program administrator.
+          Need help?{" "}
+          <a
+            href="mailto:Andrea.Sherman@franklincovey.com"
+            className="underline underline-offset-2 hover:text-fc-700 transition-colors"
+          >
+            Contact your program administrator
+          </a>.
         </p>
       </div>
     </div>

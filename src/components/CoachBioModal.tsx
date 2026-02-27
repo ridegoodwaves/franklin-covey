@@ -108,7 +108,7 @@ export function CoachBioModal({
                 <img
                   src={coach.photo}
                   alt={coach.name}
-                  className="w-full h-full object-cover object-top"
+                  className="w-full h-full object-cover object-[center_20%]"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
