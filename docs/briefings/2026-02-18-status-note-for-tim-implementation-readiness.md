@@ -7,13 +7,23 @@ The main project plan doc is:
 
 It matches the "tiered plan" format built for Tim (FC-shareable top section + internal action items at bottom).
 
+## Execution Update (Feb 25, 2026)
+
+- Staging schema migration is applied and tracked in Prisma migration history.
+- USPS baseline seed is loaded in staging: 4 programs, 14 cohorts, 32 coach memberships, 175 participants, 175 engagements.
+- Admin users seeded in staging: Amit + Tim (Kari/Andrea pending email addresses).
+- Staging email safeguards are now hardened by config and code:
+  - `EMAIL_OUTBOUND_ENABLED=false` in staging
+  - sandbox mode + allowlist still required
+  - centralized guard required for all send paths (`src/lib/email/guard.ts`, `src/lib/email/send-with-guard.ts`)
+
 ## What Is Ready on Auth Scope (Decision-Ready and Frozen)
 
 These are locked and ready for implementation:
-- Participant access is fixed to USPS-sent coach-selector link + participant access code (no system-sent participant email in MVP).
+- Participant access is fixed to USPS-sent cohort welcome email + roster-matched email entry (no participant access code and no system-sent participant email in MVP).
 - Coach/admin auth model is fixed to shared `/auth/signin` magic-link flow with fresh-link re-auth after timeout.
 - Auth-related API contract paths are frozen for MVP.
-- Participant flow is frozen: access code -> 3 coaches -> optional remix -> select -> confirmation (no return dashboard).
+- Participant flow is frozen: email entry -> 3 coaches -> optional remix -> select -> confirmation (no return dashboard).
 - Nudge timing anchor is frozen: Day 0 = `cohortStartDate`.
 
 Source refs:
@@ -43,45 +53,63 @@ Source refs:
 - Participant welcome comms owner confirmed: USPS sends on first day of each coach-selection window.
 - Coach access comms owner confirmed: Andrea and/or Kari, sent as soon as portal is available and before Mar 2.
 - Participant communication boundary confirmed: CIL system does not send participant emails in MVP.
+- Participant entry model confirmed by Kari: email-entry-only for MVP (no participant access codes), aligned to USPS cohort group-email workflow and FC sender restrictions.
 - Use-it-or-lose-it behavior confirmed as manual for ALP/MLP only: no auto-lock/forfeit; overdue Session 1/2 items should surface as "Needs Attention". EF/EL does not use this model.
 
 Source refs:
 - `franklin-covey/docs/plans/2026-02-18-fc-project-plan.md:4`
 - `franklin-covey/docs/plans/2026-02-18-fc-project-plan.md:97`
-- `franklin-covey/docs/plans/2026-02-18-fc-project-plan.md:105`
-- `franklin-covey/docs/drafts/2026-02-18-mvp-contract-v1.md:80`
+- `franklin-covey/docs/plans/2026-02-18-fc-project-plan.md:116`
+- `franklin-covey/docs/drafts/2026-02-18-mvp-contract-v1.md:71`
+
+## Highest-Priority Work Next (Execution Order)
+
+1. **Participant auth implementation (email-entry only)**
+- Replace access-code assumptions in backend/API contracts used for Slice 1 implementation.
+- Implement roster-matched email-entry validation + active cohort-window gating + session creation.
+- Ensure generic auth errors + rate limiting + audit logging are in place.
+
+2. **Participant selection APIs + frontend wiring**
+- Implement `GET /api/participant/coaches`, `POST /api/participant/coaches/remix`, `POST /api/participant/coaches/select`.
+- Enforce capacity race protections (`SELECT FOR UPDATE` + optimistic lock checks).
+- Keep booking-link fallback behavior locked ("coach reaches out within 2 business days").
+
+3. **Data ingestion for first cohorts**
+- Import ALP-135 roster (received) and complete MLP-80 + remaining March cohort imports.
+- Complete coach import (bios/photos/scheduling links) and verify pool assignments (MLP/ALP vs EF/EL).
+
+4. **Environment readiness + staging deploy**
+- Complete Vercel/Supabase staging+production split with distinct secrets.
+- Apply staging email safety gates (`EMAIL_MODE=sandbox`, allowlist, no participant sends).
+- Deploy Slice 1 to staging and run Kari beta script.
+
+5. **Coach/admin auth + operations flow**
+- Implement magic-link auth for coach/admin.
+- Implement session logging baseline for Slice 2 and admin needs-attention pipeline for Slice 3.
 
 ## Hard Must-Haves (ASAP) to Avoid Implementation Delay
 
 These are critical-path items for Slice 1 timeline integrity:
 
-1. FC coach data package by Feb 23, 2026
-- Bios, photos, scheduling links for MLP/ALP panel.
-- Coach bio videos are not required for MVP.
-- Accept direct booking URLs from Calendly, Acuity, or equivalent.
-- Send available batch now; remaining links due Monday, Feb 23, 2026.
-- Without this, self-serve booking coverage drops and manual coach-outreach load increases in Slice 1.
+1. MVP scope freeze enforcement
+- Keep API/state behavior locked; route any additions through change control.
+- Protects March 2 date from late rework.
 
-2. First participant lists by Feb 24
-- ALP-135 + MLP-80 with name/email/cohort code/cohort start date.
-- Current confirmed count for each is 30 participants.
-- Without this, access-code auth and cohort-based timing/flag logic cannot be validated on real data.
+2. Remaining roster/cohort imports
+- ALP-135 is received; complete MLP-80 and remaining March cohorts with final allocations.
+- Needed to validate capacity/load assumptions and staging QA realism.
 
-3. Sender domain decision by Feb 21
-- Tim + Blaine to confirm sending identity (proposed `coaching@franklincovey.com`).
-- Needed for launch-email trust/deliverability setup.
+3. Coach data completeness
+- Ensure usable scheduling links across active coach panel.
+- Missing links are allowed, but raise manual follow-up volume and ops risk.
 
 4. Communication tracker execution confirmation
-- Confirm FC preference on whether CIL tracks participant/coach send status fields internally and FC only confirms exceptions.
-- Needed for clean per-cohort comms accountability once windows open.
+- Confirm owner and cadence for participant/coach send status tracking fields (Planned/Sent).
+- Needed for clean per-cohort communication accountability.
 
-5. Keep MVP contract freeze in effect (no breaking scope churn)
-- If edits are needed, constrain them to open-items/change-control sections only.
-- Protects March 2 date from late API/state-model changes.
-
-6. FC path decision by end of day Feb 23, 2026
-- Explicitly choose between Path A (build directly in FC AWS from day one; higher March launch risk) and Path B (recommended: launch on Vercel + Supabase bridge with conditional controls while VSA is in progress, then migrate to FC AWS ~30 days post-launch, dependency-driven).
-- Without this decision, launch-risk ownership remains ambiguous.
+5. Staging verification before beta
+- Validate participant email-entry auth, selector, remix, select, and confirmation flows in staging.
+- Validate coach/admin magic-link access and audit logs for critical participant actions.
 
 Source refs:
 - `franklin-covey/docs/plans/2026-02-18-fc-project-plan.md:120`
@@ -116,7 +144,7 @@ Source refs:
 
 | Priority | Definition | Example (FC MVP) | Expected Turnaround |
 |----------|------------|------------------|---------------------|
-| **P0** | Blocking/critical issue that prevents launch-critical work or breaks core flow | Participants cannot complete access-code login, or coach selection API fails for all users | Immediate triage same day |
+| **P0** | Blocking/critical issue that prevents launch-critical work or breaks core flow | Participants cannot complete roster-email entry/login, or coach selection API fails for all users | Immediate triage same day |
 | **P1** | Urgent fix needed for upcoming milestone quality or timeline protection | USPS participant access emails are delayed for some users, or coach session logging fails intermittently | Prioritize in next build window (typically within 24 hours) |
 | **P2** | Nice-to-have or non-blocking enhancement | Add a dashboard filter, refine report formatting, or polish UI copy | Backlog and schedule against milestone capacity |
 
@@ -135,12 +163,13 @@ Source refs:
 
 ## Current Repo Reality Check
 
-Decision scope is ready, but backend implementation foundation has not been scaffolded yet in this repo snapshot:
-- `prisma/` missing
-- `src/app/api/` missing
-- `.env.example` missing
+Decision scope and backend foundation are now in motion in this repo snapshot:
+- `prisma/` exists with multi-org-ready schema + initial migration.
+- Staging DB schema is live and seeded via repeatable scripts.
+- `.env` templates and validation enforce staging/production email safety rules.
+- `src/app/api/` endpoints are still pending implementation wiring; frontend remains mostly stubbed.
 
-Meaning: requirements are sufficiently locked to start implementation now; remaining risk is mainly data/input timing, not product-definition ambiguity.
+Meaning: architecture + data foundations are no longer the blocker. Remaining risk is delivery wiring (API/auth flows), missing cohort input files, and ops test execution timing.
 
 ## Environment + Email Safety SOP (Locked Feb 19, 2026)
 
@@ -160,14 +189,16 @@ Meaning: requirements are sufficiently locked to start implementation now; remai
 ### Staging email send safety (required)
 
 - Set `EMAIL_MODE=sandbox` in staging.
+- Set `EMAIL_OUTBOUND_ENABLED=false` in staging by default (hard kill switch).
 - Enforce hard recipient allowlist in staging before any send operation.
 - Block (not queue) non-allowlisted recipients.
+- Route all send paths through shared email guard helpers before provider send.
 - Keep a visible staging banner that email sends are sandboxed.
 
 ### Release gates before production sends
 
 1. Staging proves zero accidental sends to non-allowlisted recipients.
-2. Participant access-code and coach/admin magic-link auth flows pass in staging.
+2. Participant roster-email-entry auth and coach/admin magic-link auth flows pass in staging.
 3. Production sender identity/domain and pilot inbox checks are complete.
 
 ## Environment Variable Matrix (Staging vs Production)
@@ -185,8 +216,10 @@ Meaning: requirements are sufficiently locked to start implementation now; remai
 | `EMAIL_FROM` | Staging sender identity | Production sender identity | Tim + Blaine | Before launch emails | Production identity should be FC-approved |
 | `EMAIL_MODE` | `sandbox` | `live` | Build Team | Before staging tests | Hard send gate |
 | `EMAIL_ALLOWLIST` | Internal test inbox list | Optional safety list | Amit + Build Team | Before staging tests | Required in staging |
-| `ACCESS_CODE_MAX_ATTEMPTS` | `5` (default) | `5` (default) | Build Team | Auth setup | Lockout threshold for participant access code attempts |
+| `EMAIL_OUTBOUND_ENABLED` | `false` | `true` | Build Team | Before staging tests | Hard outbound kill switch |
 | `MAGIC_LINK_TTL_MINUTES` | `30` (default) | `30` (default) | Build Team | Auth setup | Coach/admin auth behavior |
+| `TEST_ENDPOINTS_ENABLED` | `true` | `false` | Build Team | Before E2E runs | Explicit staging-only gate for `/api/test/*` routes |
+| `TEST_ENDPOINTS_SECRET` | Unique staging secret | unset/blank | Build Team | Before E2E runs | Required `X-Test-Secret` header for `/api/test/*` |
 | `NUDGE_CRON_ENABLED` | `false` until QA signoff | `true` | Build Team | Before cron run | Prevent accidental nudge sends |
 | `CRON_SECRET` | Unique staging secret | Unique production secret | Amit | Before cron setup | Required for protected cron routes |
 | `LOG_REDACTION_ENABLED` | `true` | `true` | Build Team | Before auth/email test | Prevent token/email leakage in logs |

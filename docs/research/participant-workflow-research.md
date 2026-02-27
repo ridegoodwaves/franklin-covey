@@ -1,10 +1,10 @@
 # Participant Workflow: Complete Research Reference
 
-**Date**: 2026-02-18 (auth model updated: 2026-02-23; live audit: 2026-02-23)
+**Date**: 2026-02-18 (auth model updated: 2026-02-24; live audit: 2026-02-23; verified against live app: 2026-02-24)
 **Branch**: `feat/phase-0-backend`
-**Status**: Frontend complete (Slice 1 pushed `5c82016`). Backend stubs only — no real API yet. Live browser audit complete. Access-code auth model supersedes earlier OTP-via-email design.
+**Status**: Frontend complete (Slice 1 pushed `5c82016`). Backend stubs only — no real API yet. Live browser audit complete. Roster-matched email-only auth model supersedes earlier access-code and OTP designs.
 
-> **⚠️ Major Change (2026-02-23):** The participant auth model changed from email-OTP (system sends code via email) to **email + access code** (USPS sends code in physical/email letter). CIL system sends **zero participant emails in MVP**. All participant communications are owned by USPS/FC Ops. See Sections 2–4 and 6 for full details.
+> **⚠️ Auth Model Update (2026-02-24d):** Participant auth simplified to **roster-matched email entry only** — no access codes. Reason: USPS cohort group-email workflow + FC sender restrictions make per-participant code delivery unworkable (Kari confirmation). USPS sends participants a link only. Participants enter their email; system checks the roster. See Sections 2–4 and 6 for full details.
 
 ---
 
@@ -14,13 +14,13 @@ The FranklinCovey Coaching Platform is a coaching engagement tool for USPS leade
 
 | Portal | Path | Layout | Auth |
 |--------|------|--------|------|
-| Participant | `/participant/*` | Immersive (no sidebar, full-screen centered) | Email + USPS-delivered access code |
+| Participant | `/participant/*` | Immersive (no sidebar, full-screen centered) | Roster-matched email entry |
 | Coach | `/coach/*` | `PortalShell` sidebar | Auth.js magic link (Slice 2) |
 | Admin | `/admin/*` | `PortalShell` sidebar | Auth.js magic link (Slice 2) |
 
 **Scale**: 400 participants total, 31 coaches (15 MLP/ALP + 16 EF/EL), 4 programs, launching in cohorts starting March 2 (ALP-135 first). Tech: Next.js 15 App Router, TypeScript, Tailwind CSS, shadcn/ui (new-york style), Prisma + Supabase PostgreSQL.
 
-**Participant comms boundary (locked):** USPS sends participant access email (with link + access code) on each cohort's coach-selection window start date. CIL system does **not** send participant emails in MVP — no OTP emails, no reminder emails, no confirmation emails.
+**Participant comms boundary (locked):** USPS sends participants a welcome email with the coach-selector link on each cohort's window start date. No access code — participants authenticate by entering their roster email. CIL system does **not** send participant emails in MVP — no auth emails, no reminder emails, no confirmation emails.
 
 ---
 
@@ -40,8 +40,8 @@ The participant portal is a **terminal flow** — participants enter once, make 
 - Coach intro videos — de-scoped from MVP (Feb 24 P0 decision)
 - System-sent participant emails — USPS owns all participant communications
 
-**Auth model (updated Feb 24):**
-USPS sends each participant a welcome email containing the coach-selector URL and a pre-generated **access code**. Participants enter their email + access code in one step. The system never sends emails to participants — there is no "check your inbox for a code" step.
+**Auth model (updated Feb 24d — final):**
+USPS sends each participant a welcome email containing the coach-selector URL (link only, no code). Participants enter their email address on the entry page. The system checks the email against the imported participant roster and opens a session if found and the cohort window is open. No code, no OTP, no "check your inbox" step.
 
 **Middleware enforcement** (`src/middleware.ts:8`): Any request to `/participant/engagement/*` permanently redirects to `/participant/`. Catches old bookmarks.
 
@@ -51,10 +51,10 @@ USPS sends each participant a welcome email containing the coach-selector URL an
 
 ```
 USPS welcome email (sent by USPS/FC Ops on cohort window start date)
-    ↓ contains: coach-selector URL + participant access code
+    ↓ contains: coach-selector URL only (no access code)
 
-/participant/                           ← Step 1: Enter email + access code
-    ↓ verifyAccessCode({ email, accessCode })
+/participant/                           ← Step 1: Enter email address
+    ↓ verifyParticipantEmail({ email })
     ↓ sessionStorage.set('participant-email')
     ↓ sessionStorage.set('participant-verified', 'true')
     │
@@ -82,7 +82,7 @@ USPS welcome email (sent by USPS/FC Ops on cohort window start date)
     [PARTICIPANT NEVER RETURNS]
 ```
 
-**Key difference from earlier design:** There is no separate `/participant/verify-otp` step. Auth happens on the entry page in a single form (email + access code). The `verify-otp` page in the current stub frontend is stale and reflects the old OTP model — it will be replaced when Slice 1 backend ships.
+**Key difference from earlier designs:** There is no OTP step and no access code field. Auth is a single email input. The `verify-otp` page was removed. Access codes were also de-scoped (2026-02-24d) before implementation.
 
 ---
 
@@ -90,38 +90,32 @@ USPS welcome email (sent by USPS/FC Ops on cohort window start date)
 
 ### 4.1 Entry Page — `/participant/page.tsx`
 
-**Purpose**: Authenticate the participant using their email + USPS-delivered access code.
+**Purpose**: Authenticate the participant by verifying their email against the imported participant roster.
 
-**Current stub behavior (stale — OTP model):**
-The existing frontend page only collects an email and calls `requestOtp()`. This is the **old design** — it will be replaced with a two-field form (email + access code) when the real backend ships. The `/participant/verify-otp` page will be removed.
-
-**Production behavior (what ships for Slice 1):**
-- Two inputs: `email` field + `accessCode` field
-- Single submit action: `verifyAccessCode({ email, accessCode })`
-- No email sent by the system at any point
+**Current implementation (live, matches production spec):**
+- Single input: `email` field
+- Single submit action: `verifyParticipantEmail({ email })`
+- No system email sent at any point; USPS delivers the link only
 - On success: sessionStorage set, redirect to select-coach (or confirmation if already selected)
 
 **On mount:**
-- Checks `?expired=true` in URL query params → shows amber banner: "Your session expired. Please enter your email and access code to start again."
+- Checks `?expired=true` in URL query params → shows amber banner: "Your session expired. Please enter your email to start again."
 
 **Form behavior:**
 - Email `<Input>` with `autoFocus`, `autoComplete="email"`, `type="email"`
-- Access code input: `type="text"`, `inputMode="numeric"` or alphanumeric (format TBD with FC)
-- Button disabled until both fields are non-empty
+- Button disabled until email field is non-empty
 - Clears error on any keystroke
 
-**API call: `verifyAccessCode({ email, accessCode })`**
+**API call: `verifyParticipantEmail({ email })`**
 
 | Error Code | User Message |
 |------------|-------------|
-| `INVALID_CREDENTIALS` | "Email or access code not recognized — check your invitation" |
+| `UNRECOGNIZED_EMAIL` | "We couldn't find your email. Contact your program administrator." |
 | `WINDOW_CLOSED` | "The selection window for your cohort has closed. Contact your program administrator." |
 | `RATE_LIMITED` | "Too many requests — please try again in a few minutes" |
 | (catch/unknown) | "Something went wrong — please try again" |
 
-**Security note:** The server returns identical error copy for invalid email vs. invalid code to prevent participant list enumeration. `INVALID_CREDENTIALS` covers both cases.
-
-**Access code format:** Pre-generated by the system during participant import. Stored hashed in `Participant.accessCodeHash`. Codes are tied to the individual participant, not the cohort — no shared codes.
+**Note:** `UNRECOGNIZED_EMAIL` is specific (not generic). Enumeration is not a concern — the participant roster is not a secret, and USPS participants know whether they are enrolled in the program.
 
 ---
 
@@ -268,7 +262,7 @@ sessionStorage['selected-coach']
   Shape: { id, name, initials, photo?, bio, credentials[], location, bookingUrl? }
 ```
 
-**Note:** The stub still has `sessionStorage['participant-email']` set after `requestOtp` (old flow). When Slice 1 backend ships, the entry page collapses to a single `verifyAccessCode` call that sets both `participant-email` and `participant-verified` simultaneously.
+**Note:** The entry page calls `verifyParticipantEmail` and sets both `participant-email` and `participant-verified` in a single step. No OTP or access code step.
 
 ### Production (iron-session cookie, 1:1 mapping)
 
@@ -282,20 +276,20 @@ Cookie holds: `{ participantId, email, engagementId? }` — httpOnly, secure, sa
 
 All functions use a shared `apiFetch<T>()` helper with `credentials: 'same-origin'` and Content-Type JSON.
 
-### `verifyAccessCode(input): Promise<VerifyAccessCodeResponse>` ← **PRIMARY AUTH**
+### `verifyParticipantEmail(input): Promise<VerifyEmailResponse>` ← **PRIMARY AUTH**
 
 ```typescript
-input:  { email: string; accessCode: string }
+input:  { email: string }
 output: {
   success: boolean
   alreadySelected?: boolean   // true → redirect to confirmation
-  error?: 'INVALID_CREDENTIALS' | 'WINDOW_CLOSED' | 'RATE_LIMITED'
+  error?: 'UNRECOGNIZED_EMAIL' | 'WINDOW_CLOSED' | 'RATE_LIMITED'
 }
 ```
 
-Backend: `POST /api/participant/auth/verify-access-code`
+Backend: `POST /api/participant/auth/verify-email`
 
-**This is the only auth endpoint in Slice 1.** There is no `requestOtp` or `verifyOtp` in production. The two functions by those names in the current `api-client.ts` are stale stub artifacts.
+**This is the only auth endpoint in Slice 1.** No OTP, no access code. Auth is roster-matched email entry only (decision 2026-02-24d).
 
 ### `fetchCoaches(): Promise<CoachesResponse>`
 
@@ -355,12 +349,13 @@ Backend: `POST /api/participant/coaches/select`
 }
 ```
 
-### Stale Stub Endpoints (to be removed)
+### Deprecated Functions (removed)
 
-| Stub Function | Status | Notes |
-|--------------|--------|-------|
-| `requestOtp` | **STALE** — delete when backend ships | Old OTP model; system never sends participant emails |
-| `verifyOtp` | **STALE** — delete when backend ships | Replaced by `verifyAccessCode` |
+| Function | Status | Notes |
+|----------|--------|-------|
+| `requestOtp` | **REMOVED** | Old OTP model |
+| `verifyOtp` | **REMOVED** | Old OTP model |
+| `verifyAccessCode` | **REMOVED** | Access codes de-scoped 2026-02-24d; replaced by `verifyParticipantEmail` |
 
 ### Test Helper Endpoints (non-production only)
 
@@ -370,14 +365,18 @@ Backend: `POST /api/participant/coaches/select`
 | `POST /api/test/reset` | Resets test data to seed state |
 | `GET /api/test/engagement?participantEmail=` | Returns current engagement state |
 
+Test endpoint guard:
+- Enabled only when `TEST_ENDPOINTS_ENABLED=true`
+- Requires `X-Test-Secret` header matching `TEST_ENDPOINTS_SECRET`
+- Do not use `NODE_ENV` as the guard on Vercel
+
 ---
 
 ## 7. Business Rules (All Locked)
 
 ### Coach Capacity
 
-- **MLP/ALP coaches**: 15 participants per coach max (`COACH_CAPACITY = 15` in `config.ts`)
-- **EF/EL coaches**: 20 participants per coach max (confirmed Feb 24 P0 decision)
+- **All coaches**: 20 participants per coach max (`COACH_CAPACITY = 20` in `config.ts` — MLP/ALP updated from 15 to 20, Kari confirmed 2026-02-24)
 - Capacity = count of engagements with status `COACH_SELECTED`, `IN_PROGRESS`, or `ON_HOLD`
 - Excludes: `INVITED`, `COMPLETED`, `CANCELED`
 
@@ -413,9 +412,9 @@ Backend: `POST /api/participant/coaches/select`
 
 ### Participant Communications Boundary
 
-- **USPS/FC Ops send**: welcome email (access code + link), any reminders
+- **USPS/FC Ops send**: welcome email (link only — no access code), any reminders
 - **CIL system sends**: coach/admin magic-link emails only
-- **CIL system does NOT send**: OTP codes, confirmation emails, reminder emails, any participant-facing email
+- **CIL system does NOT send**: auth emails, confirmation emails, reminder emails, or any participant-facing email
 
 ### Selection Window
 
@@ -491,7 +490,6 @@ cohortStartDate DateTime → Day 0 for nudge timing
 status          EngagementStatus
 statusVersion   Int     → optimistic lock field
 totalSessions   Int     → 2 (TWO_SESSION) or 5 (FIVE_SESSION)
-autoAssigned    Boolean → true if coach was auto-assigned at Day 15
 coachSelectedAt DateTime?
 lastActivityAt  DateTime
 ```
@@ -500,12 +498,15 @@ lastActivityAt  DateTime
 
 ```
 id              String
-email           String  → unique
-accessCodeHash  String  → bcrypt hash of USPS-delivered code
-accessCodeExpiry DateTime → expires at cohort selection window close
+email           String  → unique (roster-matched on entry)
 programId       String
 cohortId        String
 ```
+
+> **Note:** `failedAttempts` and `lockedUntil` fields were planned for access-code lockout but are removed along with the `VerificationCode` model (de-scoped 2026-02-24d). Rate limiting is IP-based only.
+
+~~### VerificationCode Model (REMOVED)~~
+~~Planned for access-code hashing. De-scoped 2026-02-24d. Not in schema.~~
 
 ---
 
@@ -515,8 +516,8 @@ cohortId        String
 
 | Code | Full Name | Track | Sessions | Coach Panel | Panel Size | Capacity/Coach |
 |------|-----------|-------|----------|-------------|------------|----------------|
-| MLP | Managerial Leadership Program | TWO_SESSION | 2 | MLP_ALP | 15 coaches | 15 |
-| ALP | Advanced Leadership Program | TWO_SESSION | 2 | MLP_ALP | 15 coaches | 15 |
+| MLP | Managerial Leadership Program | TWO_SESSION | 2 | MLP_ALP | 15 coaches | 20 |
+| ALP | Advanced Leadership Program | TWO_SESSION | 2 | MLP_ALP | 15 coaches | 20 |
 | EF | Executive Foundations | FIVE_SESSION | 5 | EF_EL | 16 coaches | 20 |
 | EL | Executive Leadership | FIVE_SESSION | 5 | EF_EL | 16 coaches | 20 |
 
@@ -560,13 +561,13 @@ In MVP, **USPS/FC Ops own all participant reminder communications**. The CIL sys
 | Day 0 | Participants imported; engagements created at `INVITED`. USPS sends welcome email separately. |
 | Day 5 (no selection) | **Dashboard flag only** — "Needs Attention" for ops. USPS/FC Ops may send manual reminder. |
 | Day 10 (no selection) | **Dashboard flag only** — escalated "Needs Attention" for ops. |
-| Day 15 (no selection) | **Auto-assign**: system assigns coach (capacity-weighted, same panel). Sets `autoAssigned = true`. Coach is notified (system email). |
+| Day 15 (no selection) | **Dashboard flag only** — ops manually assigns coach from admin dashboard. System does NOT auto-assign in MVP. |
 | 14+ days stalled | Dashboard flag for coach attention (engagement `IN_PROGRESS`, no session logged). |
-| 21+ days stalled | Dashboard flag + ops escalation (system emails Andrea/Kari). |
+| 21+ days stalled | Dashboard flag for ops escalation follow-up (manual outreach owned by FC Ops). |
 
 ### What USPS/FC Ops Own
 
-- Welcome email (access code + link) — sent per-cohort on window start date
+- Welcome email (link only — no access code) — sent per-cohort on window start date
 - Day 5 reminder (if sending)
 - Day 10 reminder (if sending)
 - Any participant-facing comms about forfeited or missed sessions
@@ -575,10 +576,8 @@ In MVP, **USPS/FC Ops own all participant reminder communications**. The CIL sys
 
 - Coach magic-link auth emails (Slice 2)
 - Admin magic-link auth emails (Slice 2)
-- Auto-assign notification to coach (Day 15, Slice 3)
-- Ops escalation email (Day 21+, Slice 3)
 
-**No participant-facing emails are sent by the CIL system in MVP.**
+**No participant-facing emails or reminder/escalation emails are sent by the CIL system in MVP.**
 
 ---
 
@@ -586,22 +585,16 @@ In MVP, **USPS/FC Ops own all participant reminder communications**. The CIL sys
 
 Target: Feb 25 staging deploy, Feb 26 beta test with Kari.
 
-### Access Code Auth Endpoints
+### Email Auth Endpoint
 
-**`POST /api/participant/auth/verify-access-code`**
-- Input: `{ email: string, accessCode: string }`
+**`POST /api/participant/auth/verify-email`**
+- Input: `{ email: string }`
 - Normalize email (lowercase, trim)
-- Look up `Participant` by email — check `accessCodeHash` with bcrypt
-- Check cohort window not closed (`accessCodeExpiry > now`)
-- Rate limits: 5 attempts/participant/hour + 10/IP/hour
-- On success: creates iron-session cookie `{ participantId, email }`, returns `alreadySelected` if engagement is `COACH_SELECTED`
-- On failure: returns `INVALID_CREDENTIALS` (same response for bad email or bad code — enumeration prevention)
-
-**Access Code Generation (part of admin CSV import, Slice 1):**
-- Generated during participant import (`POST /api/admin/import/execute`)
-- Format: 8-character alphanumeric (e.g. `A3X7K9QR`) — readable in USPS letters
-- Exported as part of handoff file to USPS for inclusion in welcome emails
-- Stored as bcrypt hash in `Participant.accessCodeHash`
+- Look up `Participant` by email — return `UNRECOGNIZED_EMAIL` if not found
+- Check cohort window not closed — return `WINDOW_CLOSED` if past end date
+- Rate limits: 10/IP/hour
+- On success: creates iron-session cookie `{ participantId, email }`, returns `alreadySelected: true` if engagement is `COACH_SELECTED`
+- On failure: returns specific error code (`UNRECOGNIZED_EMAIL` / `WINDOW_CLOSED` / `RATE_LIMITED`)
 
 ### Coach Selection API
 
@@ -631,28 +624,34 @@ Target: Feb 25 staging deploy, Feb 26 beta test with Kari.
 
 | Constant | Value | Usage |
 |----------|-------|-------|
-| `COACH_CAPACITY` | `15` | Default `maxEngagements` for MLP/ALP coaches |
-| EF/EL capacity | `20` | Confirmed Feb 24; add `EF_EL_COACH_CAPACITY = 20` to config |
+| `COACH_CAPACITY` | `20` | `maxEngagements` for all coach pools — MLP/ALP updated from 15 to 20 (Kari confirmed 2026-02-24) |
 | `NUDGE_THRESHOLDS.participantReminder1Days` | `5` | Dashboard flag (not system email) |
 | `NUDGE_THRESHOLDS.participantReminder2Days` | `10` | Dashboard flag (not system email) |
-| `NUDGE_THRESHOLDS.autoAssignDays` | `15` | Coach auto-assign (system action) |
+| `NUDGE_THRESHOLDS.opsManualAssignThresholdDays` | `15` | Ops manually assigns coach from dashboard (no system auto-assign in MVP) |
 | `NUDGE_THRESHOLDS.coachAttentionDays` | `14` | Coach attention flag |
 | `NUDGE_THRESHOLDS.opsEscalationDays` | `21` | Ops escalation email |
 | `PROGRAM_TRACK_SESSIONS.TWO_SESSION` | `2` | MLP/ALP |
 | `PROGRAM_TRACK_SESSIONS.FIVE_SESSION` | `5` | EF/EL |
 
-**Config change needed:** `COACH_CAPACITY = 15` only covers MLP/ALP. Add `EF_EL_COACH_CAPACITY = 20` constant.
+**Config status:** `COACH_CAPACITY = 20` applies to all pools. Done.
 
 ---
 
 ## 14. QA and Testing Notes
 
-### Current Stub Behavior (Stale OTP Model)
+### Current Stub Behavior
 
-The current stub in `api-client.ts` uses the old OTP model. The `requestOtp` and `verifyOtp` functions exist as stub artifacts. For now, use `123456` as the OTP code to progress through the stub flow during development.
+The stub in `api-client.ts` uses `verifyParticipantEmail` with the following QA trigger emails:
 
-**Once Slice 1 backend ships**, the stub is replaced with `verifyAccessCode`. QA values will be:
-- Any valid participant email + correct access code → success
+| Email | Result |
+|-------|--------|
+| `unknown@test.com` | `UNRECOGNIZED_EMAIL` error |
+| `closed@test.com` | `WINDOW_CLOSED` error |
+| `ratelimited@test.com` | `RATE_LIMITED` error |
+| `already@test.com` | Success + `alreadySelected: true` |
+| Any other email | Success → coach selector |
+
+**Once Slice 1 backend ships**, replace stub with real `apiFetch` call (TODO comment in `api-client.ts`). QA helpers:
 - `GET /api/test/engagement?participantEmail=` → current engagement state
 - `POST /api/test/reset` → reset test data
 
@@ -682,14 +681,14 @@ npm run lint   # ESLint
 |----------|------|-----------|
 | No participant engagement page | Feb 17 workshop | One-shot flow; coaches own session tracking |
 | No participant filters | Feb 17 workshop | Bio sufficient; filters add friction |
-| Access code auth (not per-participant token URL) | Feb 12 brainstorm → confirmed Feb 24 | USPS sends access code in welcome email; generic URL + code is operationally simpler than 400 unique URLs |
+| ~~Access code auth~~ → **Email-only auth** | Feb 12 brainstorm → Feb 24 access code → **Feb 24d final: email-only** | Access codes de-scoped per Kari: USPS cohort group-email workflow + FC sender restrictions make per-participant code delivery unworkable. Roster-matched email entry is simpler and sufficient. |
 | CIL sends zero participant emails | Feb 24 P0 decision | USPS/FC Ops own participant comms in MVP; reduces scope and auth complexity |
 | No Calendly API | Feb 10 → confirmed Feb 11 | FedRAMP blocker, cost, DPA complexity; link-behind-button is the actual requirement |
 | `meetingBookingUrl` not in fetchCoaches | Feb 12 plan | Prevent participants accessing booking page before committing |
 | 1 remix max | Feb 17 workshop | One-way door simplifies ops |
 | Booking URL fallback copy | Feb 17 workshop | "Within 2 business days" — not all coaches have scheduling software |
 | Coach videos de-scoped | Feb 24 P0 decision | Reduces Slice 1 scope; video links removed from card rendering |
-| EF/EL capacity = 20 | Feb 24 P0 confirmation | Confirmed by Kari; different from MLP/ALP's 15 |
+| All coach capacity = 20 | Feb 24 P0 confirmation + Kari follow-up | MLP/ALP updated from 15 to 20; all pools now uniform |
 | EF/EL pool = 16 coaches | Feb 24 P0 confirmation | Separate from MLP/ALP's 15-coach pool |
 | `SELECT FOR UPDATE` (not Serializable) | Feb 14 technical review | Row-level lock sufficient; Serializable overkill |
 | Day 0 = cohort start date | Feb 18 stakeholder clarification | Consistent nudge timing per cohort |
@@ -702,14 +701,14 @@ npm run lint   # ESLint
 
 Full end-to-end walkthrough of the deployed Vercel preview using Claude in Chrome MCP. All participant screens navigated with stub credentials. Edge cases also tested directly.
 
-**Stub credentials used:** Email: `test@agency.gov` / OTP: `123456` (old stub flow)
+**Stub credentials used:** Email: `test@agency.gov` / Access code: `A1B2C3` (stub value)
 
 ### Screen Findings
 
 | Screen | Status | Notes |
 |--------|--------|-------|
 | Entry page | ✅ | Logo, form, button activation, expired banner correct |
-| OTP verify | ✅ stub | Countdown, monospace input, email display, resend — **will be removed in Slice 1** |
+| OTP verify | ✅ stub (historical) | Legacy pre-lock screen from old model; replaced by single-step access-code entry in Slice 1 |
 | Coach selector | ✅ core | 3 cards, credentials, years, location, bio, step indicator |
 | Remix | ❌ gap | Fires immediately — no one-way-door warning |
 | Post-remix state | ✅ | Disabled button, footer note, zero overlap coaches |

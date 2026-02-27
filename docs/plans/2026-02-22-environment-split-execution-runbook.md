@@ -68,17 +68,31 @@ Minimum required keys:
 1. `NEXT_PUBLIC_APP_ENV`
 2. `NEXT_PUBLIC_SITE_URL`
 3. `DATABASE_URL`
-4. `NEXT_PUBLIC_SUPABASE_URL`
-5. `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-6. `SUPABASE_SERVICE_ROLE_KEY`
-7. `AUTH_SECRET`
-8. `RESEND_API_KEY`
-9. `EMAIL_FROM`
-10. `EMAIL_MODE`
-11. `EMAIL_ALLOWLIST`
-12. `NUDGE_CRON_ENABLED`
-13. `CRON_SECRET`
-14. `LOG_REDACTION_ENABLED`
+4. `DIRECT_URL`
+5. `NEXT_PUBLIC_SUPABASE_URL`
+6. `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+7. `SUPABASE_SERVICE_ROLE_KEY`
+8. `AUTH_SECRET`
+9. `RESEND_API_KEY`
+10. `EMAIL_FROM`
+11. `EMAIL_MODE`
+12. `EMAIL_ALLOWLIST`
+13. `EMAIL_OUTBOUND_ENABLED`
+14. `NUDGE_CRON_ENABLED`
+15. `CRON_SECRET`
+16. `LOG_REDACTION_ENABLED`
+17. `TEST_ENDPOINTS_ENABLED`
+18. `TEST_ENDPOINTS_SECRET` (required when `TEST_ENDPOINTS_ENABLED=true`)
+
+### Step 3.1: Supabase DB URL Rules (Required)
+
+For environments using Supabase pooler (`.pooler.supabase.com`, typically port `6543`):
+
+1. `DATABASE_URL` must include `?pgbouncer=true`.
+2. `DIRECT_URL` must stay on direct Postgres host/port (`db.<project>.supabase.co:5432`) with no `pgbouncer=true`.
+3. Run env validation before deploy:
+   - `npm run env:validate:staging`
+   - `npm run env:validate:production`
 
 ## Step 4: Enforce Staging Safety Gates
 
@@ -87,14 +101,42 @@ For `fc-staging`, confirm:
 1. `NEXT_PUBLIC_APP_ENV=staging`
 2. `EMAIL_MODE=sandbox`
 3. `EMAIL_ALLOWLIST` is non-empty
-4. `NUDGE_CRON_ENABLED=false`
-5. `LOG_REDACTION_ENABLED=true`
+4. `EMAIL_OUTBOUND_ENABLED=false`
+5. `NUDGE_CRON_ENABLED=false`
+6. `LOG_REDACTION_ENABLED=true`
+7. All send paths route through shared guard helper:
+   - `src/lib/email/guard.ts`
+   - `src/lib/email/send-with-guard.ts`
 
 Proof test:
 
-1. Trigger a staging OTP flow with one allowlisted inbox.
+1. Trigger a staging coach/admin magic-link flow with one allowlisted inbox.
 2. Attempt a non-allowlisted recipient path and verify it is blocked.
 3. Capture screenshots/log snippets for evidence.
+
+### Step 4.1: Staging Magic-Link Test Script (Pass/Fail)
+
+Run this exactly in order:
+
+1. Confirm baseline safety:
+   - `EMAIL_MODE=sandbox`
+   - `EMAIL_ALLOWLIST` includes only internal test inboxes
+   - `EMAIL_OUTBOUND_ENABLED=false`
+2. Trigger admin magic-link request from staging signin page.
+3. Verify expected result: send is blocked by guard; no email delivered.
+4. Temporarily set `EMAIL_OUTBOUND_ENABLED=true` in staging.
+5. Trigger admin magic-link request for an allowlisted inbox.
+6. Verify allowlisted inbox receives link; login succeeds.
+7. Trigger admin magic-link request for a non-allowlisted email.
+8. Verify non-allowlisted send is blocked.
+9. Immediately restore `EMAIL_OUTBOUND_ENABLED=false`.
+
+Pass criteria:
+
+- With outbound disabled, no email sends occur.
+- With outbound enabled, only allowlisted inboxes receive email.
+- Non-allowlisted recipients are blocked in all cases.
+- Magic link works end-to-end for allowlisted admin sign-in.
 
 ## Step 5: Supabase Connection Verification
 
@@ -107,6 +149,20 @@ Basic checks:
 
 1. Auth writes appear only in matching Supabase project.
 2. No records appear in the opposite environment.
+
+## Step 5.1: Seed Access (Launch Readiness)
+
+Seed access means pre-creating application users with the right roles so first login works without manual DB edits.
+
+For MVP launch, seed:
+
+1. Admin users: Kari, Andrea, Amit, Tim (`role=ADMIN`)
+2. Coach users: from final coach-links CSV (`role=COACH`)
+
+Notes:
+
+1. These are application-level users/roles in the platform schema, not Supabase dashboard users.
+2. Admin seed can run as soon as final emails are confirmed.
 
 ## Step 6: Deployment Behavior Check
 
@@ -142,5 +198,8 @@ Stop and fix immediately if any of these happen:
 1. Same Supabase URL/key appears in both Vercel projects.
 2. Staging `EMAIL_MODE` is not `sandbox`.
 3. Staging `EMAIL_ALLOWLIST` is empty.
-4. `NUDGE_CRON_ENABLED` is true in staging.
-5. Any production env key is copied into staging.
+4. Staging `EMAIL_OUTBOUND_ENABLED` is not `false`.
+5. Any email send path bypasses shared guard helpers.
+6. `NUDGE_CRON_ENABLED` is true in staging.
+7. Any production env key is copied into staging.
+8. Supabase pooler `DATABASE_URL` is missing `?pgbouncer=true`.

@@ -1,6 +1,6 @@
 # Timeline
 
-Last synced: 2026-02-24
+Last synced: 2026-02-25
 
 Canonical sources:
 - `franklin-covey/docs/plans/2026-02-18-fc-project-plan.md`
@@ -18,9 +18,10 @@ Canonical sources:
 | Security/tier baseline lock | Feb 21, 2026 | In Progress | Vercel Pro + Supabase Pro decision and activation; security baseline references documented. | Delay here increases launch risk around support, retention, and readiness. | 2026-02-19 |
 | Environment isolation setup | Feb 20, 2026 (2:00 PM CT) | In Progress | Separate Vercel/Supabase staging and production projects with environment-scoped secrets. | Delays here push all auth/email and import testing. | 2026-02-19 |
 | Staging email safety gates | Feb 20, 2026 (2:00 PM CT) | In Progress | Sandbox sending, hard allowlist, and proof test log complete. | Missing gate creates accidental-send risk during QA. | 2026-02-19 |
+| Staging schema + USPS baseline seed | Feb 25, 2026 | Complete | Multi-org-ready schema migration applied; USPS seeded (4 programs, 14 cohorts, 32 coach memberships, 175 participants/engagements). | Kari/Andrea admin emails and EF/EL explicit selection-end dates still pending. | 2026-02-25 |
 | Phase 0 setup | Feb 18-21, 2026 | In Progress | Database + auth foundation + import scripts + environments. | Waiting on FC data package, sender-domain confirmation, and environment credentials. | 2026-02-19 |
 | Staging ready | Feb 25, 2026 | Committed | Slice 1 running on Vercel/Supabase with smoke checks. | Depends on Phase 0 completion and clean seed/import data. | 2026-02-18 |
 | Kari beta day | Feb 26, 2026 | Committed | End-to-end participant flow test on staging. | Needs coach data and first participant lists loaded first. | 2026-02-18 |
-| Slice 1 live | Mar 2, 2026 | Hard Deadline | Participant access-code entry, coach selection, remix, confirmation + scheduling link. | Data inputs and USPS participant email execution are the main launch risks. | 2026-02-24 |
+| Slice 1 live | Mar 2, 2026 | Hard Deadline | Participant roster-email entry, coach selection, remix, confirmation + scheduling link. | Data inputs and USPS participant email execution are the main launch risks. | 2026-02-25 |
 | Slice 2 live | Mar 9, 2026 | Hard Deadline | Coach/admin sign-in, coach dashboard, session logging. | Coach access/onboarding timing still needs FC confirmation. | 2026-02-18 |
 | Slice 3 live | Mar 16, 2026 | Hard Deadline | Admin import, KPIs, nudges, exports, print views. | P1 policy decisions must be closed by Mar 9. | 2026-02-18 |

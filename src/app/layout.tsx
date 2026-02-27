@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "FranklinCovey Coaching Platform",
   description:
-    "Individual coaching engagement tracking for government leadership development",
+    "Individual coaching engagement tracking for the USPS Leadership Coaching Program",
 };
 
 export default function RootLayout({

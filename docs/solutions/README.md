@@ -22,6 +22,12 @@ grep -r "severity: high" docs/solutions/
 |------|-------|----------|------|
 | [calendly-api-scope-miscommunication.md](integration-issues/calendly-api-scope-miscommunication.md) | Calendly Integration Scope Miscommunication | High | 2026-02-11 |
 
+### ui-bugs/
+
+| File | Title | Severity | Date |
+|------|-------|----------|------|
+| [coach-selector-session-state-refresh-reset.md](ui-bugs/coach-selector-session-state-refresh-reset.md) | Coach Selector State Not Persisting Across Browser Refreshes | High | 2026-02-27 |
+
 ## Tags
 
 | Tag | Solutions |
@@ -31,8 +37,14 @@ grep -r "severity: high" docs/solutions/
 | #scope-management | [calendly-api-scope-miscommunication](integration-issues/calendly-api-scope-miscommunication.md) |
 | #architecture-decision | [calendly-api-scope-miscommunication](integration-issues/calendly-api-scope-miscommunication.md) |
 | #partial-removal | [calendly-api-scope-miscommunication](integration-issues/calendly-api-scope-miscommunication.md) |
+| #split-brain-state | [coach-selector-session-state-refresh-reset](ui-bugs/coach-selector-session-state-refresh-reset.md) |
+| #session-persistence | [coach-selector-session-state-refresh-reset](ui-bugs/coach-selector-session-state-refresh-reset.md) |
+| #coach-selector | [coach-selector-session-state-refresh-reset](ui-bugs/coach-selector-session-state-refresh-reset.md) |
+| #participant-portal | [coach-selector-session-state-refresh-reset](ui-bugs/coach-selector-session-state-refresh-reset.md) |
+| #next-js | [coach-selector-session-state-refresh-reset](ui-bugs/coach-selector-session-state-refresh-reset.md) |
+| #state-management | [coach-selector-session-state-refresh-reset](ui-bugs/coach-selector-session-state-refresh-reset.md) |
 
 ## Statistics
 
-- **Total solutions**: 1
-- **Last updated**: 2026-02-11
+- **Total solutions**: 2
+- **Last updated**: 2026-02-27

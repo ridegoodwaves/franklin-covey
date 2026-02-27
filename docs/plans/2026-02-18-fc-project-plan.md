@@ -1,8 +1,8 @@
 # FranklinCovey Coaching Platform — Project Plan
 
 **Date**: 2026-02-18
-**Last Updated**: 2026-02-24 (P0 updates: EF/EL capacity confirmed at 20; planning baseline confirmed at 400 participants; EF/EL reporting anchor confirmed as coach-selection-window start + 9 months; use-it-or-lose-it clarified as ALP/MLP-only manual follow-up model; participant comms boundary clarified: USPS sends participant access email and CIL system does not send participant emails in MVP)
-**Status**: Active Build — Phase 0 starting today
+**Last Updated**: 2026-02-25 (Slice 1 APIs live on staging; headshots/bios repaired; selection/auth security hardening shipped)
+**Status**: Active Build — Slice 1 staging flow live with launch-safety controls
 
 ---
 
@@ -23,7 +23,7 @@ The platform ships in three milestones between now and March 16, aligned to the 
 
 | Portal | Who Uses It | Key Capabilities |
 |--------|-------------|-----------------|
-| **Participant portal** | ~400 participants across all cohorts (coach selection starts March 2, before in-person week) | USPS-sent access email -> participant enters email + access code -> browse 3 coaches -> select -> book via coach scheduling link when available (Calendly/Acuity/etc.), otherwise receive coach outreach follow-up |
+| **Participant portal** | ~400 participants across all cohorts (coach selection starts March 2, before in-person week) | USPS-sent cohort welcome email -> participant enters roster-matched email -> browse 3 coaches -> select -> book via coach scheduling link when available (Calendly/Acuity/etc.), otherwise receive coach outreach follow-up |
 | **Coach portal** | 31 coaches (15 MLP/ALP panel + 16 EF/EL panel) | Log session notes, view assigned participants, track session status |
 | **Admin portal** | Kari, Andrea (FC Ops) | Bulk participant import, needs-attention monitoring, KPI dashboard, CSV export |
 
@@ -47,6 +47,39 @@ The platform ships in three milestones between now and March 16, aligned to the 
 | Apr 6 | ALP-137 + EL-1 in-person training begins | FC milestone |
 | Apr 10+ | EL-1 coaching begins | FC milestone |
 | Apr 20 | MLP-81 + EF-2 in-person training begins | FC milestone |
+
+---
+
+## Implementation Update (Completed — Feb 25, 2026)
+
+- Staging Supabase schema applied and migration recorded (`20260225_init_multi_org`).
+- USPS baseline seed loaded in staging: 4 programs, 14 cohorts, 32 coach memberships, 175 participants, 175 engagements.
+- Admin users seeded in staging: Amit + Tim (Kari/Andrea pending email addresses).
+- Multi-org-ready foundation is now in schema (single DB with strict org scoping).
+- Staging email safety controls hardened:
+  - `EMAIL_OUTBOUND_ENABLED=false` default in staging
+  - shared email guard required for all send paths
+  - allowlist + sandbox mode still required
+- Normalized import artifacts are generated from source files for repeatable staging imports (`npm run data:build:staging`).
+- Slice 1 participant route wiring shipped:
+  - `POST /api/participant/auth/verify-email`
+  - `GET /api/participant/coaches`
+  - `POST /api/participant/coaches/remix`
+  - `POST /api/participant/coaches/select`
+- Coach/admin magic-link request + consume flow shipped on live API routes.
+- Headshot pipeline repaired for canonical + legacy storage folder names; signed URL path fixed.
+- Targeted staging bio backfill script added and executed against current coach set.
+- Selection/auth security hardening shipped:
+  - `WINDOW_CLOSED` lock behavior normalized in participant flow
+  - coach selection concurrency lock to reduce over-assignment races
+  - one-time-use magic-link consume
+  - per-email participant auth lockout (in addition to per-IP limiter)
+- Supabase pooler safety enforced:
+  - `DATABASE_URL` must include `?pgbouncer=true`
+  - `DIRECT_URL` retained for direct Postgres migration/admin use
+
+Detailed commit changelog:
+- `docs/briefings/2026-02-25-shipped-changelog.md`
 
 ---
 
@@ -100,7 +133,7 @@ The platform ships in three milestones between now and March 16, aligned to the 
 - FC confirmed a **24-hour turnaround owner** for blocking decisions through March 16.
 - Contract status: **signed**.
 - Coach pools are **separate by track family**: MLP/ALP panel and EF/EL panel are distinct pools (no cross-pool matching in MVP).
-- EF/EL coach capacity is confirmed at **20 participants per coach**.
+- All coach capacity confirmed at **20 participants per coach** across all pools (MLP/ALP updated from 15 to 20; Kari confirmed 2026-02-24).
 - MVP planning baseline is confirmed at **400 total participants** across cohorts.
 - Session outcomes are **coach-entered only** (`COMPLETED`, `FORFEITED_CANCELLED`, `FORFEITED_NOT_USED`). For forfeited Session 1, coaches log either **"Session forfeited - canceled within 24 hours"** or **"Session forfeited - not taken advantage of"**. No automatic Session 1 lock/expiry by May window deadlines in MVP.
 - Nudge timing anchor is locked: **Day 0 = cohort start date**.
@@ -111,6 +144,8 @@ The platform ships in three milestones between now and March 16, aligned to the 
 - Participant comms owner confirmed: **USPS** sends welcome email on each cohort's coach-selection window start date.
 - Coach access comms owner confirmed: **Andrea and/or Kari**, sent as soon as portal is available and before Mar 2.
 - Participant communication boundary is confirmed: **USPS sends participant access communications; CIL system does not send participant emails in MVP**.
+- Participant entry model confirmed by Kari: **email-entry only** for MVP (no participant access code), aligned to USPS cohort group-email workflow and FC sender restrictions.
+- Participant auth safeguards for MVP: roster-only allowlist + active cohort-window gating + rate limiting + generic auth errors + audit logging.
 - Use-it-or-lose-it handling confirmed as **manual for ALP/MLP only**: no automatic lock/forfeit; use dashboard "Needs Attention" for ops follow-up when Session 1/2 is not scheduled by deadline. **EF/EL does not use this model**.
 
 ---
@@ -139,6 +174,8 @@ Reference docs:
 | Question | Impact |
 |----------|--------|
 | **Participant counts per cohort (final distribution)** | Total baseline is locked at 400, but cohort-by-cohort allocations are still needed for overlap validation and load-test realism |
+| **EF/EL coach-selection end dates** | Currently missing in timeline source; staging uses temporary default (`selection start + 19 days`) until final dates are confirmed |
+| **Kari + Andrea admin launch emails** | Needed to complete admin access seed in staging and run full magic-link acceptance test |
 | **Cohort comms tracking fields** — participant send date, coach send date, owner, status | Needed for clean execution tracking across later cohorts |
 | **FC path choice (Path A vs Path B)** — explicit decision required | Needed by EOD Feb 23, 2026 to keep March 2 launch planning stable; Path A implies March 2 rebaseline risk |
 
@@ -151,13 +188,16 @@ These inputs are on the critical path. Delays here delay the March 2 launch.
 | Item | Owner | Needed By | Notes |
 |------|-------|-----------|-------|
 | Coach bios + photos + scheduling links (MLP/ALP panel) | Kari Sadler | Feb 23, 2026 | CSV format; direct booking links may be Calendly, Acuity, or equivalent. Coach bio videos are not required for MVP. Send available batch now, remaining by Monday, Feb 23, 2026. Missing links use coach-outreach fallback in MVP. |
-| ALP-135 participant list (first coach selection window starts March 2) | Kari Sadler | Feb 24 | Name + email + cohort code + cohort start date (Day 0 for nudges); platform must be live by 3/2 |
+| ALP-135 participant list (first coach selection window starts March 2) | Kari Sadler | Feb 24 | **Received (2026-02-24).** Name + email + cohort code + cohort start date (Day 0 for nudges); platform must be live by 3/2 |
+| `FY26 ALP 136_EF 1 Coaching Bios.xlsx` (participant detail context file) | Kari Sadler | Post-MVP | Contains participant context for potential coach-facing visibility. Not required for random coach selection and not integrated into selector logic in MVP. |
 | MLP-80 participant list | Kari Sadler | Feb 24 | Name + email + cohort code + cohort start date (Day 0 for nudges); coaching window opens 3/16 |
 | Remaining March cohort counts (ALP-136, ALP-137, EF-1, EL-1) + cohort-level allocations | Kari / FC Ops | Feb 24, 2026 | Total planning baseline is now locked at 400; need per-cohort detail for overlap/load-test coverage |
 | Beta testing time — Kari + 1-2 staff | Kari Sadler | Feb 26 (full day) | Verbally confirmed at workshop |
 | Cohort communication tracking fields (participant send date, coach send date, owner, status) | Kari + Andrea | TBD (requested) | Needed to coordinate future cohort communications |
+| Kari + Andrea admin launch emails | Kari + Andrea | ASAP | Required to finish full admin magic-link staging verification |
+| EF/EL coach-selection end dates (explicit) | Kari + Andrea | ASAP | Replaces temporary staging default (`selection start + 19 days`) for EF/EL cohorts |
 | Path decision (A: AWS day one, B: Vercel+Supabase bridge + dependency-driven migration) | Blaine + FC stakeholders | EOD Feb 23, 2026 | Recommended Path B to protect March launch; Path A increases launch-date risk and requires timeline rebaseline |
-| Email sender domain decision | Tim + Blaine | Feb 21 | Proposed: `coaching@franklincovey.com` |
+| Email sender domain decision | Tim + Blaine | ASAP | Working target: `coaching@coachinginnovationlab.com`; confirm FC acceptance for launch communications. |
 | Platform tier confirmation (Vercel Pro + Supabase Pro) | Amit + Tim | Feb 21 | Required for predictable launch capacity, backups, and production support posture |
 | IT approval (Blaine) | Tim to facilitate | ASAP | Required for production infrastructure; not MVP blocker |
 
@@ -168,7 +208,7 @@ These inputs are on the critical path. Delays here delay the March 2 launch.
 | Slice | Delivery Date | What Ships |
 |-------|--------------|-----------|
 | Staging environment | Feb 25 | Full Slice 1 on Vercel + Supabase; smoke-tested |
-| **Slice 1** | March 2 | Participant email + access-code auth (USPS-delivered access email), coach selector (3 capacity-weighted coaches, 1 remix), confirmation + scheduling-link booking when available or coach-outreach fallback |
+| **Slice 1** | March 2 | Participant roster-email entry auth (USPS-delivered cohort welcome email), coach selector (3 capacity-weighted coaches, 1 remix), confirmation + scheduling-link booking when available or coach-outreach fallback |
 | **Slice 2** | March 9 | Coach magic-link auth, session logging (topic + outcome), engagement tracking |
 | **Slice 3** | March 16 | Admin CSV import, KPI dashboard, CSV export, and needs-attention workflow (final reminder ownership model pending FC confirmation) |
 
@@ -186,7 +226,7 @@ These inputs are on the critical path. Delays here delay the March 2 launch.
 
 | Priority | Definition | Example (FC MVP) | Expected Turnaround |
 |----------|------------|------------------|---------------------|
-| **P0** | Blocking/critical issue that prevents launch-critical work or breaks core flow | Participants cannot complete access-code login, or coach selection API fails for all users | Immediate triage same day |
+| **P0** | Blocking/critical issue that prevents launch-critical work or breaks core flow | Participants cannot complete roster-email entry/login, or coach selection API fails for all users | Immediate triage same day |
 | **P1** | Urgent fix needed for upcoming milestone quality or timeline protection | USPS participant access emails are delayed for a cohort, or coach session logging fails intermittently | Prioritize in next build window (typically within 24 hours) |
 | **P2** | Nice-to-have or non-blocking enhancement | Add a dashboard filter, refine report formatting, or polish UI copy | Backlog and schedule against milestone capacity |
 
@@ -212,7 +252,7 @@ These inputs are on the critical path. Delays here delay the March 2 launch.
 | **Coach data late from Kari** | Blocks seed database and beta testing | Feb 23 deadline set; chase proactively after Feb 23 |
 | **Blaine approval not received pre-launch** | Blocks production infrastructure; MVP uses Vercel/Supabase so March 2 is not affected | MVP does not require Blaine sign-off; production migration is post-launch |
 | **Participant counts by cohort not finalized** | Capacity model could still be wrong during overlap windows | Use 400 planning assumption short-term; lock per-cohort counts with Kari and rerun capacity checks before final Slice 1 load tests |
-| **Participant access-email execution timing** | Participant entry can fail if USPS sends are late or instructions are unclear | Share USPS send checklist and include clear "look for access code + site link" text in each welcome send |
+| **Participant access-email execution timing** | Participant entry can fail if USPS sends are late or instructions are unclear | Share USPS send checklist and include clear "look for coach-selector site link" text in each welcome send |
 | **FC path decision delayed (Path A vs Path B)** | Can create scope/schedule churn and blur launch-risk ownership | Secure explicit FC path decision by EOD Feb 23, 2026; if Path A, immediately rebaseline March 2 as at-risk with revised timeline |
 | **Coach session logging lag** | Ops visibility can drift if coaches delay status entry | Use dashboard "Needs Attention" monitoring and ops follow-up cadence; no auto-forfeiture mutations in MVP |
 
@@ -241,7 +281,7 @@ Phase 2 roadmap (April+) is available upon request — covers platform hardening
 | Write full Prisma schema (11 models, all enums + indexes) | Amit | ERD finalized in vertical slices plan |
 | Create Supabase project, run first migration | Amit | Needs Supabase account setup |
 | docker-compose.yml (PostgreSQL + Mailpit) | Amit | Local dev email interception |
-| Dockerfile — 3-stage build, ECS-ready | Amit | Design-for-portability requirement |
+| Dockerfile — **post-launch (within 30 days of March 2)** | Amit | Not needed for Vercel launch; required before FC AWS migration. |
 | Seed script — 1 org, 4 programs, 5 sample coaches, 8 test participants | Amit | Uses anonymized data; real coaches imported separately |
 | `.env.example` with all required vars documented | Amit | |
 
@@ -249,9 +289,9 @@ Phase 2 roadmap (April+) is available upon request — covers platform hardening
 
 | Task | Owner | Notes |
 |------|-------|-------|
-| Participant access auth endpoints (verify email + access code) | Amit | Access codes tied to cohort selection window; no participant outbound email from system in MVP |
+| Participant access auth endpoints (verify roster email + cohort eligibility window) | Amit | No participant outbound email from system in MVP |
 | Iron-session participant session | Amit | |
-| Participant access-code generation + secure handoff export | Amit | USPS sends participant access emails |
+| Participant roster import validation + secure USPS handoff export | Amit | USPS sends participant access emails |
 | Coach selection API (capacity-weighted randomization) | Amit | 3 coaches shown, 1 remix, row-level locking |
 | Participant frontend wiring (remove hardcoded data, remove filters) | Amit | Flow ends at confirmation page |
 | Coach CSV import script | Amit | Sanitize-by-default; real data via `--raw` flag |
@@ -286,7 +326,7 @@ These are the blockers **Tim** needs to drive. Amit handles everything on the bu
 
 2. **Introduce Amit to Blaine** — IT approval is needed for production infrastructure (AWS ECS, SendGrid, Okta). Not blocking March 2, but a delay here pushes the production migration.
 
-3. **Propose email sender address to Blaine** — Suggested: `coaching@franklincovey.com`. Blaine explicitly asked about this; needs an answer before production email goes live.
+3. **Confirm email sender address with Blaine** — Working target: `coaching@coachinginnovationlab.com`. Blaine explicitly asked about this; needs an answer before production email goes live.
 
 4. **Request `coaching.franklincovey.com` from Blaine/DNS team** — Can do after March 2 MVP is validated; needs lead time.
 

@@ -13,6 +13,8 @@ interface StoredCoach {
   photo?: string;
   bio: string;
   credentials: string[];
+  specialties: string[];
+  quotes?: Array<{ quote: string; attribution?: string }>;
   location: string;
   bookingUrl?: string;
 }
@@ -83,13 +85,13 @@ function ConfirmationContent() {
           {/* Headline */}
           <div className={`mb-8 text-center transition-all duration-700 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: "100ms" }}>
             <h1 className="font-display text-3xl font-light leading-tight text-fc-950 sm:text-4xl">
-              {alreadySelected && !coach ? "Coach Already Selected" : "Your Coach Has Been Selected"}
+              {alreadySelected && !coach ? "You\u2019re confirmed \u2014 your coach will be in touch" : "Your Coaching Journey Begins"}
             </h1>
-            {alreadySelected && !coach && (
-              <p className="mt-3 text-sm text-muted-foreground">
-                Your selection is confirmed. Contact your program administrator if you have any questions.
-              </p>
-            )}
+            <p className="mt-3 text-sm text-muted-foreground">
+              {alreadySelected && !coach
+                ? "You\u2019ve already selected a coach. Your coach will reach out within 72 hours to schedule your first session."
+                : "Thank you for choosing your coach \u2014 they\u2019re looking forward to partnering with you."}
+            </p>
           </div>
 
           {/* Coach card */}
@@ -98,7 +100,7 @@ function ConfirmationContent() {
               <div className="mb-6 flex flex-col items-center gap-3 rounded-2xl border border-fc-100 bg-white p-6 text-center">
                 <Avatar className="h-20 w-20 ring-4 ring-fc-100 ring-offset-4 ring-offset-white">
                   {coach.photo && <AvatarImage src={coach.photo} alt={coach.name} />}
-                  <AvatarFallback className="bg-gradient-to-br from-fc-100 to-fc-50 text-xl font-display font-semibold text-fc-700">
+                  <AvatarFallback className="bg-gradient-to-br from-fc-600 to-fc-800 text-xl font-display font-semibold text-white">
                     {coach.initials}
                   </AvatarFallback>
                 </Avatar>
@@ -106,9 +108,13 @@ function ConfirmationContent() {
                 <div>
                   <p className="font-display text-xl font-medium text-fc-900">{coach.name}</p>
                   {coach.credentials.length > 0 && (
-                    <p className="mt-0.5 text-xs font-semibold tracking-wider text-fc-600 uppercase">
-                      {coach.credentials.join(" · ")}
-                    </p>
+                    <div className="mt-1 flex flex-col items-center gap-0.5">
+                      {coach.credentials.slice(0, 2).map((cred, i) => (
+                        <p key={i} className="text-xs text-muted-foreground leading-snug line-clamp-1 text-center max-w-[240px]">
+                          {cred}
+                        </p>
+                      ))}
+                    </div>
                   )}
                   {coach.location && (
                     <div className="mt-1.5 flex items-center justify-center gap-1 text-xs text-muted-foreground">
@@ -130,9 +136,12 @@ function ConfirmationContent() {
                     <button
                       type="button"
                       onClick={() => setBioModalOpen(true)}
-                      className="text-xs font-medium text-fc-600 hover:text-fc-800 hover:underline underline-offset-2"
+                      className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-fc-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-fc-700 shadow-sm transition-all hover:border-fc-400 hover:bg-fc-50 hover:text-fc-900 hover:shadow"
                     >
-                      Read full bio →
+                      Read full bio
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+                      </svg>
                     </button>
                   </>
                 )}
@@ -145,7 +154,9 @@ function ConfirmationContent() {
                   <Button size="lg" className="w-full" onClick={() => window.open(coach.bookingUrl, "_blank")}>
                     Book your first session
                   </Button>
-                  <p className="text-sm text-muted-foreground">Opens your coach's scheduling page in a new tab</p>
+                  <p className="text-sm text-muted-foreground">
+                    If you do not book your first session now, your coach will reach out to you directly.
+                  </p>
                 </div>
               ) : (
                 <div className="rounded-xl border border-fc-200 bg-fc-50 p-5 text-center">
@@ -157,7 +168,13 @@ function ConfirmationContent() {
           )}
 
           <p className={`mt-10 text-center text-xs text-muted-foreground transition-all duration-700 ${mounted ? "opacity-100" : "opacity-0"}`} style={{ transitionDelay: "400ms" }}>
-            Need help? Contact your program administrator.
+            Need help?{" "}
+            <a
+              href="mailto:Andrea.Sherman@franklincovey.com"
+              className="underline underline-offset-2 hover:text-fc-700 transition-colors"
+            >
+              Contact your program administrator
+            </a>.
           </p>
         </div>
       </main>

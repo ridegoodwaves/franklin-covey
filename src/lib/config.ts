@@ -57,13 +57,14 @@ export const DURATION_OPTIONS = [15, 30, 45, 60, 90] as const;
 
 // Updated workshop decisions:
 // - Day 0 for nudge timing = cohort start date
-// - Email nudges at Day 5/10, auto-assign at Day 15
+// - Email nudges at Day 5/10 (FC Ops sends manually via USPS/email)
+// - Day 15: ops manually assigns coach from dashboard (system does NOT auto-assign in MVP)
 export const NUDGE_THRESHOLDS = {
-  participantReminder1Days: 5,   // Day 5: gentle reminder email
-  participantReminder2Days: 10,  // Day 10: firmer reminder email
-  autoAssignDays: 15,            // Day 15: system auto-assigns coach
-  coachAttentionDays: 14,        // No session logged in 14+ days (dashboard flag)
-  opsEscalationDays: 21,         // Critically stalled (dashboard flag + ops email)
+  participantReminder1Days: 5,        // Day 5: threshold for ops manual reminder (not system email)
+  participantReminder2Days: 10,       // Day 10: threshold for ops firmer reminder (not system email)
+  opsManualAssignThresholdDays: 15,   // Day 15: ops assigns coach manually from dashboard (no system auto-assign in MVP)
+  coachAttentionDays: 14,             // No session logged in 14+ days (dashboard flag)
+  opsEscalationDays: 21,              // Critically stalled (dashboard flag + ops email)
 } as const;
 
 export const PROGRAM_TRACK_SESSIONS = {
@@ -71,7 +72,9 @@ export const PROGRAM_TRACK_SESSIONS = {
   FIVE_SESSION: 5,
 } as const;
 
-export const COACH_CAPACITY = 15 as const; // Fixed per coach for MVP (Feb 17 workshop)
+// All coach pools: 20 participants per coach (Kari confirmed 2026-02-24 — MLP/ALP updated from 15 to 20)
+// Authoritative source: CoachProfile.maxEngagements in DB. Use this constant for validation only.
+export const COACH_CAPACITY = 20 as const;
 
 export const PROGRAM_TYPES = {
   MLP: { name: "Managerial Leadership Program", track: "TWO_SESSION" as const, coachPanel: "MLP_ALP" },

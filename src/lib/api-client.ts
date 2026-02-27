@@ -1,9 +1,8 @@
 // ---------------------------------------------------------------------------
-// Participant Portal API Client — Sub-agent D
+// Participant Portal API Client
 // Typed fetch wrappers for all participant API endpoints.
 // All functions return typed responses and normalize errors.
-// TODO: Replace stub implementations with real fetch calls once
-//       backend endpoints are live at /api/participant/...
+// Auth model: roster-matched email entry (no access codes — de-scoped 2026-02-24d)
 // ---------------------------------------------------------------------------
 
 // ─── Shared Types ────────────────────────────────────────────────────────────
@@ -24,56 +23,27 @@ export interface ParticipantCoachCard {
   atCapacity: boolean;
   remainingCapacity: number;
   yearsExperience: number;
+  /** Client testimonial quotes for the bio modal. */
+  quotes: Array<{ quote: string; attribution?: string }>;
 }
 
 // ─── Request / Response Contracts ────────────────────────────────────────────
 
-// POST /api/participant/auth/verify-access-code  ← PRIMARY AUTH (Slice 1)
-export interface VerifyAccessCodeInput {
+// POST /api/participant/auth/verify-email  ← PRIMARY AUTH (Slice 1)
+// Roster-matched email entry — no access code (de-scoped 2026-02-24d per Kari confirmation)
+export interface VerifyEmailInput {
   email: string;
-  accessCode: string;
 }
-export type VerifyAccessCodeErrorCode =
-  | "INVALID_CREDENTIALS" // Bad email or bad code — same message for both (enumeration prevention)
-  | "WINDOW_CLOSED"       // Cohort selection window has closed
-  | "RATE_LIMITED";       // Too many attempts
+export type VerifyEmailErrorCode =
+  | "UNRECOGNIZED_EMAIL" // Email not found in participant roster
+  | "WINDOW_CLOSED"      // Cohort selection window has closed
+  | "RATE_LIMITED";      // Too many attempts
 
-export interface VerifyAccessCodeResponse {
+export interface VerifyEmailResponse {
   success: boolean;
   /** True when participant has already selected a coach. */
   alreadySelected?: boolean;
-  error?: VerifyAccessCodeErrorCode;
-}
-
-// POST /api/participant/auth/request-otp
-export interface RequestOtpInput {
-  email: string;
-}
-export type RequestOtpErrorCode =
-  | "EMAIL_NOT_FOUND"   // Email not in participant list
-  | "WINDOW_CLOSED"     // Cohort selection window has passed
-  | "RATE_LIMITED";     // Too many OTP requests
-
-export interface RequestOtpResponse {
-  success: boolean;
-  error?: RequestOtpErrorCode;
-}
-
-// POST /api/participant/auth/verify-otp
-export interface VerifyOtpInput {
-  email: string;
-  otp: string;
-}
-export type VerifyOtpErrorCode =
-  | "INVALID_OTP"      // Wrong code
-  | "EXPIRED_OTP"      // Code older than 10 minutes
-  | "MAX_ATTEMPTS";    // Too many wrong attempts — must re-request
-
-export interface VerifyOtpResponse {
-  success: boolean;
-  /** True when this participant has already selected a coach. */
-  alreadySelected?: boolean;
-  error?: VerifyOtpErrorCode;
+  error?: VerifyEmailErrorCode;
 }
 
 // GET /api/participant/coaches
@@ -81,6 +51,8 @@ export interface CoachesResponse {
   coaches: ParticipantCoachCard[];
   /** True when every coach in this participant's pool is at capacity. */
   allAtCapacity: boolean;
+  /** True when this participant has already used their one remix. Drives client UI state. */
+  remixUsed: boolean;
 }
 
 // POST /api/participant/coaches/remix
@@ -97,7 +69,8 @@ export interface SelectCoachInput {
 export type SelectCoachErrorCode =
   | "CAPACITY_FULL"    // Coach filled between render and submit
   | "ALREADY_SELECTED" // Participant already has a coach (idempotency guard)
-  | "INVALID_SESSION"; // Session expired mid-flow
+  | "INVALID_SESSION"  // Session expired mid-flow
+  | "WINDOW_CLOSED";   // Selection window closed after session creation
 
 export interface SelectCoachResponse {
   success: boolean;
@@ -151,85 +124,42 @@ async function apiFetch<T>(
 // ─── Endpoint Functions ───────────────────────────────────────────────────────
 
 /**
- * POST /api/participant/auth/verify-access-code
- * PRIMARY AUTH for Slice 1. Verifies email + USPS-delivered access code.
+ * POST /api/participant/auth/verify-email
+ * PRIMARY AUTH for Slice 1. Roster-matched email entry — no access code.
  * On success: sets participant session. Returns alreadySelected if coach already chosen.
- * Security: INVALID_CREDENTIALS covers both bad email and bad code to prevent enumeration.
+ * Decision: access codes de-scoped 2026-02-24d (USPS group-email workflow + FC sender restrictions).
  */
-export async function verifyAccessCode(
-  input: VerifyAccessCodeInput
-): Promise<VerifyAccessCodeResponse> {
-  // TODO: uncomment when backend is live
-  // return apiFetch<VerifyAccessCodeResponse>("POST", "/api/participant/auth/verify-access-code", input);
-
-  // ── Stub: any valid email + access code "A1B2C3" = success ──
-  // Use "CLOSED1" as access code to trigger WINDOW_CLOSED for QA testing.
-  await delay(800);
-  const normalizedCode = input.accessCode.toUpperCase();
-  if (normalizedCode === "CLOSED1") {
-    return { success: false, error: "WINDOW_CLOSED" };
+export async function verifyParticipantEmail(
+  input: VerifyEmailInput
+): Promise<VerifyEmailResponse> {
+  try {
+    return await apiFetch<VerifyEmailResponse>("POST", "/api/participant/auth/verify-email", input);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      if (
+        error.code === "UNRECOGNIZED_EMAIL" ||
+        error.code === "WINDOW_CLOSED" ||
+        error.code === "RATE_LIMITED"
+      ) {
+        return { success: false, error: error.code };
+      }
+    }
+    throw error;
   }
-  if (normalizedCode === "RATEME1") {
-    return { success: false, error: "RATE_LIMITED" };
-  }
-  if (input.email.toLowerCase() === "already@test.com") {
-    return { success: true, alreadySelected: true };
-  }
-  // Any other email + any non-empty code = success for dev/QA
-  if (!input.accessCode.trim()) {
-    return { success: false, error: "INVALID_CREDENTIALS" };
-  }
-  return { success: true };
-}
-
-/** @deprecated STALE — OTP auth model superseded by verifyAccessCode (access-code model, Feb 24 P0). Delete when Slice 1 backend ships. */
-export async function requestOtp(
-  input: RequestOtpInput
-): Promise<RequestOtpResponse> {
-  // TODO: uncomment when backend is live
-  // return apiFetch<RequestOtpResponse>("POST", "/api/participant/auth/request-otp", input);
-
-  // ── Stub: simulates network call ──
-  await delay(800);
-  if (input.email.toLowerCase() === "unknown@test.com") {
-    return { success: false, error: "EMAIL_NOT_FOUND" };
-  }
-  return { success: true };
-}
-
-/** @deprecated STALE — OTP auth model superseded by verifyAccessCode (access-code model, Feb 24 P0). Delete when Slice 1 backend ships. */
-export async function verifyOtp(
-  input: VerifyOtpInput
-): Promise<VerifyOtpResponse> {
-  // TODO: uncomment when backend is live
-  // return apiFetch<VerifyOtpResponse>("POST", "/api/participant/auth/verify-otp", input);
-
-  // ── Stub ──
-  await delay(800);
-  if (input.otp === "000000") return { success: false, error: "EXPIRED_OTP" };
-  if (input.otp === "999999") return { success: false, error: "MAX_ATTEMPTS" };
-  if (input.otp !== "123456") return { success: false, error: "INVALID_OTP" };
-  return { success: true };
 }
 
 /**
  * GET /api/participant/coaches
  */
 export async function fetchCoaches(): Promise<CoachesResponse> {
-  // TODO: uncomment when backend is live
-  // return apiFetch<CoachesResponse>("GET", "/api/participant/coaches");
-  await delay(600);
-  return { coaches: [], allAtCapacity: false };
+  return apiFetch<CoachesResponse>("GET", "/api/participant/coaches");
 }
 
 /**
  * POST /api/participant/coaches/remix
  */
 export async function remixCoaches(): Promise<RemixResponse> {
-  // TODO: uncomment when backend is live
-  // return apiFetch<RemixResponse>("POST", "/api/participant/coaches/remix");
-  await delay(600);
-  return { coaches: [], poolExhausted: false };
+  return apiFetch<RemixResponse>("POST", "/api/participant/coaches/remix");
 }
 
 /**
@@ -238,20 +168,19 @@ export async function remixCoaches(): Promise<RemixResponse> {
 export async function selectCoach(
   input: SelectCoachInput
 ): Promise<SelectCoachResponse> {
-  // TODO: uncomment when backend is live
-  // return apiFetch<SelectCoachResponse>("POST", "/api/participant/coaches/select", input);
-  await delay(1000);
-  const lastChar = input.coachId.slice(-1);
-  const coachIndex = parseInt(lastChar, 10);
-  const hasBookingUrl = !isNaN(coachIndex) ? coachIndex % 2 !== 0 : Math.random() > 0.5;
-  return {
-    success: true,
-    bookingUrl: hasBookingUrl ? "https://calendly.com/stub-coach/30min" : undefined,
-  };
-}
-
-// ─── Utility ─────────────────────────────────────────────────────────────────
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  try {
+    return await apiFetch<SelectCoachResponse>("POST", "/api/participant/coaches/select", input);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      if (
+        error.code === "CAPACITY_FULL" ||
+        error.code === "ALREADY_SELECTED" ||
+        error.code === "INVALID_SESSION" ||
+        error.code === "WINDOW_CLOSED"
+      ) {
+        return { success: false, error: error.code };
+      }
+    }
+    throw error;
+  }
 }

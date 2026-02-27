@@ -1,17 +1,19 @@
 Item,Owner,Status,Needed By,Why It Matters,Current Ask
 Coach bios/photos/booking links (MLP/ALP),Kari Sadler,In Progress,"Feb 23, 2026","Needed for realistic staging, beta confidence, and launch readiness.","Send available batch now; deliver remaining links by Monday, Feb 23, 2026. Non-Calendly links (e.g., Acuity) are accepted. Coach bio videos are de-scoped from MVP and not required."
-ALP-135 participant file,Kari Sadler,Waiting,"Feb 24, 2026",Needed for first-wave invite/auth validation.,"Share file with name, email, cohortCode, cohortStartDate."
-MLP-80 participant file,Kari Sadler,Waiting,"Feb 24, 2026",Needed for import and overlap capacity validation.,"Share file with name, email, cohortCode, cohortStartDate."
+ALP-135 participant file,Kari Sadler,Closed,"Feb 24, 2026",Needed for first-wave invite/auth validation.,Received and seeded to staging baseline.
+MLP-80 participant file,Kari Sadler,Closed,"Feb 24, 2026",Needed for import and overlap capacity validation.,Received and seeded to staging baseline.
 Final participant counts by cohort,Kari / FC Ops,Partially Confirmed,Before Feb 26 load test,Required to validate overlap behavior before launch.,"Total baseline is confirmed at 400; confirm remaining cohort-level allocations (ALP-136, ALP-137, EF-1, EL-1+)."
 EF/EL capacity value (15 vs 20),Andrea + Kari,Closed,"Feb 24, 2026",Assignment logic and load-test assumptions depend on this lock.,Confirmed: EF/EL capacity is 20 participants per coach.
 EF/EL 9-month window anchor,Kari / FC Ops,Closed,"Before Mar 2, 2026",Needed for consistent reporting windows and needs-attention rules.,Confirmed: anchor is coach-selection-window start + 9 months.
-Sender domain decision,Tim + Blaine,Open,"Feb 21, 2026",Needed for trusted production email sending.,Confirm sender identity (proposed: coaching@franklincovey.com).
+Sender domain decision,Tim + Blaine,Open,ASAP,Needed for trusted production email sending.,Confirm sender identity (working target: coaching@coachinginnovationlab.com).
 Platform tier confirmation (Vercel Pro + Supabase Pro),Amit + Tim,Open,"Feb 21, 2026","Required for launch reliability, backup retention, and production support posture.",Confirm billing owner and activate Pro tiers for both platforms.
 Launch email tier choice,Amit + Tim,Open,"Before Mar 2, 2026",Free-tier email limits may throttle coach/admin magic-link sends on busy days.,Use paid Resend tier for launch window or choose SES.
-Vercel environment split,Amit + Build Team,Open,"Feb 20, 2026 (2:00 PM CT)",Required to prevent staging/prod deploy and secret crossover.,"Create separate fc-staging and fc-production Vercel projects with env scoping."
+Vercel environment split,Amit + Build Team,Open,"Feb 20, 2026 (2:00 PM CT)",Required to prevent staging/prod deploy and secret crossover.,Create separate fc-staging and fc-production Vercel projects with env scoping.
 Supabase environment split,Amit + Build Team,Open,"Feb 20, 2026 (2:00 PM CT)",Required to isolate auth data and migrations between staging and production.,Create separate fc-staging and fc-production Supabase projects and provide keys/URLs.
 Staging email safety gate,Amit + Build Team,Open,"Feb 20, 2026 (2:00 PM CT)",Prevents accidental emails to real coaches/participants during QA.,Enforce EMAIL_MODE=sandbox + hard allowlist and run proof test.
 Coach access + onboarding timing,Kari + Andrea,Partially Confirmed,"Before Mar 2, 2026",Coaches need a clear start and onboarding path.,"Confirm exact send dates; current direction is as soon as portal is available, before Mar 2."
 Cohort communication tracking fields,Kari + Andrea,Open,Date TBD (requested),Needed to coordinate participant/coach communications by cohort.,"Provide participant send date, coach send date, owner, and status (Planned/Sent) per cohort."
 Reminder ownership boundary for MVP,Kari + Andrea,Closed,"Feb 24, 2026",Needed to avoid build-scope ambiguity in notifications.,Confirmed: all participant reminders are manual by USPS/FC Ops; system participant emails are disabled in MVP and system sends only coach/admin magic-link emails.
 Slice 3 policy package,Kari + Greg + FC Ops,Open,"Before Mar 9, 2026",Needed to finalize admin behavior in Slice 3.,"Confirm reminder ownership model, KPI scope, and duplicate-import rule."
+Kari + Andrea admin launch emails,Kari + Andrea,Open,ASAP,Required to finish full admin magic-link staging verification.,Share final email addresses to seed ADMIN users in staging.
+EF/EL coach-selection end dates,Kari + Andrea,Open,ASAP,Current source file has EF/EL selection-start only; explicit end dates needed for final window logic.,Confirm end dates so temporary staging default (start + 19 days) can be replaced.

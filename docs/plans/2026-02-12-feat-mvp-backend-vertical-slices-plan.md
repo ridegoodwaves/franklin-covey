@@ -2,7 +2,7 @@
 title: "Ship MVP Backend — 3 Vertical Slices"
 type: feat
 date: 2026-02-12
-updated: 2026-02-24
+updated: 2026-02-25
 brainstorm: docs/brainstorms/2026-02-12-mvp-ship-strategy-brainstorm.md
 prd: prd_for_apps/franklincovey-coaching-platform-prd.md
 delta: docs/CIL-BRIEF-DELTA-ANALYSIS.md
@@ -21,7 +21,12 @@ changelog:
   - 2026-02-18e: "Forfeited Session 1 labels clarified by FC: 'Session forfeited - canceled within 24 hours' and 'Session forfeited - not taken advantage of' (mapped to FORFEITED_CANCELLED and FORFEITED_NOT_USED)."
   - 2026-02-18f: "Email delivery planning note added: Resend free-tier daily limits can throttle launch-day auth/magic-link traffic; recommend paid tier for launch window."
   - 2026-02-18g: "Capacity counting rule confirmed by Kari: count COACH_SELECTED, IN_PROGRESS, and ON_HOLD; exclude INVITED, COMPLETED, and CANCELED."
-  - 2026-02-24: "Applied post-workshop decision lock to remove cross-doc ambiguity: participant auth now uses USPS-delivered email + participant access code (no system participant emails), EF/EL capacity confirmed at 20, planning baseline locked at 400, EF/EL reporting anchor locked to selection-window start + 9 months, and use-it-or-lose-it locked as ALP/MLP manual model only."
+  - 2026-02-24: "Applied post-workshop decision lock to remove cross-doc ambiguity: participant auth now uses USPS-delivered email + participant access code (no system participant emails), EF/EL capacity confirmed at 20, planning baseline locked at 400, EF/EL reporting anchor locked to selection-window start + 9 months, and use-it-or-lose-it locked as ALP/MLP manual model only. MLP/ALP capacity updated from 15 to 20 — all pools now COACH_CAPACITY = 20 (Kari confirmed)."
+  - 2026-02-24b: "Applied two P0 security corrections from technical review: (1) Replace NODE_ENV test-endpoint guard with TEST_ENDPOINTS_ENABLED env var — NODE_ENV is always 'production' on Vercel including staging, so the old guard would disable E2E tests. Added TEST_ENDPOINTS_SECRET header check as secondary gate. (2) Correct access-code hashing: use HMAC-SHA256 (not bcrypt) since bcrypt offers no precomputation resistance for a 6-digit numeric space. Defense-in-depth stays: strict expiry + one-time-use + per-IP rate limiting + per-participant lockout. Moved failedAttempts + lockedUntil from VerificationCode row to Participant model so code resets cannot bypass lockout."
+  - 2026-02-24c: "FC delivered ALP-135 roster for MVP import. Additional participant-context spreadsheet (`FY26 ALP 136_EF 1 Coaching Bios.xlsx`) was clarified as optional context for later coach visibility; explicitly locked out of MVP selector/matching logic and moved to post-MVP backlog."
+  - 2026-02-24d: "Participant auth decision updated per Kari confirmation: MVP uses roster-matched email-entry only (no participant access codes) due USPS cohort group-email workflow + FC sender restrictions. Access-code references in this backlog are now historical unless explicitly re-approved."
+  - 2026-02-24e: "Applied 2026-02-24d auth decision to frontend and API client: removed access code field from participant entry page, renamed verifyAccessCode → verifyParticipantEmail, updated endpoint to POST /api/participant/auth/verify-email, replaced INVALID_CREDENTIALS error code with UNRECOGNIZED_EMAIL (specific messaging per product decision). VerificationCode model removal delegated to schema owner. Research doc updated to match."
+  - 2026-02-25: "Staging backend foundation executed: Prisma multi-org-ready schema authored, initial migration applied to staging Supabase, USPS baseline seed loaded (4 programs, 14 cohorts, 32 coach memberships, 175 participants/engagements), and centralized outbound-email guard added with EMAIL_OUTBOUND_ENABLED kill-switch enforcement for staging safety."
 ---
 
 # feat: Ship MVP Backend — 3 Vertical Slices (March 2/9/16)
@@ -38,12 +43,12 @@ Connect the existing polished frontend (~60% built, hardcoded demo data) to a re
 
 | Slice | Scope | Deadline | Users Impacted |
 |-------|-------|----------|----------------|
-| **1** | Coach Selector + Participant Access-Code Auth | **March 2** | ~60 participants (first cohort) |
+| **1** | Coach Selector + Participant Email Auth (roster-matched) | **March 2** | ~60 participants (first cohort) |
 | **2** | Coach Engagement + Session Logging | **March 9** | ~15 coaches (MLP/ALP panel) |
 | **3** | Admin Portal + Needs-Attention Workflow | **March 16** | 3 admins (Ops, Kari, Greg) |
 
 **Key architectural decisions** (from [brainstorm](docs/brainstorms/2026-02-12-mvp-ship-strategy-brainstorm.md)):
-- Participant auth: USPS-delivered coach-selector link + participant email + access code (no system participant emails in MVP)
+- Participant auth: USPS-delivered coach-selector link + roster-matched participant email entry only (no system participant emails in MVP)
 - Dashboards: 1 Ops dashboard + 1 executive summary view
 - Multi-program: Schema-ready, UI-later (`Program` model seeded, no admin UI)
 - Multi-org: `Organization` model from day 1 — infrastructure for the full platform (Greg's requirement, added 2026-02-13)
@@ -157,17 +162,20 @@ erDiagram
         String firstName
         String lastName
         String org
+        Int failedAttempts "auth lockout counter — scoped to participant not to code row"
+        DateTime lockedUntil "null when not locked"
     }
 
     VerificationCode {
         String id PK
         String participantId FK
-        String code "6-digit hashed"
-        DateTime expiresAt "5 min"
-        Int attempts "max 3"
-        Boolean used
+        String codeHash "HMAC-SHA256 of 6-digit code"
+        DateTime expiresAt "coachSelectionWindowEnd"
+        Boolean used "one-time-use flag"
         DateTime createdAt
     }
+    %% NOTE: attempts/lockout are tracked on Participant (failedAttempts + lockedUntil),
+    %% NOT on VerificationCode — so a code reset cannot bypass the lockout.
 
     Engagement {
         String id PK
@@ -178,7 +186,6 @@ erDiagram
         EngagementStatus status
         Int statusVersion "optimistic lock"
         Int totalSessions
-        Boolean autoAssigned "default false"
         DateTime coachSelectedAt
         DateTime lastActivityAt
     }
@@ -209,7 +216,6 @@ erDiagram
         NudgeType nudgeType "SELECTION_WINDOW_NEEDS_ATTENTION | COACH_ATTENTION | OPS_ESCALATION"
         Boolean emailSent "default false"
         DateTime sentAt
-        String assignedCoachId FK "nullable, reserved for future matching workflows"
     }
 
     Organization ||--o{ Program : "has many"
@@ -237,17 +243,17 @@ erDiagram
 - **Added** `Engagement.programId` (multi-program from day 1)
 
 **Schema changes from Feb 17 workshop:**
-- **Added** `CoachProgramPanel` join table (many-to-many: coaches ↔ programs). MLP/ALP and EF/EL remain separate pools with no cross-pool matching in MVP. EF/EL coach capacity is locked at 20 per coach. `@@unique([coachProfileId, programId])` prevents duplicate assignments.
+- **Added** `CoachProgramPanel` join table (many-to-many: coaches ↔ programs). MLP/ALP and EF/EL remain separate pools with no cross-pool matching in MVP. All coach capacity locked at **20 per coach** across all pools (MLP/ALP updated from 15 to 20; Kari confirmed 2026-02-24). `@@unique([coachProfileId, programId])` prevents duplicate assignments.
 - **Added** `Program.code` (unique program identifier: MLP, ALP, EF, EL) and `Program.track` (moved from Participant — track is a property of the program, not the participant)
 - **Changed** `SessionStatus` enum: was `SCHEDULED | COMPLETED | CANCELED | NO_SHOW` → now `COMPLETED | FORFEITED_CANCELLED | FORFEITED_NOT_USED`
 - **Changed** `SessionNote.topics/outcomes` arrays → `SessionNote.topicDiscussed` (single string from program competency list) + `SessionNote.sessionOutcome` (single string)
 - **Changed** `NudgeLog.nudgeType` enum: now tracks dashboard attention flags for manual FC follow-up (no participant reminder sends in MVP)
 - **Added** `NudgeLog.emailSent` boolean (tracks coach/admin/ops email sends where applicable)
-- **Added** `NudgeLog.assignedCoachId` FK (nullable — reserved for future matching workflows)
 - **Renamed** `NudgeLog.flaggedAt` → `NudgeLog.sentAt` (single timestamp for flags/emails)
 - **Removed** `NudgeLog.acknowledged/acknowledgedAt` (ops workflow doesn't need explicit acknowledgment for MVP)
 - **Removed** `Participant.programTrack` (track is now on `Program.track` — derived via `Engagement.programId`)
-- **Added** `Engagement.autoAssigned` boolean (reserved for future use; MVP matching is participant-selected/manual ops flow)
+- ~~`NudgeLog.assignedCoachId`~~ — removed (reserved field with no MVP use; add when matching workflows ship)
+- ~~`Engagement.autoAssigned`~~ — removed (reserved field with no MVP use; add when auto-assignment feature ships)
 - **Added** `Engagement.cohortStartDate` (Day 0 anchor from cohort schedule)
 
 ---
@@ -315,11 +321,12 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 #### 0.3 Shared Utilities
 
 - [ ] Engagement state machine — `src/lib/engagement-state.ts`
-  - `transitionEngagement(tx: Prisma.TransactionClient, engagementId, targetStatus, currentStatusVersion)` — accepts transaction client so it composes inside existing transactions
+  - `transitionEngagement(tx: Prisma.TransactionClient, engagementId, targetStatus, currentStatusVersion): Promise<{ newStatusVersion: number }>` — accepts transaction client so it composes inside existing transactions; **returns new statusVersion** so callers can chain transitions without stale version reads
   - Valid transitions: `INVITED→COACH_SELECTED`, `COACH_SELECTED→IN_PROGRESS`, `IN_PROGRESS→COMPLETED`, any→`CANCELED`/`ON_HOLD`
   - Updates `lastActivityAt` on every transition
   - Always checks `statusVersion` in WHERE clause (enforces optimistic locking in one place)
   - Throws `InvalidTransitionError` on invalid transition (with current + target status)
+  - **Important**: when calling `transitionEngagement` twice in one transaction (e.g., `IN_PROGRESS` then `COMPLETED`), thread the returned `newStatusVersion` into the second call — never reuse the version from transaction start
 - [ ] Validation schemas (Zod) — `src/lib/validations.ts`
   - `participantEmailSchema` — lowercase, trim, valid format
   - `participantAccessCodeSchema` — code format/length for participant auth
@@ -328,7 +335,6 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 - [ ] Email client — `src/lib/email.ts`
   - Resend client wrapper (or AWS SES — **decision needed before Slice 1**)
   - `sendMagicLink(email, url)` — coach/admin auth (via Auth.js)
-  - `sendOpsAlert(type, recipient, engagement)` — optional ops escalation email when needed
   - **Startup assertion**: crash if production SMTP credentials (Resend/SES/SendGrid) detected in non-production `NODE_ENV`. Prevents `.env` mix-ups from sending real emails. Pattern: `if (NODE_ENV !== 'production' && SMTP_HOST matches /resend|ses|sendgrid/) throw Error`
 - [ ] Error classes — `src/lib/errors.ts`
   - `CoachAtCapacityError`, `CoachInactiveError`, `NoInvitedEngagementError`, `AllSessionsCompletedError`, `InvalidTransitionError`
@@ -348,7 +354,7 @@ NEXTAUTH_SECRET=
 NEXTAUTH_URL=http://localhost:3000
 
 # Participant Auth
-ACCESS_CODE_SECRET= # For hashing/verifying participant access codes
+ACCESS_CODE_SECRET= # HMAC-SHA256 key for participant access codes. Use crypto.createHmac('sha256', secret).update(code).digest('hex').
 
 # Email
 RESEND_API_KEY= # Or AWS SES credentials
@@ -357,14 +363,21 @@ EMAIL_FROM=noreply@franklincovey-coaching.com
 # Cron
 CRON_SECRET= # Shared secret for /api/cron/* endpoints
 
+# Test endpoints (staging only — never set in production)
+# On Vercel, NODE_ENV is always "production" — even on staging deployments.
+# TEST_ENDPOINTS_ENABLED is the only safe discriminator between staging and production.
+TEST_ENDPOINTS_ENABLED=   # Set to "true" in staging Vercel project only. Leave blank/absent in production.
+TEST_ENDPOINTS_SECRET=    # Shared secret required as X-Test-Secret header on all /api/test/* requests.
+
 # Monitoring
 SENTRY_DSN=
 LOG_LEVEL=info
 ```
 
-- [ ] Create `Dockerfile` (3-stage build, non-root user) — `Dockerfile`
-- [ ] Create `docker-compose.yml` (PostgreSQL 16 + PgBouncer + Mailpit) — `docker-compose.yml`
+- [ ] `Dockerfile` — **Post-launch (target: within 30 days of March 2)** — needed before FC AWS migration. Not required for Vercel launch. 3-stage build, non-root user.
+- [ ] Create `docker-compose.yml` (PostgreSQL 16 + Mailpit) — `docker-compose.yml`
   - Mailpit: SMTP on port 1025, web UI on port 8025. Catches all non-production email.
+  - **Note**: remove PgBouncer from local docker-compose — Supabase provides pooling in production; direct Postgres locally is simpler and matches actual prod topology
 - [ ] Add `/api/health` endpoint — `src/app/api/health/route.ts`
   - Returns `{ status: "ok", version: process.env.npm_package_version }`
   - Database connectivity check (Prisma `$queryRaw('SELECT 1')`)
@@ -382,36 +395,33 @@ LOG_LEVEL=info
 
 The critical path. 400 participants arrive on this date.
 
-#### 1.1 Participant Access-Code Auth
+#### 1.1 Participant Email Auth (roster-matched)
+
+> **⚠️ Decision 2026-02-24d:** Access codes de-scoped. MVP uses roster-matched email entry only.
+> Reason: USPS cohort group-email workflow + FC sender restrictions make per-participant code delivery unworkable.
+> Access-code tasks below are historical — do not implement unless explicitly re-approved.
 
 **Flow:**
 
 ```
 USPS welcome email
-    → participant gets coach-selector URL + access code
-    → participant opens /participant and enters email + access code
-    → POST /api/participant/auth/verify-access-code { email, code }
-    → server verifies participant + code + expiry window (cohort selection window end)
+    → participant gets coach-selector link only (no access code)
+    → participant opens /participant and enters their email address
+    → POST /api/participant/auth/verify-email { email }
+    → server checks email exists in Participant roster AND cohort window is open
     → server sets httpOnly session cookie
     → Redirect: /participant/select-coach (if no coach selected)
               OR /participant/confirmation (if coach already selected — flow ends at selection)
 ```
 
-- [ ] Access-code verification endpoint — `src/app/api/participant/auth/verify-access-code/route.ts`
-  - Validate email + code format
+- [ ] Email verification endpoint — `src/app/api/participant/auth/verify-email/route.ts`
+  - Input: `{ email: string }`
   - Normalize email (lowercase, trim)
-  - Lookup participant by email
-  - Validate stored hashed code and enforce expiry (`coachSelectionWindowEnd`)
-  - Enforce attempt limits and lockout on repeated failures
-  - On success: create session cookie (iron-session, 30-day rolling)
-  - On failure: return generic "Invalid or expired code" (no detail leaking)
-  - **Security: keep response generic regardless of whether participant email exists**
-
-- [ ] Access-code generation + export utility — `scripts/generate-participant-access-codes.ts`
-  - Generate high-entropy codes for participants before each cohort window
-  - Store hashed codes in `VerificationCode` (or equivalent auth table)
-  - Export USPS-ready file: participant email + code + cohort + selection-window dates
-  - Support one-click code reset/regeneration for FC Ops
+  - Look up `Participant` by email — return `UNRECOGNIZED_EMAIL` if not found
+  - Check cohort window not closed — return `WINDOW_CLOSED` if past end date
+  - Rate limits: 10/IP/hour
+  - On success: create session cookie (iron-session, `{ participantId, email }`), return `alreadySelected` if engagement is `COACH_SELECTED`
+  - On failure: return specific error code (enumeration not a concern — roster is not a secret)
 
 - [ ] Participant session middleware — `src/lib/participant-session.ts`
   - `iron-session` with httpOnly, secure, sameSite=lax cookie
@@ -419,22 +429,20 @@ USPS welcome email
   - `getParticipantSession(req)` — returns session or null
   - `requireParticipantSession(req)` — returns session or 401
 
-- [ ] Remove participant OTP email template dependency from MVP
-  - Participant emails are USPS-owned in MVP
-  - CIL system sends coach/admin magic-link emails only
-
-- [ ] Participant auth page — Update `src/app/participant/page.tsx`
-  - Email input form (currently landing page — convert to auth entry point)
-  - Access-code verification form (email + code fields)
-  - Loading states, generic error messages, lockout message
-  - Redirect logic based on engagement status
+- [ ] Participant auth page — `src/app/participant/page.tsx` ✅ **DONE (frontend)**
+  - Single email input, roster-matched
+  - Error messages: UNRECOGNIZED_EMAIL, WINDOW_CLOSED, RATE_LIMITED
+  - Redirect logic based on alreadySelected flag
 
 **SpecFlow resolutions baked in:**
-- Email not found → identical response (issue #6)
-- Access-code brute force → global IP rate limit + per-email lockout (issue #16)
-- Expired access code → generic "Invalid or expired code" + FC Ops reset path
-- USPS delivery delay/error → participant follows USPS support path; system does not send participant mail in MVP
+- Email not found → UNRECOGNIZED_EMAIL with friendly message (issue #6)
+- Rate limiting → global IP rate limit (issue #16)
 - Returning participant → check session cookie first, skip auth (issue #3)
+
+~~**~~HISTORICAL (access-code tasks — do not implement)~~**~~
+~~- Access-code generation + export utility (`scripts/generate-participant-access-codes.ts`)~~
+~~- `VerificationCode` model and `codeHash` / `ACCESS_CODE_SECRET` (removed from schema)~~
+~~- HMAC-SHA256 hashing + per-participant lockout (`failedAttempts`, `lockedUntil`)~~
 
 #### 1.2 Coach Selection API
 
@@ -546,7 +554,7 @@ await prisma.$transaction(async (tx) => {
 - [ ] Remix shows 3 different coaches (max 1 remix, one-way door with confirmation warning)
 - [ ] Coach selection creates engagement with `COACH_SELECTED` status
 - [ ] **Participant flow ends at selection**: confirmation page + scheduling link/fallback message. No engagement page.
-- [ ] Capacity is enforced with configured per-coach limits (EF/EL locked at 20; count active statuses only)
+- [ ] Capacity is enforced with configured per-coach limits (all pools locked at 20; count active statuses only)
 - [ ] Zero coaches scenario shows appropriate message + notifies ops
 - [ ] Returning participant with valid session skips auth → goes to confirmation (if coach already selected)
 - [ ] Access-code brute force is rate-limited (attempt limit + lockout + IP throttling)
@@ -640,13 +648,17 @@ await prisma.$transaction(async (tx) => {
   })
 
   // 4. Transition engagement if first session (uses transitionEngagement helper)
+  let currentStatusVersion = engagement.statusVersion
   if (count === 0 && engagement.status === 'COACH_SELECTED') {
-    await transitionEngagement(tx, engagementId, 'IN_PROGRESS', engagement.statusVersion)
+    const { newStatusVersion } = await transitionEngagement(tx, engagementId, 'IN_PROGRESS', currentStatusVersion)
+    currentStatusVersion = newStatusVersion
   }
 
-  // 5. Auto-complete engagement if all sessions done (fixed 2026-02-14: was missing statusVersion check)
+  // 5. Auto-complete engagement if all sessions done
+  // Thread currentStatusVersion from step 4 — do NOT reuse engagement.statusVersion here;
+  // step 4 may have already incremented it and the optimistic lock check would fail.
   if (sessionNumber === engagement.totalSessions && !isDraft) {
-    await transitionEngagement(tx, engagementId, 'COMPLETED', engagement.statusVersion)
+    await transitionEngagement(tx, engagementId, 'COMPLETED', currentStatusVersion)
   }
 
   return session
@@ -764,8 +776,14 @@ await prisma.$transaction(async (tx) => {
   - Return validation results with row-level errors
   - **CSV injection prevention**: strip leading `=`, `+`, `-`, `@` from all text fields
 
+- [ ] Import validation — generates a batch token on success
+  - Validation endpoint returns `{ batchToken: string, rows: ValidatedRow[], errors: RowError[] }` on success
+  - `batchToken` is a short-lived server-side token (stored in a `ImportBatch` table or signed JWT, expires in 1 hour) that references the validated rows
+  - Token prevents double-submit: executing the same batch token twice returns `{ created: 0, skipped: N, alreadyExecuted: true }` rather than creating duplicates
 - [ ] Import execution — `src/app/api/admin/import/execute/route.ts`
-  - `POST /api/admin/import/execute { rows: ValidatedRow[], programId }`
+  - `POST /api/admin/import/execute { batchToken: string }` — **not** the raw rows; token is consumed server-side
+  - Check `batchToken` status: if already executed, return idempotency response immediately
+  - Mark token as `EXECUTING` before transaction begins (prevents concurrent double-submit)
   - **Phase A**: Atomic transaction — create all `Participant` + `Engagement` records
     - Engagement created with `status: INVITED`, `coachId: null`, `totalSessions` from `programTrack`, `cohortStartDate` from CSV
     - Transaction timeout: 30s (fail-safe for large imports)
@@ -773,7 +791,8 @@ await prisma.$transaction(async (tx) => {
     - Build export with participant email + cohort + access code + selection window
     - No participant email send from system in MVP
     - Mark package timestamp for ops auditability
-  - Return: `{ created: number, skipped: number, exportGenerated: boolean, exportPath?: string }`
+  - Mark token as `EXECUTED` on success
+  - Return: `{ created: number, skipped: number, exportGenerated: boolean, exportPath?: string, alreadyExecuted?: boolean }`
 
 #### 3.3 Needs-Attention Workflow (Manual Reminders in MVP)
 
@@ -940,11 +959,13 @@ Minimal but targeted — cover the flows where bugs cause the most damage:
 
 #### Test Infrastructure
 
-**Test Helper Endpoints** (guarded by `NODE_ENV !== 'production'`):
+**Test Helper Endpoints** (guarded by `TEST_ENDPOINTS_ENABLED=true` + `X-Test-Secret` header):
+
+> **Why not `NODE_ENV`?** On Vercel, `NODE_ENV` is always `"production"` in all deployed environments — including staging. Using `NODE_ENV !== "production"` as the guard would disable test endpoints on staging (breaking E2E tests) or require mis-configuring the env var. Use `TEST_ENDPOINTS_ENABLED=true` (set only in the staging Vercel project) combined with a shared `X-Test-Secret` header check to ensure the endpoints are never reachable in production.
 
 - [ ] `GET /api/test/latest-access-code?email=` — returns current test access code metadata for a participant — `src/app/api/test/latest-access-code/route.ts`
   - Returns code metadata or 404 if none exists
-  - **Production guard**: returns 404 in production, enforced by middleware + env check
+  - **Production guard**: check `process.env.TEST_ENDPOINTS_ENABLED !== 'true'` → return 404. Also verify `X-Test-Secret` header matches `process.env.TEST_ENDPOINTS_SECRET`.
 - [ ] `GET /api/test/latest-magic-link?email=` — returns latest magic link URL — `src/app/api/test/latest-magic-link/route.ts`
   - Returns `{ url: "https://...", expiresAt: "..." }` or 404
   - Reads from Auth.js `VerificationToken` table
@@ -1097,6 +1118,8 @@ Suites are designed to run **in order** — each suite builds on state created b
 - [ ] Create `/api/test/reset` endpoint — `src/app/api/test/reset/route.ts`
 - [ ] Create `/api/test/engagement` endpoint — `src/app/api/test/engagement/route.ts`
 - [ ] Add production guard middleware for `/api/test/*` routes — `src/middleware.ts`
+  - Guard: `TEST_ENDPOINTS_ENABLED !== 'true'` → return 404 (do NOT use `NODE_ENV` — always `"production"` on Vercel)
+  - Secondary: require `X-Test-Secret` header to match `TEST_ENDPOINTS_SECRET` env var
 - [ ] Add test seed data to `prisma/seed.ts` (8 test entities above)
 - [ ] Add Mailpit to `docker-compose.yml` for local email inspection
 - [ ] Document test execution runbook in `docs/qa/automated-testing-runbook.md`
@@ -1122,13 +1145,13 @@ Suites are designed to run **in order** — each suite builds on state created b
 
 | Decision | Options | Impact |
 |----------|---------|--------|
-| **Email provider** | Resend (recommend paid tier at launch) vs AWS SES | Coach/admin magic-link emails and ops escalations depend on this; free-tier daily caps may throttle busy days |
+| **Email provider** | Resend (recommend paid tier at launch) vs AWS SES | Coach/admin magic-link emails depend on this; free-tier daily caps may throttle busy days |
 | **Cloud provider** | **Resolved: Vercel + Supabase (confirmed 2026-02-18)** | MVP hosting and database target locked; remove infra ambiguity |
 | **Domain / DNS** | Who manages? What subdomain? | Deployment URL, email sender domain |
 | **Real coach data entry** | Admin CSV upload vs manual entry vs seed script | 35 coaches need real bios, photos, and booking URLs before March 2 (video is de-scoped for MVP). Seed script only covers dev data. Options: (a) FC provides a CSV and we import via a one-off script, (b) build a minimal coach profile edit form in admin portal (pulls Slice 3 work forward), or (c) Kari/Andrea enter data directly in the database via a simple admin form. **Recommend option (a)** — CSV from FC ops, imported with a script. |
 | **Blocking decision turnaround** | **Resolved: FC 24-hour owner through Mar 16 (confirmed 2026-02-18)** | Protects critical path when implementation questions arise |
 | **Contract status** | **Resolved: signed (confirmed 2026-02-18)** | Removes pre-launch legal/commercial execution risk |
-| **Participant counts by cohort** | Baseline confirmed at 400; per-cohort allocations pending final file lock | Required to validate capacity assumptions and overlap load (EF/EL capacity locked at 20) |
+| **Participant counts by cohort** | Baseline confirmed at 400; per-cohort allocations pending final file lock | Required to validate capacity assumptions and overlap load (all coach capacity locked at 20) |
 
 ### Must Resolve Before Slice 3 (by March 9)
 

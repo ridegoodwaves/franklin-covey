@@ -7,14 +7,17 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "data:build:staging": "node scripts/build-staging-import-artifacts.mjs",
+    "data:seed:staging": "node scripts/seed-staging-from-artifacts.mjs",
+    "data:backfill:bios": "node scripts/backfill-coach-bios.mjs",
+    "headshots:verify": "node scripts/verify-headshot-mappings.mjs",
     "env:validate": "node scripts/validate-env-safety.mjs",
     "env:validate:staging": "node scripts/validate-env-safety.mjs --env-file .env.staging.example --target staging",
-    "env:validate:production": "node scripts/validate-env-safety.mjs --env-file .env.production.example --target production"
+    "env:validate:production": "node scripts/validate-env-safety.mjs --env-file .env.production.example --target production",
+    "data:backfill:photo-paths": "node scripts/backfill-coach-photo-paths.mjs"
   },
   "dependencies": {
-    "next": "^15.1.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "@prisma/client": "^6.19.0",
     "@radix-ui/react-avatar": "^1.1.0",
     "@radix-ui/react-dialog": "^1.1.0",
     "@radix-ui/react-dropdown-menu": "^2.1.0",
@@ -30,6 +33,10 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "lucide-react": "^0.400.0",
+    "next": "^15.1.0",
+    "prisma": "^6.19.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "recharts": "^2.12.0",
     "tailwind-merge": "^2.5.0",
     "tailwindcss-animate": "^1.0.7"
