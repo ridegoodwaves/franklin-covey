@@ -9,7 +9,6 @@ import {
   CardHeader,
   CardTitle,
   CardContent,
-  CardFooter,
 } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -82,6 +81,7 @@ export default function SelectCoachPage() {
   const [selectionDisabled, setSelectionDisabled] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [bioModalCoach, setBioModalCoach] = useState<Coach | null>(null);
+  const [confirmCoach, setConfirmCoach] = useState<Coach | null>(null);
   const [participantDisplayName, setParticipantDisplayName] = useState<string>(CURRENT_PARTICIPANT.name);
   const [participantInitials, setParticipantInitials] = useState<string>(CURRENT_PARTICIPANT.initials);
 
@@ -414,44 +414,36 @@ export default function SelectCoachPage() {
                       </div>
                     </CardHeader>
 
-                    <CardContent className="relative flex-1 px-6 pb-4">
+                    <CardContent className="relative flex-1 px-6 pb-6">
                       <p className="text-sm leading-relaxed text-fc-700 line-clamp-3">
                         {coach.bio}
                       </p>
 
-                      {!coach.atCapacity && (
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setBioModalCoach(coach); }}
-                          className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-fc-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-fc-700 shadow-sm transition-all hover:border-fc-400 hover:bg-fc-50 hover:text-fc-900 hover:shadow"
-                        >
-                          Read full bio
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
-                          </svg>
-                        </button>
-                      )}
-                    </CardContent>
-
-                    <CardFooter className="relative px-6 pb-6">
-                      <Button
-                        variant="default"
-                        size="lg"
-                        className="w-full gap-2"
-                        disabled={coach.atCapacity || selectionDisabled || selectingCoachId === coach.id}
-                        onClick={() => handleSelect(coach)}
-                      >
-                        {selectingCoachId === coach.id ? (
-                          <>
-                            <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      <div className="mt-4">
+                        {coach.atCapacity ? (
+                          <Button
+                            variant="outline"
+                            size="lg"
+                            className="w-full opacity-50 cursor-not-allowed"
+                            disabled
+                          >
+                            Unavailable
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="default"
+                            size="lg"
+                            className="w-full gap-2"
+                            onClick={(e) => { e.stopPropagation(); setBioModalCoach(coach); }}
+                          >
+                            View Full Profile
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
                             </svg>
-                            Selecting...
-                          </>
-                        ) : coach.atCapacity ? "Unavailable" : "Select This Coach"}
-                      </Button>
-                    </CardFooter>
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
                   </Card>
                 </div>
               ))}
@@ -521,13 +513,101 @@ export default function SelectCoachPage() {
         )}
       </main>
 
+      {/* Selection confirmation dialog */}
+      {confirmCoach && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => { if (!selectingCoachId) setConfirmCoach(null); }}
+        >
+          <div
+            className={cn(
+              "relative w-full max-w-md rounded-2xl bg-white shadow-2xl border border-fc-100 overflow-hidden",
+              "transition-all duration-300 scale-100 opacity-100"
+            )}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Brand accent bar */}
+            <div className="h-1.5 rounded-t-2xl bg-gradient-to-r from-fc-600 via-fc-500 to-[#67DFFF]" />
+
+            <div className="px-8 pt-8 pb-8">
+              <div className="flex flex-col items-center text-center">
+                {/* Coach avatar */}
+                <Avatar className="h-20 w-20 ring-4 ring-offset-4 ring-offset-white ring-fc-100">
+                  {confirmCoach.photo && <AvatarImage src={confirmCoach.photo} alt={confirmCoach.name} />}
+                  <AvatarFallback className="text-lg font-display font-semibold bg-gradient-to-br from-fc-600 to-fc-800 text-white">
+                    {confirmCoach.initials}
+                  </AvatarFallback>
+                </Avatar>
+
+                {/* Heading */}
+                <h2 className="mt-5 font-display text-2xl font-light tracking-tight text-fc-900">
+                  Confirm your selection
+                </h2>
+
+                {/* Coach name */}
+                <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-fc-50 border border-fc-200 px-4 py-1.5">
+                  <span className="text-sm font-semibold text-fc-800">{confirmCoach.name}</span>
+                </div>
+
+                {/* Warning copy */}
+                <p className="mt-5 text-sm leading-relaxed text-muted-foreground max-w-xs">
+                  This choice is <span className="font-semibold text-fc-800">final</span>. Once confirmed, you'll be connected with {confirmCoach.name.split(" ")[0]} and can book your first session.
+                </p>
+
+                {/* Divider */}
+                <div className="mt-6 w-full border-t border-fc-100" />
+              </div>
+
+              {/* Actions */}
+              <div className="mt-6 flex flex-col gap-3">
+                <Button
+                  size="lg"
+                  className="w-full gap-2"
+                  disabled={!!selectingCoachId}
+                  onClick={() => handleSelect(confirmCoach)}
+                >
+                  {selectingCoachId === confirmCoach.id ? (
+                    <>
+                      <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Confirming…
+                    </>
+                  ) : (
+                    <>
+                      Yes, this is my coach
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 6 9 17l-5-5" />
+                      </svg>
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  className="w-full text-muted-foreground"
+                  disabled={!!selectingCoachId}
+                  onClick={() => setConfirmCoach(null)}
+                >
+                  Go back and keep looking
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Bio modal */}
       <CoachBioModal
         coach={bioModalCoach}
         onClose={() => setBioModalCoach(null)}
         onSelect={(coachId) => {
           const coach = displayedCoaches.find((c) => c.id === coachId);
-          if (coach) handleSelect(coach);
+          if (coach) {
+            setBioModalCoach(null);
+            setConfirmCoach(coach);
+          }
         }}
         selectDisabled={selectionDisabled}
       />
