@@ -67,9 +67,14 @@ git config core.hooksPath .githooks  # One-time: enable repo-managed git hooks
 - Participant routes: coaches GET (pin-first), remix (one-way door), select (advisory lock)
 
 **What's NOT tested yet:**
-- DB concurrency (advisory lock races) — Phase 1.5 with real Postgres
-- Browser smoke tests — Phase 2 with Chrome MCP
+- DB concurrency (advisory lock races) — Phase 1.5 with real Postgres (requires Docker)
 - Admin/coach portal routes — future phases
+
+**Browser smoke tests (Phase 2):**
+- Checklist: `docs/checklists/pre-deploy-smoke-test.md` — 9 scenarios covering participant, coach, and admin flows
+- Tool: Chrome MCP (`mcp__claude-in-chrome__*`) — Claude-driven, not CI-automated
+- When to run: before every staging-to-production promotion
+- How to trigger: ask Claude _"Run the pre-deploy smoke test checklist against [URL]"_
 
 **CI:** `.github/workflows/test.yml` — runs `npm test` on every PR and push to main.
 
@@ -180,7 +185,7 @@ The original PRD specified full Calendly API integration (webhooks, embeds, sess
 **Participant portal is a one-shot flow.** Participants do NOT have a dashboard or return to the platform after selecting a coach.
 
 ```
-Generic link → Enter email → OTP → Coach selector (3 cards) → Select coach → Confirmation page (Calendly link) → DONE
+Generic link → Enter email → Verify email (server cookie) → Coach selector (3 cards) → Select coach → Confirmation page (booking link) → DONE
 ```
 
 - No participant-facing filters. 3 capacity-weighted randomized coaches shown.
@@ -190,26 +195,21 @@ Generic link → Enter email → OTP → Coach selector (3 cards) → Select coa
 - Nudge emails (Day 5, Day 10) re-engage participants who haven't selected. Day 15 = auto-assign coach.
 - **Do NOT build participant-facing dashboards, session views, or engagement tracking.** All engagement tracking is coach-only via `/coach/engagement`.
 
-### Participant Session State (MVP Stub Mode)
+### Participant Session State
 
-Current MVP frontend uses `sessionStorage` for temporary participant flow state:
+Auth is server-backed: `POST /api/participant/auth/verify-email` sets a signed `fc_participant_session` cookie. The frontend also uses `sessionStorage` for UI navigation state between participant pages:
 
-- `participant-email`: set after OTP request succeeds on `/participant`; read by `/participant/verify-otp`.
-- `participant-verified`: set to `"true"` after OTP verify succeeds; required to access `/participant/select-coach`.
+- `participant-email`: set after verify-email succeeds on `/participant`; used by `/participant/select-coach` for display.
+- `participant-verified`: set to `"true"` after verify-email succeeds; client guard for `/participant/select-coach` access.
 - `selected-coach`: JSON payload set after successful coach selection; drives `/participant/confirmation`.
 
 Lifecycle rules:
 
-1. `/participant` successful submit -> set `participant-email`.
-2. `/participant/verify-otp` successful verify -> set `participant-verified`.
-3. `/participant/select-coach` successful select -> set `selected-coach`; redirect to `/participant/confirmation`.
-4. Direct/deep-link access to later steps without required key(s) must redirect to valid prior step.
+1. `/participant` successful submit → verify-email API → set `participant-email` + `participant-verified` in sessionStorage.
+2. `/participant/select-coach` successful select → set `selected-coach`; redirect to `/participant/confirmation`.
+3. Direct/deep-link access to later steps without required key(s) must redirect to valid prior step.
 
-Production migration path:
-
-- Replace `participant-verified` and `selected-coach` client state with server-backed session (iron-session cookie) and DB-backed selection state.
-- Keep UI behavior identical while changing only the state source of truth.
-- Do not persist participant auth state in `localStorage`.
+Note: The server-backed `fc_participant_session` cookie is the authoritative auth state. Client `sessionStorage` is a UI navigation guard only — it does not replace server session validation on API routes.
 
 ## API Integration Pattern (Stub-First)
 
