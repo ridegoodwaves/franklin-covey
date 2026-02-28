@@ -24,6 +24,9 @@ Check `docs/solutions/` if debugging a known issue pattern.
 npm run dev          # Start dev server (http://localhost:3000)
 npm run build        # Production build (standalone output for Docker)
 npm run lint         # ESLint
+npm test             # Run all Vitest tests
+npm run test:watch   # Vitest in watch mode
+npm run test:coverage # Vitest with V8 coverage report
 git config core.hooksPath .githooks  # One-time: enable repo-managed git hooks
 ```
 
@@ -32,6 +35,43 @@ git config core.hooksPath .githooks  # One-time: enable repo-managed git hooks
 - Pre-push build gate is defined at `.githooks/pre-push`.
 - After one-time hook-path setup (`git config core.hooksPath .githooks`), every `git push` runs `npm run build`.
 - Treat pre-push failures as release blockers for the current branch.
+
+## Testing
+
+**Framework:** Vitest (not Jest). Do NOT generate Jest configurations, `jest.config.*`, or `@jest/*` imports.
+
+**E2E:** Chrome MCP browser automation (Phase 2). Do NOT generate Playwright, Cypress, or `@playwright/*` configurations.
+
+**Test structure:**
+- Config: `vitest.config.mts` (use `.mts` to avoid tsconfig conflict with `next.config.ts`)
+- Setup: `src/__tests__/setup.ts` — global Prisma mock, `server-only` stub, rate limiter reset, headshots mock
+- Prisma mock: `src/lib/__mocks__/db.ts` — `vitest-mock-extended` deep mock of `PrismaClient`
+- Factories: `src/__tests__/factories.ts` — type-safe test data builders
+- Helpers: `src/__tests__/helpers/assert-api.ts` — response assertion utilities
+
+**Key mock patterns (Next.js 15 + Prisma):**
+- `vi.mock('server-only', () => ({}))` — prevents throws outside Next.js runtime
+- `vi.mock('@/lib/db', () => ({ prisma: prismaMock }))` — global Prisma mock
+- `globalThis.__rateLimitBuckets = undefined` in `beforeEach` — resets in-memory IP rate limiter
+- `vi.unstubAllEnvs()` in `beforeEach` — cleans env stubs between tests
+- Route handlers accept `NextRequest` (not `Request`) — always use `new NextRequest(...)` from `next/server`
+- `cookies()` and `headers()` are async in Next.js 15 — mocks must return Promises
+- `next-test-api-route-handler` must be first import when used (AsyncLocalStorage init order)
+
+**What's tested (Phase 1 — 84 tests):**
+- Email guard (8 env-driven code paths)
+- Session token signing/verification (cross-scope misuse, tamper detection, expiry boundary)
+- IP rate limiter (window boundary, key isolation)
+- `pickCoachBatch` structural invariants (capacity exclusion, shownCoachIds, pool exhaustion)
+- Auth routes: verify-email, magic-link/request, magic-link/consume
+- Participant routes: coaches GET (pin-first), remix (one-way door), select (advisory lock)
+
+**What's NOT tested yet:**
+- DB concurrency (advisory lock races) — Phase 1.5 with real Postgres
+- Browser smoke tests — Phase 2 with Chrome MCP
+- Admin/coach portal routes — future phases
+
+**CI:** `.github/workflows/test.yml` — runs `npm test` on every PR and push to main.
 
 ## Languages & Conventions
 
