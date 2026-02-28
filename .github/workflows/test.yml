@@ -1,0 +1,29 @@
+name: Test
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Generate Prisma client
+        run: npx prisma generate
+      - name: Run tests
+        run: npm test
+        env:
+          AUTH_SECRET: test-secret-for-ci-only-not-production
+          NODE_ENV: test
+          EMAIL_OUTBOUND_ENABLED: "false"
+          EMAIL_MODE: sandbox
+          NEXT_PUBLIC_SUPABASE_URL: ""
+          MAGIC_LINK_TTL_MINUTES: "30"

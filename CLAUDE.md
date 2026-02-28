@@ -24,6 +24,9 @@ Check `docs/solutions/` if debugging a known issue pattern.
 npm run dev          # Start dev server (http://localhost:3000)
 npm run build        # Production build (standalone output for Docker)
 npm run lint         # ESLint
+npm test             # Run all Vitest tests
+npm run test:watch   # Vitest in watch mode
+npm run test:coverage # Vitest with V8 coverage report
 git config core.hooksPath .githooks  # One-time: enable repo-managed git hooks
 ```
 
@@ -32,6 +35,48 @@ git config core.hooksPath .githooks  # One-time: enable repo-managed git hooks
 - Pre-push build gate is defined at `.githooks/pre-push`.
 - After one-time hook-path setup (`git config core.hooksPath .githooks`), every `git push` runs `npm run build`.
 - Treat pre-push failures as release blockers for the current branch.
+
+## Testing
+
+**Framework:** Vitest (not Jest). Do NOT generate Jest configurations, `jest.config.*`, or `@jest/*` imports.
+
+**E2E:** Chrome MCP browser automation (Phase 2). Do NOT generate Playwright, Cypress, or `@playwright/*` configurations.
+
+**Test structure:**
+- Config: `vitest.config.mts` (use `.mts` to avoid tsconfig conflict with `next.config.ts`)
+- Setup: `src/__tests__/setup.ts` — global Prisma mock, `server-only` stub, rate limiter reset, headshots mock
+- Prisma mock: `src/lib/__mocks__/db.ts` — `vitest-mock-extended` deep mock of `PrismaClient`
+- Factories: `src/__tests__/factories.ts` — type-safe test data builders
+- Helpers: `src/__tests__/helpers/assert-api.ts` — response assertion utilities
+
+**Key mock patterns (Next.js 15 + Prisma):**
+- `vi.mock('server-only', () => ({}))` — prevents throws outside Next.js runtime
+- `vi.mock('@/lib/db', () => ({ prisma: prismaMock }))` — global Prisma mock
+- `globalThis.__rateLimitBuckets = undefined` in `beforeEach` — resets in-memory IP rate limiter
+- `vi.unstubAllEnvs()` in `beforeEach` — cleans env stubs between tests
+- Route handlers accept `NextRequest` (not `Request`) — always use `new NextRequest(...)` from `next/server`
+- `cookies()` and `headers()` are async in Next.js 15 — mocks must return Promises
+- `next-test-api-route-handler` must be first import when used (AsyncLocalStorage init order)
+
+**What's tested (Phase 1 — 84 tests):**
+- Email guard (8 env-driven code paths)
+- Session token signing/verification (cross-scope misuse, tamper detection, expiry boundary)
+- IP rate limiter (window boundary, key isolation)
+- `pickCoachBatch` structural invariants (capacity exclusion, shownCoachIds, pool exhaustion)
+- Auth routes: verify-email, magic-link/request, magic-link/consume
+- Participant routes: coaches GET (pin-first), remix (one-way door), select (advisory lock)
+
+**What's NOT tested yet:**
+- DB concurrency (advisory lock races) — Phase 1.5 with real Postgres (requires Docker)
+- Admin/coach portal routes — future phases
+
+**Browser smoke tests (Phase 2):**
+- Checklist: `docs/checklists/pre-deploy-smoke-test.md` — 9 scenarios covering participant, coach, and admin flows
+- Tool: Chrome MCP (`mcp__claude-in-chrome__*`) — Claude-driven, not CI-automated
+- When to run: before every staging-to-production promotion
+- How to trigger: ask Claude _"Run the pre-deploy smoke test checklist against [URL]"_
+
+**CI:** `.github/workflows/test.yml` — runs `npm test` on every PR and push to main.
 
 ## Languages & Conventions
 
@@ -140,7 +185,7 @@ The original PRD specified full Calendly API integration (webhooks, embeds, sess
 **Participant portal is a one-shot flow.** Participants do NOT have a dashboard or return to the platform after selecting a coach.
 
 ```
-Generic link → Enter email → OTP → Coach selector (3 cards) → Select coach → Confirmation page (Calendly link) → DONE
+Generic link → Enter email → Verify email (server cookie) → Coach selector (3 cards) → Select coach → Confirmation page (booking link) → DONE
 ```
 
 - No participant-facing filters. 3 capacity-weighted randomized coaches shown.
@@ -150,26 +195,21 @@ Generic link → Enter email → OTP → Coach selector (3 cards) → Select coa
 - Nudge emails (Day 5, Day 10) re-engage participants who haven't selected. Day 15 = auto-assign coach.
 - **Do NOT build participant-facing dashboards, session views, or engagement tracking.** All engagement tracking is coach-only via `/coach/engagement`.
 
-### Participant Session State (MVP Stub Mode)
+### Participant Session State
 
-Current MVP frontend uses `sessionStorage` for temporary participant flow state:
+Auth is server-backed: `POST /api/participant/auth/verify-email` sets a signed `fc_participant_session` cookie. The frontend also uses `sessionStorage` for UI navigation state between participant pages:
 
-- `participant-email`: set after OTP request succeeds on `/participant`; read by `/participant/verify-otp`.
-- `participant-verified`: set to `"true"` after OTP verify succeeds; required to access `/participant/select-coach`.
+- `participant-email`: set after verify-email succeeds on `/participant`; used by `/participant/select-coach` for display.
+- `participant-verified`: set to `"true"` after verify-email succeeds; client guard for `/participant/select-coach` access.
 - `selected-coach`: JSON payload set after successful coach selection; drives `/participant/confirmation`.
 
 Lifecycle rules:
 
-1. `/participant` successful submit -> set `participant-email`.
-2. `/participant/verify-otp` successful verify -> set `participant-verified`.
-3. `/participant/select-coach` successful select -> set `selected-coach`; redirect to `/participant/confirmation`.
-4. Direct/deep-link access to later steps without required key(s) must redirect to valid prior step.
+1. `/participant` successful submit → verify-email API → set `participant-email` + `participant-verified` in sessionStorage.
+2. `/participant/select-coach` successful select → set `selected-coach`; redirect to `/participant/confirmation`.
+3. Direct/deep-link access to later steps without required key(s) must redirect to valid prior step.
 
-Production migration path:
-
-- Replace `participant-verified` and `selected-coach` client state with server-backed session (iron-session cookie) and DB-backed selection state.
-- Keep UI behavior identical while changing only the state source of truth.
-- Do not persist participant auth state in `localStorage`.
+Note: The server-backed `fc_participant_session` cookie is the authoritative auth state. Client `sessionStorage` is a UI navigation guard only — it does not replace server session validation on API routes.
 
 ## API Integration Pattern (Stub-First)
 
