@@ -31,6 +31,7 @@ vi.mock("@/lib/server/participant-coach-service", async (importOriginal) => {
         atCapacity: false,
         remainingCapacity: 10,
         yearsExperience: 10,
+        wistiaMediaId: "test-media-id",
         quotes: [],
       }))
     ),
@@ -136,6 +137,7 @@ describe("GET /api/participant/coaches", () => {
 
     expect(response.status).toBe(200);
     expect(body.coaches).toHaveLength(3);
+    expect(body.coaches[0].wistiaMediaId).toBe("test-media-id");
     expect(body.allAtCapacity).toBe(false);
 
     // writeParticipantSession was called with currentBatchIds set

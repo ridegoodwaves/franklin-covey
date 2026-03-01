@@ -185,6 +185,7 @@ model CoachProfile {
   location                String?
   shortBio                String?
   photoPath               String?
+  wistiaMediaId           String?
   bookingLinkPrimary      String?
   bookingLinkSecondary    String?
   active                  Boolean              @default(true)

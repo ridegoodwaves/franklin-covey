@@ -93,7 +93,7 @@ export function buildCoachProfileBundle(overrides: Record<string, unknown> = {})
     specialties: ["Leadership"],
     credentials: ["PCC"],
     bookingLinkPrimary: "https://calendly.com/test",
-    photoPath: null,
+    photoPath: undefined,
     atCapacity: false,
     remainingCapacity: 15,
     quotes: [],

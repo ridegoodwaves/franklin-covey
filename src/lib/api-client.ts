@@ -18,6 +18,8 @@ export interface ParticipantCoachCard {
   location: string;
   /** Video intro link — text-only per spec (no thumbnail) */
   videoUrl?: string;
+  /** Wistia media ID used for inline coach intro video embeds. */
+  wistiaMediaId?: string;
   /** Coach booking URL (Calendly, Acuity, etc.). May be absent in MVP. */
   meetingBookingUrl?: string;
   atCapacity: boolean;

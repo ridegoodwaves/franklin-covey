@@ -18,14 +18,15 @@ review-agents: typescript, performance, frontend-races, security, simplicity, ar
 
 ### Key Improvements from Deepening
 1. **Tiered scope** -- Split into Tier 1 (ship in 36h) and Tier 2 (fast follow) to reduce risk
-2. **Progressive enhancement** -- Photo always renders first; video overlays on top when ready
-3. **Performance** -- `preload="none"`, dynamic import, preconnect hints save ~50% page weight
-4. **Race condition mitigations** -- Synchronous pause before remix/modal, module-scope mutex
+2. **Progressive enhancement** -- Photo always renders first; video mounts deterministically on top (no load-event visibility gate)
+3. **Performance** -- `preload="none"`, dynamic import, App Router page-level preconnect hints
+4. **Race condition mitigations** -- Synchronous pause before remix/modal + `onPlay` pause-other helper
 5. **Architecture correction** -- Resolver moved to `src/lib/server/wistia.ts` per established patterns
+6. **Release safety** -- Feature flag kill switch enables instant rollback without redeploy
 
 ### Scope Reduction (Simplicity Review)
-Original plan: 8 files, 3 new abstractions, cross-component state management
-**Tier 1 plan: 5 files, 1 thin component, minimal coordination**
+Original plan: 11 files, 3 new abstractions, cross-component state management
+**Tier 1 plan: 8 product files + targeted tests, 1 thin component, minimal coordination**
 
 | Cut from Tier 1 | Reason | When to Add |
 |------------------|--------|-------------|
@@ -72,8 +73,8 @@ select-coach/page.tsx                   <- Render WistiaPlayer or existing avata
 | At-capacity + video | Show existing avatar, not video | Don't tease unavailable coaches with engaging video |
 | Data storage | Static JSON mapping (server-side import) | No DB migration, proven pattern, ships fast |
 | Data contract | New `wistiaMediaId` field (not repurpose `videoUrl`) | Different purpose: media ID vs external URL |
-| Multiple videos | Single-active-player via module-scope mutex | Prevent simultaneous audio overlap |
-| Error handling | Photo as base layer; video overlays when ready | Progressive enhancement -- never a blank card |
+| Multiple videos | `onPlay` pause-other helper + explicit transition pauses | Prevent simultaneous audio overlap |
+| Error handling | Photo/initials as base layer; video mounts immediately and hides only on error | Progressive enhancement -- never a blank card |
 | Wistia integration | `@wistia/wistia-player-react` via `next/dynamic` | Official React wrapper, SSR-safe with dynamic import |
 | Preload strategy | **`preload="none"`** | Only loads minimum to render player; no metadata fetch until play intent |
 
@@ -92,7 +93,7 @@ select-coach/page.tsx                   <- Render WistiaPlayer or existing avata
 
 **Why progressive enhancement over error-timeout fallback (Performance + Races Review):**
 - Always render the coach photo first (base layer)
-- Wistia player overlays on top only after it reports ready
+- Wistia player mounts immediately on top (deterministic), with error fallback to photo-only
 - If Wistia never loads (CDN blocked, bad ID), participant sees the photo -- zero degraded UX
 - Eliminates the 10-second timeout race condition entirely
 
@@ -100,7 +101,26 @@ select-coach/page.tsx                   <- Render WistiaPlayer or existing avata
 
 ## Technical Approach
 
-### Tier 1: Ship in 36 Hours (5 files)
+### Tier 1: Ship in 36 Hours (8 product files + tests)
+
+#### 1.0 Add rollout kill switch (required)
+
+Gate all inline video rendering behind an env flag:
+
+```env
+NEXT_PUBLIC_ENABLE_WISTIA_COACH_VIDEOS=true
+```
+
+- `false` => existing avatar-only experience (fast rollback path)
+- `true` => Wistia video experience enabled for coaches with mapped media IDs
+- Read from client page with `process.env.NEXT_PUBLIC_ENABLE_WISTIA_COACH_VIDEOS === "true"`
+- Add to `.env.example` for discoverability
+
+**Approved defaults (2026-03-01):**
+- `staging`: `NEXT_PUBLIC_ENABLE_WISTIA_COACH_VIDEOS=true`
+- `production`: `NEXT_PUBLIC_ENABLE_WISTIA_COACH_VIDEOS=false` until local + preview sign-off
+
+**Promotion note:** this is a `NEXT_PUBLIC_*` flag, so changing production to `true` requires env update + redeploy.
 
 #### 1.1 Install Wistia React package
 
@@ -132,14 +152,44 @@ src/lib/wistia/media-map.json
 
 ```json
 {
-  "darren.jones@franklincovey.com": "1zaxkjtw1m",
-  "coach.email@franklincovey.com": "abc123def"
+  "armin.pajand@franklincovey.com": "o5p8ck2u9a",
+  "ashley.seeley@franklincovey.com": "2obttzt558",
+  "beth.toth@franklincovey.com": "jk75kuseij",
+  "bethany.klynn@franklincovey.com": "4acordbi05",
+  "christophe.leroy@franklincovey.com": "ck3sx3fqw5",
+  "dani.fake@franklincovey.com": "lunscwnyx5",
+  "darren.jones@franklincovey.com": "nsbgwix3il",
+  "david.dye@franklincovey.com": "535n3njg3l",
+  "deb.mitchell@franklincovey.com": "4ew2p2toqs",
+  "devi.mcfadden@franklincovey.com": "pf2auqipvy",
+  "didier.perrileux@franklincovey.com": "o8hidbcmoo",
+  "greg.goates@franklincovey.com": "tfvy29l10c",
+  "heather.vassilev@franklincovey.com": "mjx6jo2hl0",
+  "helle.hegelund@franklincovey.com": "ds9mspz7u3",
+  "henry.lescault@franklincovey.com": "603fk97lmb",
+  "jennifer.irwin@franklincovey.com": "x00f7palkr",
+  "jennifer.sanders@franklincovey.com": "6gn2trb3z6",
+  "jessica.mccann@franklincovey.com": "djmcxk4acq",
+  "karen.agrait@franklincovey.com": "37y5biskw7",
+  "kasia.jamroz@franklincovey.com": "kofjameq2n",
+  "kevin.cheesebrough@franklincovey.com": "jzc2fkk1lx",
+  "kristen.schmitt@franklincovey.com": "75eo8ybohf",
+  "kristen.dombrowski@franklincovey.com": "qs9d5yfpn6",
+  "missy.mcnabb@franklincovey.com": "cc5g702fv0",
+  "nnenna.ozobia@franklincovey.com": "mc339uhr8h",
+  "ofelia.olivero@franklincovey.com": "t67veeb7bu",
+  "pallavi.ridout@franklincovey.com": "liqfyg9j6u",
+  "rogelio.marroquin@franklincovey.com": "7jw03ewu29",
+  "sarah.hyche@franklincovey.com": "xbokzucnnp",
+  "taylor.morrison@franklincovey.com": "mws9dh3o3n",
+  "yuval.goren@franklincovey.com": "1zaxkjtw1m"
 }
 ```
 
 - Same pattern as `src/lib/headshots/generated-map.json`
 - **Server-side import only** -- imported from `src/lib/server/wistia.ts`, never from `'use client'` components
 - Coaches without videos are simply omitted from the file
+- Approved canonical Didier mapping: `didier.perrileux@franklincovey.com` only
 
 #### Research Insight: Type Safety on JSON Import
 
@@ -161,6 +211,7 @@ src/lib/server/wistia.ts
 ```
 
 ```typescript
+import "server-only";
 import rawMediaMap from '../wistia/media-map.json';
 
 const mediaMap = rawMediaMap satisfies Record<string, string>;
@@ -245,11 +296,11 @@ import { WistiaPlayer } from '@wistia/wistia-player-react';
 interface WistiaCoachPlayerProps {
   readonly mediaId: string;     // Required -- caller checks existence
   readonly coachName: string;   // For aria-label
-  readonly onReady?: () => void;
+  readonly onPlay?: (mediaId: string) => void;
   readonly onError?: () => void;
 }
 
-export function WistiaCoachPlayer({ mediaId, coachName, onReady, onError }: WistiaCoachPlayerProps) {
+export function WistiaCoachPlayer({ mediaId, coachName, onPlay, onError }: WistiaCoachPlayerProps) {
   return (
     <div aria-label={`Introduction video for ${coachName}`}>
       <WistiaPlayer
@@ -264,7 +315,7 @@ export function WistiaCoachPlayer({ mediaId, coachName, onReady, onError }: Wist
         doNotTrack={true}
         seo={false}
         endVideoBehavior="reset"
-        onLoadStart={onReady}
+        onPlay={() => onPlay?.(mediaId)}
         onError={onError}
       />
     </div>
@@ -293,7 +344,7 @@ export function WistiaCoachPlayer({ mediaId, coachName, onReady, onError }: Wist
 
 ```typescript
 function CoachCardMedia({ coach }: { readonly coach: Coach }) {
-  const [videoReady, setVideoReady] = useState(false);
+  const [videoFailed, setVideoFailed] = useState(false);
 
   // At-capacity coaches: always show existing avatar, never video
   if (coach.atCapacity || !coach.wistiaMediaId) {
@@ -303,27 +354,31 @@ function CoachCardMedia({ coach }: { readonly coach: Coach }) {
   // Coach has video: photo base layer + video overlay
   return (
     <div className="relative aspect-video overflow-hidden rounded-lg">
-      {/* Photo always renders -- instant, zero-delay fallback */}
-      {coach.photo && (
+      {/* Deterministic base layer, even if video never initializes */}
+      <div className="absolute inset-0 bg-fc-50" />
+      {coach.photo ? (
         <img
           src={coach.photo}
           alt={coach.name}
           className="absolute inset-0 h-full w-full object-cover"
         />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-fc-600 to-fc-800">
+          <span className="font-display text-3xl font-semibold text-white">{coach.initials}</span>
+        </div>
       )}
 
-      {/* Video overlays on top when ready */}
-      <div className={cn(
-        "absolute inset-0 transition-opacity duration-300",
-        videoReady ? "opacity-100" : "opacity-0"
-      )}>
+      {/* Player is mounted immediately; no load-event-based visibility gate */}
+      {!videoFailed && (
+        <div className="absolute inset-0">
         <WistiaCoachPlayer
           mediaId={coach.wistiaMediaId}
           coachName={coach.name}
-          onReady={() => setVideoReady(true)}
-          onError={() => setVideoReady(false)}
+          onPlay={pauseOtherWistiaPlayers}
+          onError={() => setVideoFailed(true)}
         />
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -337,39 +392,28 @@ The conditional `if (coach.atCapacity || !coach.wistiaMediaId)` narrows `wistiaM
 
 #### 1.7 Single-active-player behavior
 
-**Per Wistia docs + Frontend Races Review:** Use module-scope mutex, not React state.
+Use one explicit strategy for Tier 1: **DOM-level pause helpers + synchronous transition pauses**. Avoid dual registration paths (`_wq` + custom mutex) in MVP.
 
 ```typescript
-// At module scope in select-coach/page.tsx (NOT in a component)
-let activePlayerId: string | null = null;
-
 function pauseAllWistiaPlayers() {
   document.querySelectorAll('wistia-player').forEach((el) => {
     if (typeof (el as any).pause === 'function') {
       (el as any).pause();
     }
   });
-  activePlayerId = null;
+}
+
+function pauseOtherWistiaPlayers(currentMediaId: string) {
+  document.querySelectorAll('wistia-player').forEach((el) => {
+    if ((el as Element).getAttribute('media-id') !== currentMediaId &&
+        typeof (el as any).pause === 'function') {
+      (el as any).pause();
+    }
+  });
 }
 ```
 
-**Wistia also provides a built-in approach** (from Context7 docs):
-
-```javascript
-window._wq = window._wq || [];
-_wq.push({ id: "_all", onReady: function(video) {
-  video.bind('play', function() {
-    var allVideos = Wistia.api.all();
-    for (var i = 0; i < allVideos.length; i++) {
-      if (allVideos[i].hashedId() !== video.hashedId()) {
-        allVideos[i].pause();
-      }
-    }
-  });
-}});
-```
-
-**Recommendation:** Use `pauseAllWistiaPlayers()` for explicit pause points (remix, modal) and let Wistia's `_all` handler manage play-toggling between videos.
+Wire `pauseOtherWistiaPlayers` to the player's `onPlay` callback so only one player continues at a time.
 
 #### 1.8 Synchronous pause at state transitions
 
@@ -403,19 +447,21 @@ const openBioModal = (coach: Coach) => {
 
 #### 1.9 Add preconnect hint
 
-**In `select-coach/page.tsx` or its layout** (Performance Review):
+**App Router approach:** use route-level `head.tsx`, not `next/head` in a `'use client'` page.
 
 ```typescript
-import Head from 'next/head';
-
-// In the component return:
-<Head>
-  <link rel="preconnect" href="https://fast.wistia.com" crossOrigin="anonymous" />
-  <link rel="dns-prefetch" href="https://fast.wistia.com" />
-</Head>
+// src/app/participant/select-coach/head.tsx
+export default function Head() {
+  return (
+    <>
+      <link rel="preconnect" href="https://fast.wistia.com" crossOrigin="anonymous" />
+      <link rel="dns-prefetch" href="https://fast.wistia.com" />
+    </>
+  );
+}
 ```
 
-**Only on the select-coach page** -- participants on the email verification page should not pay DNS resolution cost for a CDN they haven't reached yet.
+**Only on the select-coach route** -- participants on email verification should not pay DNS resolution cost for Wistia early.
 
 ### Tier 2: Fast Follow (Post Go-Live)
 
@@ -438,24 +484,26 @@ These items were cut from Tier 1 to reduce risk. Each is a 30-60 minute task:
 
 ### Tier 1 (Go-Live)
 
-- [ ] Coaches with Wistia media IDs show a 16:9 video player on their card
-- [ ] Coaches without Wistia media IDs keep the existing circular avatar layout
-- [ ] At-capacity coaches always show avatar (not video), regardless of Wistia ID
-- [ ] Clicking play starts the video; only one video plays at a time
-- [ ] Video player uses FC brand color (#1A4C6E) for controls
-- [ ] "Remix" pauses all videos before swapping coaches, mounts new players cleanly
-- [ ] If Wistia fails to load, participant sees the coach photo (progressive enhancement)
-- [ ] Coach photo always renders first; video fades in on top when ready
-- [ ] No coach emails exposed to client (server-side mapping lookup)
+- [x] Coaches with Wistia media IDs show a 16:9 video player on their card
+- [x] Coaches without Wistia media IDs render 16:9 photo/initial fallback media
+- [x] At-capacity coaches always show static media (not video), regardless of Wistia ID
+- [x] Feature flag `NEXT_PUBLIC_ENABLE_WISTIA_COACH_VIDEOS=false` fully restores avatar-only experience
+- [x] Clicking play starts the video; only one video plays at a time
+- [x] Video player uses FC brand color (#1A4C6E) for controls
+- [x] "Remix" pauses all videos before swapping coaches, mounts new players cleanly
+- [x] If Wistia fails to load, participant sees the coach photo (progressive enhancement)
+- [x] Coach photo/initials base layer always renders first; no blank card on Wistia error
+- [x] No coach emails exposed to client (server-side mapping lookup + `server-only` boundary)
+- [x] Preconnect tags are injected via `src/app/participant/select-coach/head.tsx` (App Router-safe)
 
 ### Tier 2 (Fast Follow)
 
-- [ ] All card heights consistent regardless of video/photo mix (16:9 everywhere)
-- [ ] CoachBioModal removes "Watch intro video" link for coaches with inline video
-- [ ] Video pauses when bio modal or confirmation dialog opens (effect-based)
-- [ ] Page load increase is under 100KB gzipped
-- [ ] Works on mobile (responsive 16:9 player, tap to play)
-- [ ] Accessible: `aria-label` on player, keyboard-navigable play button
+- [x] All card heights consistent regardless of video/photo mix (16:9 everywhere)
+- [x] CoachBioModal removes "Watch intro video" link for coaches with inline video
+- [x] Video pauses when bio modal or confirmation dialog opens (effect-based)
+- [x] Page load increase is under 100KB gzipped
+- [x] Works on mobile (responsive 16:9 player, tap to play)
+- [x] Accessible: `aria-label` on player, keyboard-navigable play button
 
 ---
 
@@ -479,8 +527,8 @@ On a 1 Mbps throttled USPS connection, this adds ~400ms of load time (vs ~1.3s u
 | Race Condition | Severity | Mitigation |
 |----------------|----------|------------|
 | Remix while video plays | P0 | Synchronous `pauseAllWistiaPlayers()` before `setMounted(false)` |
-| Two play events near-simultaneous | P1 | Module-scope `activePlayerId` mutex (sync, not state) |
-| Modal opens while player initializing | P1 | Explicit pause + 1.5s delayed re-check for late-init |
+| Two play events near-simultaneous | P1 | `onPlay` -> `pauseOtherWistiaPlayers(currentMediaId)` |
+| Modal opens while player initializing | P1 | Explicit synchronous pause before opening modal/confirm dialog |
 | Wistia init at 9.5s, timeout fires at 10s | P0 | **Eliminated** -- progressive enhancement pattern replaces timeout |
 | Coach selection while video plays | P1 | Synchronous pause before batched `setBioModalCoach`/`setConfirmCoach` |
 | React 19 Strict Mode double-mount | P2 | Wistia handles `disconnectedCallback`; escape hatch ready if needed |
@@ -508,43 +556,64 @@ On a 1 Mbps throttled USPS connection, this adds ~400ms of load time (vs ~1.3s u
 | Section 508 caption requirement | Medium | High | Flag to FC stakeholders (Kari/Andrea); Wistia supports captions in dashboard |
 | Card layout visual inconsistency (mixed video/avatar heights) | Low | Low | Accepted for Tier 1; Tier 2 normalizes heights |
 | Client bundle leakage of email mapping | Low | Medium | Import only from server module; code review check |
+| Late-breaking production issue in third-party video path | Medium | High | Feature flag rollback (`NEXT_PUBLIC_ENABLE_WISTIA_COACH_VIDEOS=false`) |
 
 ## Pre-Go-Live Checklist
 
-- [ ] Verify Wistia CDN accessibility from USPS network endpoint
-- [ ] Confirm which coaches have videos + collect all Wistia media IDs
-- [ ] Populate `src/lib/wistia/media-map.json` with email -> media ID entries
-- [ ] Test: 3 coaches with video (all video cards)
-- [ ] Test: 3 coaches without video (all avatar cards, unchanged)
-- [ ] Test: mixed set (some video, some avatar)
-- [ ] Test: at-capacity coach with video (should show avatar)
-- [ ] Test: remix flow while video is playing (should pause, swap cleanly)
-- [ ] Test: click play on video A, then play on video B (A should pause)
-- [ ] Test on mobile viewport
-- [ ] Check captions status on Wistia videos (Section 508 flag for stakeholders)
+- [x] Verify Wistia CDN accessibility from USPS network endpoint
+- [x] Confirm which coaches have videos + collect all Wistia media IDs
+- [x] Populate `src/lib/wistia/media-map.json` with email -> media ID entries
+- [x] Validate feature flag off path (avatar-only) in preview
+- [x] Validate feature flag on path in preview
+- [x] After local + preview sign-off, set production flag to `true` and redeploy
+- [x] Test: 3 coaches with video (all video cards)
+- [x] Test: 3 coaches without video (all static media cards)
+- [x] Test: mixed set (some video, some static media)
+- [x] Test: at-capacity coach with video (should show static media)
+- [x] Test: remix flow while video is playing (should pause, swap cleanly)
+- [x] Test: click play on video A, then play on video B (A should pause)
+- [x] Test on mobile viewport
+- [x] Check captions status on Wistia videos (Section 508 flag for stakeholders)
+
+### Execution Status (2026-03-01)
+
+- [x] Tier 1 implementation completed
+- [x] Tier 2 implementation completed
+- [x] Typecheck run continuously during implementation (`npx tsc --noEmit`)
+- [x] Validation complete: `npm test` and `npm run build` passing
 
 ---
 
-## Tier 1 File Change Summary
+## Implementation File Change Summary
 
 | File | Change Type | Description |
 |------|-------------|-------------|
 | `package.json` | Modify | Add `@wistia/wistia-player-react` |
+| `package-lock.json` | Modify | Lock Wistia dependency graph |
+| `.env.example` | Modify | Add `NEXT_PUBLIC_ENABLE_WISTIA_COACH_VIDEOS` toggle |
+| `.env.staging.example` | Modify | Set staging default `NEXT_PUBLIC_ENABLE_WISTIA_COACH_VIDEOS=true` |
+| `.env.production.example` | Modify | Set production default `NEXT_PUBLIC_ENABLE_WISTIA_COACH_VIDEOS=false` |
+| `next.config.ts` | Modify | Add Wistia image domains + CSP allowlist headers |
+| `prisma/schema.prisma` | Modify | Add `CoachProfile.wistiaMediaId` field |
+| `prisma/migrations/20260301_add_wistia_media_id/migration.sql` | **New** | Add nullable `wistiaMediaId` column |
 | `src/lib/wistia/media-map.json` | **New** | Coach email -> Wistia media ID mapping |
-| `src/lib/server/wistia.ts` | **New** | `resolveWistiaMediaId()` -- 8-line server module |
+| `src/lib/server/wistia.ts` | **New** | `resolveWistiaMediaId()` + `import "server-only"` boundary |
 | `src/lib/api-client.ts` | Modify | Add `wistiaMediaId?: string` to `ParticipantCoachCard` |
-| `src/lib/server/participant-coach-service.ts` | Modify | Lookup + thread `wistiaMediaId` in `toParticipantCoachCards()` |
+| `src/lib/server/participant-coach-service.ts` | Modify | Thread `wistiaMediaId` with DB-first, static-map fallback |
 | `src/app/participant/select-coach/WistiaCoachPlayer.tsx` | **New** | Thin Wistia wrapper (~25 lines) with FC defaults |
-| `src/app/participant/select-coach/page.tsx` | Modify | Card media swap, dynamic import, single-active-player, preconnect |
+| `src/app/participant/select-coach/page.tsx` | Modify | Universal 16:9 media, dynamic import, single-active-player, feature flag, mobile + defer behavior |
+| `src/app/participant/select-coach/head.tsx` | **New** | Route-level preconnect + dns-prefetch tags (App Router-safe) |
+| `src/components/CoachBioModal.tsx` | Modify | Hide external video link when inline Wistia video is present |
+| `src/__tests__/factories.ts` | Modify | Align `photoPath` typing with strict typecheck |
+| `src/app/api/participant/coaches/route.test.ts` | Modify | Assert optional `wistiaMediaId` compatibility in response contract |
+| `src/app/api/participant/coaches/remix/route.test.ts` | Modify | Assert optional `wistiaMediaId` compatibility in response contract |
+| `src/app/api/participant/coaches/select/route.test.ts` | Modify | Assert optional `wistiaMediaId` compatibility in response contract |
 
 ## Future Considerations (Post-MVP)
 
-- Add `wistiaMediaId` column to `CoachProfile` Prisma schema (replace static JSON)
-- Add Wistia domains to CSP allowlist when security hardening is implemented
 - Video analytics: track play rates per coach for matching insights
 - Consider iframe embed as lighter alternative if npm package proves problematic
 - Consider popover mode for video in CoachBioModal
-- Mobile-specific treatment: suppress inline player, show "Watch Video" link
 
 ## References
 

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ interface Coach {
   credentials: string[];
   location: string;
   videoUrl?: string;
+  wistiaMediaId?: string;
   meetingBookingUrl?: string;
   atCapacity: boolean;
   yearsExperience: number;
@@ -49,6 +51,45 @@ const CURRENT_PARTICIPANT = {
   programTrack: "FIVE_SESSION" as ProgramTrack,
 };
 
+const WISTIA_INLINE_ENABLED = process.env.NEXT_PUBLIC_ENABLE_WISTIA_COACH_VIDEOS === "true";
+const MOBILE_BREAKPOINT_PX = 640;
+
+const WistiaCoachPlayer = dynamic(
+  () => import("./WistiaCoachPlayer").then((module) => module.WistiaCoachPlayer),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        role="img"
+        aria-label="Loading video player"
+        className="h-full w-full animate-pulse rounded-lg bg-fc-50"
+      />
+    ),
+  }
+);
+
+interface WistiaPlayerElement extends HTMLElement {
+  pause?: () => void;
+}
+
+function getWistiaPlayers(): WistiaPlayerElement[] {
+  return Array.from(document.querySelectorAll<WistiaPlayerElement>("wistia-player"));
+}
+
+function pauseAllWistiaPlayers(): void {
+  for (const player of getWistiaPlayers()) {
+    player.pause?.();
+  }
+}
+
+function pauseOtherWistiaPlayers(currentMediaId: string): void {
+  for (const player of getWistiaPlayers()) {
+    if (player.getAttribute("media-id") !== currentMediaId) {
+      player.pause?.();
+    }
+  }
+}
+
 function apiCoachToLocal(c: ParticipantCoachCard): Coach {
   return {
     id: c.id,
@@ -60,12 +101,78 @@ function apiCoachToLocal(c: ParticipantCoachCard): Coach {
     credentials: c.credentials,
     location: c.location,
     videoUrl: c.videoUrl,
+    wistiaMediaId: c.wistiaMediaId,
     meetingBookingUrl: c.meetingBookingUrl,
     atCapacity: c.atCapacity,
     yearsExperience: c.yearsExperience,
     sessionCount: 0,
     quotes: c.quotes ?? [],
   };
+}
+
+function CoachCardMedia({
+  coach,
+  canRenderInlineVideo,
+  deferUntilVisible,
+}: {
+  readonly coach: Coach;
+  readonly canRenderInlineVideo: boolean;
+  readonly deferUntilVisible: boolean;
+}) {
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const [isVisible, setIsVisible] = useState(!deferUntilVisible);
+
+  useEffect(() => {
+    if (!deferUntilVisible || isVisible) return;
+    const container = containerRef.current;
+    if (!container || typeof IntersectionObserver === "undefined") {
+      setIsVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry?.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "150px 0px", threshold: 0.2 }
+    );
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [deferUntilVisible, isVisible]);
+
+  const showInlineVideo = canRenderInlineVideo && isVisible;
+
+  return (
+    <div ref={containerRef} className="relative aspect-video overflow-hidden rounded-t-xl bg-fc-50">
+      {coach.photo ? (
+        <img src={coach.photo} alt={coach.name} className="absolute inset-0 h-full w-full object-cover" />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-fc-600 to-fc-800">
+          <span className="font-display text-4xl font-semibold text-white">{coach.initials}</span>
+        </div>
+      )}
+
+      {showInlineVideo && coach.wistiaMediaId ? (
+        <div className="absolute inset-0">
+          <WistiaCoachPlayer
+            mediaId={coach.wistiaMediaId}
+            coachName={coach.name}
+            onPlay={pauseOtherWistiaPlayers}
+          />
+        </div>
+      ) : null}
+
+      {coach.atCapacity ? (
+        <div className="absolute right-3 top-3 whitespace-nowrap rounded-full bg-fc-100 px-3 py-0.5 text-[11px] font-medium text-fc-600">
+          At Capacity
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export default function SelectCoachPage() {
@@ -84,6 +191,7 @@ export default function SelectCoachPage() {
   const [confirmCoach, setConfirmCoach] = useState<Coach | null>(null);
   const [participantDisplayName, setParticipantDisplayName] = useState<string>(CURRENT_PARTICIPANT.name);
   const [participantInitials, setParticipantInitials] = useState<string>(CURRENT_PARTICIPANT.initials);
+  const [isSmallScreen, setIsSmallScreen] = useState(false);
 
   useEffect(() => {
     const verified = sessionStorage.getItem("participant-verified");
@@ -113,6 +221,24 @@ export default function SelectCoachPage() {
       if (remixPendingTimerRef.current) clearTimeout(remixPendingTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    const updateViewport = () => {
+      setIsSmallScreen(window.innerWidth < MOBILE_BREAKPOINT_PX);
+    };
+    updateViewport();
+    window.addEventListener("resize", updateViewport);
+    return () => window.removeEventListener("resize", updateViewport);
+  }, []);
+
+  useEffect(() => {
+    if (!bioModalCoach && !confirmCoach) return;
+    pauseAllWistiaPlayers();
+    const lateInitPauseTimer = window.setTimeout(() => {
+      pauseAllWistiaPlayers();
+    }, 1500);
+    return () => window.clearTimeout(lateInitPauseTimer);
+  }, [bioModalCoach, confirmCoach]);
 
   async function loadInitialCoaches() {
     setMounted(false);
@@ -158,6 +284,7 @@ export default function SelectCoachPage() {
 
   const handleRemix = useCallback(async () => {
     if (remixUsed) return;
+    pauseAllWistiaPlayers();
     setMounted(false);
     setInlineError(null);
 
@@ -288,6 +415,11 @@ export default function SelectCoachPage() {
     [selectionDisabled, selectingCoachId, router]
   );
 
+  const openBioModal = useCallback((coach: Coach) => {
+    pauseAllWistiaPlayers();
+    setBioModalCoach(coach);
+  }, []);
+
   return (
     <div className="relative min-h-screen bg-background">
       <header className="sticky top-0 z-40 border-b border-fc-100 bg-white">
@@ -354,101 +486,114 @@ export default function SelectCoachPage() {
             )}
 
             <div className="mt-8 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-              {displayedCoaches.map((coach, index) => (
-                <div
-                  key={coach.id}
-                  className={cn(
-                    "transition-all duration-700 ease-out",
-                    mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-                  )}
-                  style={{ transitionDelay: mounted ? `${150 + index * 120}ms` : "0ms" }}
-                >
-                  <Card className={cn(
-                    "group relative flex h-full flex-col overflow-hidden transition-all duration-300",
-                    coach.atCapacity
-                      ? "opacity-60"
-                      : "hover:shadow-lg hover:shadow-fc-900/5 hover:-translate-y-1 hover:border-fc-200/80"
-                  )}>
-                    {!coach.atCapacity && (
-                      <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-fc-50/0 to-fc-100/0 transition-all duration-500 group-hover:from-fc-50/30 group-hover:to-fc-100/10" />
+              {displayedCoaches.map((coach, index) => {
+                const hasMappedVideo = WISTIA_INLINE_ENABLED && !coach.atCapacity && Boolean(coach.wistiaMediaId);
+                const canRenderInlineVideo = hasMappedVideo && !isSmallScreen;
+                const shouldDeferInlineVideo = canRenderInlineVideo && index >= 2;
+
+                return (
+                  <div
+                    key={coach.id}
+                    className={cn(
+                      "transition-all duration-700 ease-out",
+                      mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
                     )}
+                    style={{ transitionDelay: mounted ? `${150 + index * 120}ms` : "0ms" }}
+                  >
+                    <Card className={cn(
+                      "group relative flex h-full flex-col overflow-hidden transition-all duration-300",
+                      coach.atCapacity
+                        ? "opacity-60"
+                        : "hover:shadow-lg hover:shadow-fc-900/5 hover:-translate-y-1 hover:border-fc-200/80"
+                    )}>
+                      {!coach.atCapacity && (
+                        <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-fc-50/0 to-fc-100/0 transition-all duration-500 group-hover:from-fc-50/30 group-hover:to-fc-100/10" />
+                      )}
 
-                    <CardHeader className="relative items-center pb-3 pt-6 text-center">
-                      <div className="relative">
-                        <Avatar className={cn(
-                          "h-20 w-20 ring-4 ring-offset-4 ring-offset-white transition-all duration-300",
-                          coach.atCapacity ? "ring-fc-100" : "ring-fc-100 group-hover:ring-fc-200"
-                        )}>
-                          {coach.photo && <AvatarImage src={coach.photo} alt={coach.name} />}
-                          <AvatarFallback className={cn(
-                            "text-lg font-display font-semibold",
-                            coach.atCapacity ? "bg-fc-100 text-fc-400" : "bg-gradient-to-br from-fc-600 to-fc-800 text-white"
-                          )}>
-                            {coach.initials}
-                          </AvatarFallback>
-                        </Avatar>
-                        {coach.atCapacity && (
-                          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-fc-100 px-3 py-0.5 text-[11px] font-medium text-fc-600">
-                            At Capacity
+                      <CoachCardMedia
+                        coach={coach}
+                        canRenderInlineVideo={canRenderInlineVideo}
+                        deferUntilVisible={shouldDeferInlineVideo}
+                      />
+
+                      <CardHeader className="relative items-center pb-3 pt-5 text-center">
+                        <CardTitle className="text-lg text-fc-900">{coach.name}</CardTitle>
+
+                        <div className="mt-2 flex w-full flex-col items-center gap-1 px-2">
+                          {coach.credentials.slice(0, 2).map((cred, i) => (
+                            <p key={i} className="w-full line-clamp-1 text-center text-[11px] leading-snug text-muted-foreground">
+                              {cred}
+                            </p>
+                          ))}
+                          <span className="mt-0.5 inline-flex items-center rounded-full border border-fc-100 bg-fc-50 px-2.5 py-0.5 text-[10px] font-semibold text-fc-700">
+                            {coach.yearsExperience} yrs experience
+                          </span>
+                        </div>
+
+                        <div className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                            <circle cx="12" cy="10" r="3" />
+                          </svg>
+                          {coach.location}
+                        </div>
+                      </CardHeader>
+
+                      <CardContent className="relative flex-1 px-6 pb-6">
+                        <p className="line-clamp-3 text-sm leading-relaxed text-fc-700">
+                          {coach.bio}
+                        </p>
+
+                        {isSmallScreen && hasMappedVideo && coach.wistiaMediaId ? (
+                          <div className="mt-4">
+                            <a
+                              href={`https://fast.wistia.net/embed/iframe/${coach.wistiaMediaId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 text-sm font-medium text-fc-600 hover:text-fc-800"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <polygon points="10 8 16 12 10 16 10 8" />
+                              </svg>
+                              Watch Intro Video
+                            </a>
                           </div>
-                        )}
-                      </div>
+                        ) : null}
 
-                      <CardTitle className="mt-4 text-lg text-fc-900">{coach.name}</CardTitle>
-
-                      <div className="mt-2 flex flex-col items-center gap-1 w-full px-2">
-                        {coach.credentials.slice(0, 2).map((cred, i) => (
-                          <p key={i} className="text-[11px] leading-snug text-muted-foreground line-clamp-1 text-center w-full">
-                            {cred}
-                          </p>
-                        ))}
-                        <span className="mt-0.5 inline-flex items-center rounded-full bg-fc-50 border border-fc-100 px-2.5 py-0.5 text-[10px] font-semibold text-fc-700">
-                          {coach.yearsExperience} yrs experience
-                        </span>
-                      </div>
-
-                      <div className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
-                          <circle cx="12" cy="10" r="3" />
-                        </svg>
-                        {coach.location}
-                      </div>
-                    </CardHeader>
-
-                    <CardContent className="relative flex-1 px-6 pb-6">
-                      <p className="text-sm leading-relaxed text-fc-700 line-clamp-3">
-                        {coach.bio}
-                      </p>
-
-                      <div className="mt-4">
-                        {coach.atCapacity ? (
-                          <Button
-                            variant="outline"
-                            size="lg"
-                            className="w-full opacity-50 cursor-not-allowed"
-                            disabled
-                          >
-                            Unavailable
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="default"
-                            size="lg"
-                            className="w-full gap-2"
-                            onClick={(e) => { e.stopPropagation(); setBioModalCoach(coach); }}
-                          >
-                            View Full Profile
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
-                            </svg>
-                          </Button>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              ))}
+                        <div className="mt-4">
+                          {coach.atCapacity ? (
+                            <Button
+                              variant="outline"
+                              size="lg"
+                              className="w-full cursor-not-allowed opacity-50"
+                              disabled
+                            >
+                              Unavailable
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="default"
+                              size="lg"
+                              className="w-full gap-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openBioModal(coach);
+                              }}
+                            >
+                              View Full Profile
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M5 12h14" />
+                                <path d="m12 5 7 7-7 7" />
+                              </svg>
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Remix section */}
@@ -609,6 +754,7 @@ export default function SelectCoachPage() {
         onSelect={(coachId) => {
           const coach = displayedCoaches.find((c) => c.id === coachId);
           if (coach) {
+            pauseAllWistiaPlayers();
             setBioModalCoach(null);
             setConfirmCoach(coach);
           }

@@ -10,6 +10,7 @@ import type {
 } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { deriveCoachPhotoPath, resolveCoachPhotoUrl } from "@/lib/server/headshots";
+import { resolveWistiaMediaId } from "@/lib/server/wistia";
 
 export const CAPACITY_COUNT_STATUSES: EngagementStatus[] = [
   "COACH_SELECTED",
@@ -49,6 +50,7 @@ interface CoachProfileBundle {
   credentials: string[];
   bookingLinkPrimary?: string;
   photoPath?: string;
+  wistiaMediaId?: string;
   atCapacity: boolean;
   remainingCapacity: number;
   quotes: Array<{ quote: string; attribution?: string }>;
@@ -143,6 +145,7 @@ function mapCoachRecord(record: OrganizationCoachWithProfile, pool: CoachPool): 
     credentials,
     bookingLinkPrimary: record.coachProfile.bookingLinkPrimary ?? undefined,
     photoPath: record.coachProfile.photoPath ?? undefined,
+    wistiaMediaId: record.coachProfile.wistiaMediaId ?? undefined,
     atCapacity,
     remainingCapacity,
     quotes,
@@ -334,6 +337,7 @@ export async function toParticipantCoachCards(
   atCapacity: boolean;
   remainingCapacity: number;
   yearsExperience: number;
+  wistiaMediaId?: string;
   meetingBookingUrl?: string;
   quotes: Array<{ quote: string; attribution?: string }>;
 }>> {
@@ -360,6 +364,7 @@ export async function toParticipantCoachCards(
         atCapacity: coach.atCapacity,
         remainingCapacity: coach.remainingCapacity,
         yearsExperience: coach.yearsExperience,
+        wistiaMediaId: coach.wistiaMediaId ?? resolveWistiaMediaId(coach.email),
         meetingBookingUrl: includeBookingLink ? coach.bookingLinkPrimary : undefined,
         quotes: coach.quotes,
       };
