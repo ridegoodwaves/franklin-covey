@@ -15,6 +15,7 @@
     "env:validate:staging": "node scripts/validate-env-safety.mjs --env-file .env.staging.example --target staging",
     "env:validate:production": "node scripts/validate-env-safety.mjs --env-file .env.production.example --target production",
     "data:backfill:photo-paths": "node scripts/backfill-coach-photo-paths.mjs",
+    "data:backfill:wistia-media-ids": "node scripts/backfill-wistia-media-ids.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"

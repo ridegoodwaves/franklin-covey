@@ -1,15 +1,88 @@
 import type { NextConfig } from "next";
 
-const contentSecurityPolicy = [
-  "default-src 'self' https: data: blob:",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fast.wistia.com https://fast.wistia.net https://embed-ssl.wistia.com https://embed-ssl.wistia.net",
-  "style-src 'self' 'unsafe-inline' https:",
-  "img-src 'self' data: blob: https:",
-  "font-src 'self' data: https:",
-  "connect-src 'self' https: wss: https://fast.wistia.com https://fast.wistia.net https://embed-ssl.wistia.com https://embed-ssl.wistia.net",
-  "frame-src 'self' https://fast.wistia.com https://fast.wistia.net https://embed-ssl.wistia.com https://embed-ssl.wistia.net",
-  "media-src 'self' https: blob:",
+const isDev = process.env.NODE_ENV === "development";
+
+function parseSupabaseOrigins(rawUrl?: string): { origin?: string; wsOrigin?: string } {
+  if (!rawUrl) return {};
+  try {
+    const parsed = new URL(rawUrl);
+    return {
+      origin: parsed.origin,
+      wsOrigin: `wss://${parsed.host}`,
+    };
+  } catch {
+    return {};
+  }
+}
+
+function withSources(
+  directive: string,
+  sources: Array<string | undefined | null | false>
+): string {
+  const unique = Array.from(
+    new Set(
+      sources.filter((source): source is string => typeof source === "string" && source.length > 0)
+    )
+  );
+  return `${directive} ${unique.join(" ")}`;
+}
+
+const supabase = parseSupabaseOrigins(process.env.NEXT_PUBLIC_SUPABASE_URL);
+
+const baseCsp = [
+  "default-src 'self'",
+  withSources("script-src", ["'self'", "'unsafe-inline'", isDev ? "'unsafe-eval'" : undefined]),
+  withSources("connect-src", ["'self'", supabase.origin, supabase.wsOrigin]),
+  "frame-src 'self'",
+  "frame-ancestors 'none'",
+  withSources("img-src", ["'self'", "data:", "blob:", supabase.origin]),
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self'",
+  "media-src 'self' blob:",
   "worker-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join("; ");
+
+const wistiaCsp = [
+  "default-src 'self'",
+  withSources("script-src", [
+    "'self'",
+    "'unsafe-inline'",
+    isDev ? "'unsafe-eval'" : undefined,
+    "https://*.wistia.com",
+    "https://*.wistia.net",
+    "https://src.litix.io",
+    "https://*.sentry-cdn.com",
+  ]),
+  withSources("connect-src", [
+    "'self'",
+    supabase.origin,
+    supabase.wsOrigin,
+    "https://*.wistia.com",
+    "https://*.wistia.net",
+    "https://*.litix.io",
+    "https://*.algolia.net",
+  ]),
+  "frame-src https://fast.wistia.com https://fast.wistia.net",
+  "frame-ancestors 'none'",
+  withSources("img-src", [
+    "'self'",
+    "data:",
+    "blob:",
+    supabase.origin,
+    "https://*.wistia.com",
+    "https://*.wistia.net",
+  ]),
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self' data: https://*.wistia.com",
+  "media-src 'self' blob: data: https://*.wistia.com https://*.wistia.net",
+  "worker-src 'self' blob:",
+  "child-src blob:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
 ].join("; ");
 
 const nextConfig: NextConfig = {
@@ -31,7 +104,19 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value: contentSecurityPolicy,
+            value: baseCsp,
+          },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        ],
+      },
+      {
+        source: "/participant/select-coach/:path*",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: wistiaCsp,
           },
         ],
       },

@@ -23,6 +23,7 @@ export function WistiaCoachPlayer({
         settingsControl={false}
         playbackRateControl={false}
         qualityControl={false}
+        bigPlayButton={false}
         roundedPlayer={8}
         doNotTrack={true}
         seo={false}
