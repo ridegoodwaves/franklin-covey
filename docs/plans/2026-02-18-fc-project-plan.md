@@ -1,7 +1,7 @@
 # FranklinCovey Coaching Platform — Project Plan
 
 **Date**: 2026-02-18
-**Last Updated**: 2026-02-25 (Slice 1 APIs live on staging; headshots/bios repaired; selection/auth security hardening shipped)
+**Last Updated**: 2026-02-28 (Slice 2/3 reorder locked; March 9 admin visibility prioritized; coach portal moved to March 16)
 **Status**: Active Build — Slice 1 staging flow live with launch-safety controls
 
 ---
@@ -38,9 +38,9 @@ The platform ships in three milestones between now and March 16, aligned to the 
 | Feb 17 | Workshop — all product decisions locked | ✅ Complete |
 | **Feb 26** | Beta test with Kari on staging | 🔜 Committed |
 | **Mar 2** | **Slice 1 live** — participant auth + coach selection + scheduling-link booking | 🎯 Hard deadline |
-| **Mar 9** | **Slice 2 live** — coach portal: session logging + engagement tracking | 🎯 Hard deadline |
+| **Mar 9** | **Slice 2 live** — admin dashboard visibility (KPIs, engagement reporting, coach roster, CSV export) | 🎯 Hard deadline |
 | **Mar 12** | ALP-135 first participants access platform (earliest cohort) | 🎯 Must be live |
-| **Mar 16** | **Slice 3 live** — admin portal: import, needs-attention workflow, KPI dashboard | 🎯 Hard deadline |
+| **Mar 16** | **Slice 3 live** — coach portal: session logging + engagement tracking (+ bulk import execution) | 🎯 Hard deadline |
 | Mar 16 | MLP-80 + EF-1 in-person training begins (coaching window opens after) | FC milestone |
 | Mar 23 | ALP-136 + EF-2 in-person training begins | FC milestone |
 | Mar 27+ | EF-1 coaching begins | FC milestone |
@@ -142,10 +142,14 @@ Detailed commit changelog:
 - Coach bio **videos are de-scoped from MVP** for the coach selector experience.
 - ALP-138 Session 2 date is confirmed: **Aug 7, 2026**.
 - Participant comms owner confirmed: **USPS** sends welcome email on each cohort's coach-selection window start date.
-- Coach access comms owner confirmed: **Andrea and/or Kari**, sent as soon as portal is available and before Mar 2.
+- Coach access comms owner confirmed: **Andrea and/or Kari**, sent once coach session logging is active (**March 16**).
 - Participant communication boundary is confirmed: **USPS sends participant access communications; CIL system does not send participant emails in MVP**.
 - Participant entry model confirmed by Kari: **email-entry only** for MVP (no participant access code), aligned to USPS cohort group-email workflow and FC sender restrictions.
 - Participant auth safeguards for MVP: roster-only allowlist + active cohort-window gating + rate limiting + generic auth errors + audit logging.
+- Coach/admin auth architecture for MVP remains custom magic-link + signed portal session + Resend delivery. Supabase Auth migration is explicitly post-MVP.
+- Coach/admin magic-link throttles are locked for MVP: 60s resend cooldown, 6/hour per email, 30/hour per IP (plus optional 10/10min IP burst guard).
+- Admin role remains global-capable, but MVP reporting scope is USPS-only.
+- Dashboard activity semantics are locked for MVP: activity begins at coach selection; `coachSelectedAt` and `lastActivityAt` are tracked separately from session counts.
 - Use-it-or-lose-it handling confirmed as **manual for ALP/MLP only**: no automatic lock/forfeit; use dashboard "Needs Attention" for ops follow-up when Session 1/2 is not scheduled by deadline. **EF/EL does not use this model**.
 
 ---
@@ -176,6 +180,7 @@ Reference docs:
 | **Participant counts per cohort (final distribution)** | Total baseline is locked at 400, but cohort-by-cohort allocations are still needed for overlap validation and load-test realism |
 | **EF/EL coach-selection end dates** | Currently missing in timeline source; staging uses temporary default (`selection start + 19 days`) until final dates are confirmed |
 | **Kari + Andrea admin launch emails** | Needed to complete admin access seed in staging and run full magic-link acceptance test |
+| **Greg admin launch email** | Needed to seed Greg as full ADMIN for launch-period validation |
 | **Cohort comms tracking fields** — participant send date, coach send date, owner, status | Needed for clean execution tracking across later cohorts |
 | **FC path choice (Path A vs Path B)** — explicit decision required | Needed by EOD Feb 23, 2026 to keep March 2 launch planning stable; Path A implies March 2 rebaseline risk |
 
@@ -195,9 +200,10 @@ These inputs are on the critical path. Delays here delay the March 2 launch.
 | Beta testing time — Kari + 1-2 staff | Kari Sadler | Feb 26 (full day) | Verbally confirmed at workshop |
 | Cohort communication tracking fields (participant send date, coach send date, owner, status) | Kari + Andrea | TBD (requested) | Needed to coordinate future cohort communications |
 | Kari + Andrea admin launch emails | Kari + Andrea | ASAP | Required to finish full admin magic-link staging verification |
+| Greg admin launch email | Greg / FC Ops | ASAP | Required to seed Greg as full admin and validate role parity with Kari/Andrea. |
 | EF/EL coach-selection end dates (explicit) | Kari + Andrea | ASAP | Replaces temporary staging default (`selection start + 19 days`) for EF/EL cohorts |
 | Path decision (A: AWS day one, B: Vercel+Supabase bridge + dependency-driven migration) | Blaine + FC stakeholders | EOD Feb 23, 2026 | Recommended Path B to protect March launch; Path A increases launch-date risk and requires timeline rebaseline |
-| Email sender domain decision | Tim + Blaine | ASAP | Working target: `coaching@coachinginnovationlab.com`; confirm FC acceptance for launch communications. |
+| Email sender domain decision | Tim + Blaine | ASAP | Preferred sender domain: `onusleadership.com` (or approved verified fallback); confirm final `EMAIL_FROM` for launch communications. |
 | Platform tier confirmation (Vercel Pro + Supabase Pro) | Amit + Tim | Feb 21 | Required for predictable launch capacity, backups, and production support posture |
 | IT approval (Blaine) | Tim to facilitate | ASAP | Required for production infrastructure; not MVP blocker |
 
@@ -209,8 +215,8 @@ These inputs are on the critical path. Delays here delay the March 2 launch.
 |-------|--------------|-----------|
 | Staging environment | Feb 25 | Full Slice 1 on Vercel + Supabase; smoke-tested |
 | **Slice 1** | March 2 | Participant roster-email entry auth (USPS-delivered cohort welcome email), coach selector (3 capacity-weighted coaches, 1 remix), confirmation + scheduling-link booking when available or coach-outreach fallback |
-| **Slice 2** | March 9 | Coach magic-link auth, session logging (topic + outcome), engagement tracking |
-| **Slice 3** | March 16 | Admin CSV import, KPI dashboard, CSV export, and needs-attention workflow (final reminder ownership model pending FC confirmation) |
+| **Slice 2** | March 9 | Admin dashboard visibility: KPI dashboard, engagement reporting, coach roster controls, CSV export, USPS-scoped needs-attention reporting |
+| **Slice 3** | March 16 | Coach magic-link auth, session logging (topic + outcome), engagement tracking, and bulk import execution |
 
 ---
 
@@ -254,7 +260,8 @@ These inputs are on the critical path. Delays here delay the March 2 launch.
 | **Participant counts by cohort not finalized** | Capacity model could still be wrong during overlap windows | Use 400 planning assumption short-term; lock per-cohort counts with Kari and rerun capacity checks before final Slice 1 load tests |
 | **Participant access-email execution timing** | Participant entry can fail if USPS sends are late or instructions are unclear | Share USPS send checklist and include clear "look for coach-selector site link" text in each welcome send |
 | **FC path decision delayed (Path A vs Path B)** | Can create scope/schedule churn and blur launch-risk ownership | Secure explicit FC path decision by EOD Feb 23, 2026; if Path A, immediately rebaseline March 2 as at-risk with revised timeline |
-| **Coach session logging lag** | Ops visibility can drift if coaches delay status entry | Use dashboard "Needs Attention" monitoring and ops follow-up cadence; no auto-forfeiture mutations in MVP |
+| **March 12–16 coach logging gap (portal live Mar 16)** | Session activity exists before portal logging is available | FC/USPS manual tracking during Mar 12–16, then retroactive coach entry after Mar 16. Track as accepted launch-window process risk. |
+| **Magic-link email deliverability readiness (sender domain + DNS)** | Coach/admin login blocked if sender is not production-ready | Complete Resend domain verification + SPF/DKIM + `EMAIL_FROM` alignment before enabling live outbound. |
 
 ---
 
@@ -277,7 +284,7 @@ Phase 2 roadmap (April+) is available upon request — covers platform hardening
 
 | Task | Owner | Notes |
 |------|-------|-------|
-| Install Prisma, iron-session, Auth.js, Resend, React Email | Amit | `npm install` + `npx prisma init` |
+| Install Prisma, session signing/auth helpers, Resend email plumbing | Amit | Keep existing custom magic-link auth model (no Auth.js migration in MVP) |
 | Write full Prisma schema (11 models, all enums + indexes) | Amit | ERD finalized in vertical slices plan |
 | Create Supabase project, run first migration | Amit | Needs Supabase account setup |
 | docker-compose.yml (PostgreSQL + Mailpit) | Amit | Local dev email interception |
@@ -299,22 +306,22 @@ Phase 2 roadmap (April+) is available upon request — covers platform hardening
 | Beta test with Kari | Kari + Amit | Feb 26 — full day |
 | Bug fixes + load test + production deploy | Amit | Feb 27 – Mar 2 |
 
-### Slice 2: Coach Engagement Portal (Mar 3 – 9)
+### Slice 2: Admin Visibility + Controls (Mar 3 – 9)
 
 | Task | Owner | Notes |
 |------|-------|-------|
-| Auth.js magic-link auth for coaches + admins | Amit | 30-min idle timeout; dual-auth routing |
-| Session logging API (COMPLETED, FORFEITED_CANCELLED, FORFEITED_NOT_USED) | Amit | Topic + Outcome dropdowns; forfeiture labels: "canceled within 24 hours" / "not taken advantage of"; private notes |
-| Coach dashboard + engagement detail + session logging form | Amit | Auto-save on form |
+| Admin auth middleware hardening + magic-link rate limiting | Amit | Keep custom portal-session auth; lock to 60s cooldown, 6/hour/email, 30/hour/IP |
+| Admin KPI + engagement reporting + coach roster APIs | Amit | USPS-only MVP reporting scope; global-admin-ready foundation remains |
+| Admin dashboard, coach roster, and CSV export wiring | Amit | Prioritize visibility/reporting for Mar 9; remove non-essential UI scope |
 
-### Slice 3: Admin Portal (Mar 10 – 16)
+### Slice 3: Coach Engagement Portal + Import Execution (Mar 10 – 16)
 
 | Task | Owner | Notes |
 |------|-------|-------|
-| Admin KPI dashboard (enrollment rate, session completion, forfeiture rate) | Amit | |
-| Bulk CSV import + validation | Amit | Atomic Phase A (validate) + async Phase B (data writes only; participant emails remain USPS-owned in MVP) |
-| Reminder/assignment workflow | Amit | MVP reminder sends are manual by USPS/FC Ops; system-owned behavior is dashboard flagging + coach/admin access emails only |
-| CSV export + printable reports | Amit | Browser print-to-PDF via `@media print` |
+| Coach magic-link access + coach dashboard route enforcement | Amit | Coach access comms sent once session logging is active (Mar 16) |
+| Session logging API (COMPLETED, FORFEITED_CANCELLED, FORFEITED_NOT_USED) | Amit | Topic + Outcome dropdowns; forfeiture labels preserved; private notes remain coach-only |
+| Coach dashboard + engagement detail + session logging form | Amit | Supports retroactive entry for Mar 12–16 activity window |
+| Bulk CSV import + execution | Amit | Import execution moved here from Mar 9 to protect admin visibility scope |
 
 ---
 
@@ -326,7 +333,7 @@ These are the blockers **Tim** needs to drive. Amit handles everything on the bu
 
 2. **Introduce Amit to Blaine** — IT approval is needed for production infrastructure (AWS ECS, SendGrid, Okta). Not blocking March 2, but a delay here pushes the production migration.
 
-3. **Confirm email sender address with Blaine** — Working target: `coaching@coachinginnovationlab.com`. Blaine explicitly asked about this; needs an answer before production email goes live.
+3. **Confirm email sender address with Blaine** — Preferred domain is `onusleadership.com` (or approved verified fallback). Final `EMAIL_FROM` must match verified DNS/domain setup before production outbound goes live.
 
 4. **Request `coaching.franklincovey.com` from Blaine/DNS team** — Can do after March 2 MVP is validated; needs lead time.
 
