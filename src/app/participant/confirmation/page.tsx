@@ -5,6 +5,10 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { CoachBioModal, type CoachBioModalData } from "@/components/CoachBioModal";
+import {
+  isStoredCoachOwnedByParticipant,
+  PARTICIPANT_SESSION_KEYS,
+} from "@/lib/participant-session";
 
 interface StoredCoach {
   id: string;
@@ -17,6 +21,7 @@ interface StoredCoach {
   quotes?: Array<{ quote: string; attribution?: string }>;
   location: string;
   bookingUrl?: string;
+  participantEmail?: string;
 }
 
 function ConfirmationContent() {
@@ -28,17 +33,32 @@ function ConfirmationContent() {
   const alreadySelected = searchParams.get("already") === "true";
 
   useEffect(() => {
+    let shouldSetLoadError = false;
+
     try {
-      const raw = sessionStorage.getItem("selected-coach");
+      const raw = sessionStorage.getItem(PARTICIPANT_SESSION_KEYS.selectedCoach);
+      const participantEmail = sessionStorage.getItem(PARTICIPANT_SESSION_KEYS.email);
       if (raw) {
-        const parsed = JSON.parse(raw) as StoredCoach;
-        setCoach(parsed);
+        if (!isStoredCoachOwnedByParticipant(raw, participantEmail)) {
+          sessionStorage.removeItem(PARTICIPANT_SESSION_KEYS.selectedCoach);
+          if (!alreadySelected) {
+            shouldSetLoadError = true;
+          }
+        } else {
+          const parsed = JSON.parse(raw) as StoredCoach;
+          setCoach(parsed);
+        }
       } else if (!alreadySelected) {
-        setLoadError(true);
+        shouldSetLoadError = true;
       }
     } catch {
+      shouldSetLoadError = true;
+    }
+
+    if (shouldSetLoadError) {
       setLoadError(true);
     }
+
     const t = setTimeout(() => setMounted(true), 50);
     return () => clearTimeout(t);
   }, [alreadySelected]);

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { verifyParticipantEmail } from "@/lib/api-client";
+import { clearParticipantClientState, PARTICIPANT_SESSION_KEYS } from "@/lib/participant-session";
 
 export default function ParticipantEntryPage() {
   const router = useRouter();
@@ -23,14 +24,16 @@ export default function ParticipantEntryPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim()) return;
+    const trimmedEmail = email.trim();
     setLoading(true);
     setError(null);
+    clearParticipantClientState(sessionStorage);
 
     try {
-      const response = await verifyParticipantEmail({ email: email.trim() });
+      const response = await verifyParticipantEmail({ email: trimmedEmail });
       if (response.success) {
-        sessionStorage.setItem("participant-email", email.trim());
-        sessionStorage.setItem("participant-verified", "true");
+        sessionStorage.setItem(PARTICIPANT_SESSION_KEYS.email, trimmedEmail);
+        sessionStorage.setItem(PARTICIPANT_SESSION_KEYS.verified, "true");
         if (response.alreadySelected) {
           router.push("/participant/confirmation?already=true");
         } else {
