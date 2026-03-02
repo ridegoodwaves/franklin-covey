@@ -94,6 +94,16 @@ For environments using Supabase pooler (`.pooler.supabase.com`, typically port `
    - `npm run env:validate:staging`
    - `npm run env:validate:production`
 
+### Step 3.2: Resend Sender Readiness (Required for Magic-Link Delivery)
+
+Before enabling live outbound in production:
+
+1. Verify sending domain in Resend (`onusleadership.com` or approved subdomain).
+2. Publish required DNS records (SPF + DKIM) and wait for verification to complete.
+3. Set `EMAIL_FROM` to the verified sender address/domain.
+4. Confirm `RESEND_API_KEY` environment scope matches project (`fc-staging` vs `fc-production`).
+5. Send one controlled test magic-link email and confirm inbox delivery before go-live.
+
 ## Step 4: Enforce Staging Safety Gates
 
 For `fc-staging`, confirm:
@@ -203,3 +213,4 @@ Stop and fix immediately if any of these happen:
 6. `NUDGE_CRON_ENABLED` is true in staging.
 7. Any production env key is copied into staging.
 8. Supabase pooler `DATABASE_URL` is missing `?pgbouncer=true`.
+9. Resend domain is unverified or `EMAIL_FROM` does not match a verified sender.

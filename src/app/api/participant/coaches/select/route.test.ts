@@ -28,6 +28,7 @@ vi.mock("@/lib/server/participant-coach-service", async (importOriginal) => {
         atCapacity: false,
         remainingCapacity: 10,
         yearsExperience: 10,
+        wistiaMediaId: "test-media-id",
         meetingBookingUrl: c.bookingLinkPrimary,
         quotes: [],
       }))
@@ -119,6 +120,7 @@ describe("POST /api/participant/coaches/select", () => {
     expect(body.success).toBe(true);
     expect(body.coach).toBeDefined();
     expect(body.coach.id).toBe("coach-1");
+    expect(body.coach.wistiaMediaId).toBe("test-media-id");
     expect(body.bookingUrl).toBe("https://calendly.com/test");
   });
 

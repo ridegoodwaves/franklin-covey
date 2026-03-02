@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "data:build:staging": "node scripts/build-staging-import-artifacts.mjs",
@@ -15,6 +15,7 @@
     "env:validate:staging": "node scripts/validate-env-safety.mjs --env-file .env.staging.example --target staging",
     "env:validate:production": "node scripts/validate-env-safety.mjs --env-file .env.production.example --target production",
     "data:backfill:photo-paths": "node scripts/backfill-coach-photo-paths.mjs",
+    "data:backfill:wistia-media-ids": "node scripts/backfill-wistia-media-ids.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
@@ -33,6 +34,7 @@
     "@radix-ui/react-tabs": "^1.1.0",
     "@radix-ui/react-tooltip": "^1.1.0",
     "@tanstack/react-table": "^8.20.0",
+    "@wistia/wistia-player-react": "^0.6.3",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "lucide-react": "^0.400.0",

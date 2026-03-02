@@ -9,6 +9,12 @@
 - At least one test participant exists with `status = INVITED` and an open cohort window
 - At least one coach/admin user exists with a known email for magic-link testing
 
+## Per-Slice Execution (Locked 2026-02-28)
+
+- **Slice 1 (March 2)**: run Scenarios 1–6 and 9
+- **Slice 2 (March 9, admin visibility/reporting)**: run Scenarios 1–6, 8, and 9
+- **Slice 3 (March 16, coach portal + import execution)**: run full checklist (Scenarios 1–9)
+
 ---
 
 ## Scenario 1: Participant Email Verification
@@ -100,7 +106,7 @@
 ## Scenario 7: Coach Portal — Magic Link Sign-In
 
 **Route:** `/auth/signin` → `/coach/dashboard`
-**Priority:** P0 (blocks coach usage)
+**Priority:** P0 for Slice 3 (March 16)
 
 - [ ] Navigate to `/auth/signin`
 - [ ] Enter a known coach email — "Check your email" confirmation shown
@@ -116,7 +122,7 @@
 ## Scenario 8: Admin Portal — Magic Link Sign-In
 
 **Route:** `/auth/signin` → `/admin/dashboard`
-**Priority:** P1 (admin access)
+**Priority:** P0 for Slice 2 (March 9)
 
 - [ ] Enter a known admin email on `/auth/signin`
 - [ ] Click magic link from email — redirects to `/admin/dashboard`

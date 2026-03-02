@@ -29,6 +29,7 @@ vi.mock("@/lib/server/participant-coach-service", async (importOriginal) => {
         atCapacity: false,
         remainingCapacity: 10,
         yearsExperience: 10,
+        wistiaMediaId: "test-media-id",
         quotes: [],
       }))
     ),
@@ -90,6 +91,7 @@ describe("POST /api/participant/coaches/remix", () => {
 
     expect(response.status).toBe(200);
     expect(body.coaches.length).toBeGreaterThan(0);
+    expect(body.coaches[0].wistiaMediaId).toBe("test-media-id");
 
     // Session should be written with remixUsed: true
     expect(mockWriteSession).toHaveBeenCalled();

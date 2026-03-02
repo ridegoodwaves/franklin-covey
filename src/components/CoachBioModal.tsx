@@ -25,6 +25,7 @@ export interface CoachBioModalData {
   atCapacity?: boolean;
   quotes?: Array<{ quote: string; attribution?: string }>;
   videoUrl?: string;
+  wistiaMediaId?: string;
 }
 
 interface CoachBioModalProps {
@@ -228,7 +229,7 @@ export function CoachBioModal({
             )}
 
             {/* Video link */}
-            {coach.videoUrl && (
+            {coach.videoUrl && !coach.wistiaMediaId && (
               <div className="mt-6">
                 <a
                   href={coach.videoUrl}
