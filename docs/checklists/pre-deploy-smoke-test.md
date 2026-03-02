@@ -174,3 +174,4 @@
 - Participant flow research: `docs/research/participant-workflow-research.md`
 - Phase 1 unit/API tests: `docs/plans/2026-02-27-feat-testing-infrastructure-phase1-plan.md`
 - Production launch plan: `docs/plans/2026-02-27-chore-production-launch-and-smoke-test-plan.md`
+
