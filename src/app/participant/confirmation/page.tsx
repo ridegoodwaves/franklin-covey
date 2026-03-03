@@ -9,6 +9,8 @@ import {
   isStoredCoachOwnedByParticipant,
   PARTICIPANT_SESSION_KEYS,
 } from "@/lib/participant-session";
+import { HelpFooter } from "@/components/participant/HelpFooter";
+import { cn } from "@/lib/utils";
 
 interface StoredCoach {
   id: string;
@@ -187,15 +189,13 @@ function ConfirmationContent() {
             </div>
           )}
 
-          <p className={`mt-10 text-center text-xs text-muted-foreground transition-all duration-700 ${mounted ? "opacity-100" : "opacity-0"}`} style={{ transitionDelay: "400ms" }}>
-            Need help?{" "}
-            <a
-              href="mailto:Andrea.Sherman@franklincovey.com"
-              className="underline underline-offset-2 hover:text-fc-700 transition-colors"
-            >
-              Contact your program administrator
-            </a>.
-          </p>
+          <HelpFooter
+            className={cn(
+              "mt-10 text-xs transition-all duration-700",
+              mounted ? "opacity-100" : "opacity-0"
+            )}
+            style={{ transitionDelay: "400ms" }}
+          />
         </div>
       </main>
 

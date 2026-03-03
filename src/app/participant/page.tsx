@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { verifyParticipantEmail } from "@/lib/api-client";
 import { clearParticipantClientState, PARTICIPANT_SESSION_KEYS } from "@/lib/participant-session";
+import { HelpFooter } from "@/components/participant/HelpFooter";
 
 export default function ParticipantEntryPage() {
   const router = useRouter();
@@ -42,11 +43,11 @@ export default function ParticipantEntryPage() {
       } else {
         switch (response.error) {
           case "UNRECOGNIZED_EMAIL":
-            setError("We couldn't find your email. Contact your program administrator.");
+            setError("We couldn't find your email. Please contact your program administrator below for help.");
             break;
           case "WINDOW_CLOSED":
             setError(
-              "The selection window for your cohort has closed. Contact your program administrator."
+              "The selection window for your cohort has closed. Please contact your program administrator below."
             );
             break;
           case "RATE_LIMITED":
@@ -149,18 +150,10 @@ export default function ParticipantEntryPage() {
         </form>
 
         {/* Footer note */}
-        <p
-          className="mt-8 text-center text-xs text-muted-foreground opacity-0 animate-fade-in"
+        <HelpFooter
+          className="mt-8 text-xs opacity-0 animate-fade-in"
           style={{ animationDelay: "350ms" }}
-        >
-          Need help?{" "}
-          <a
-            href="mailto:Andrea.Sherman@franklincovey.com"
-            className="underline underline-offset-2 hover:text-fc-700 transition-colors"
-          >
-            Contact your program administrator
-          </a>.
-        </p>
+        />
       </div>
     </div>
   );

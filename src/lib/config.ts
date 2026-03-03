@@ -89,3 +89,10 @@ export type SessionTopic = MlpSessionTopic | ExecutiveSessionTopic;
 export type SessionOutcome = (typeof SESSION_OUTCOMES)[number];
 export type DurationOption = (typeof DURATION_OPTIONS)[number];
 export type ProgramType = keyof typeof PROGRAM_TYPES;
+
+// Program administrator contact — single source of truth for all participant-facing pages
+export const PROGRAM_ADMIN = {
+  name: "Andrea Sherman",
+  email: "andrea.sherman@franklincovey.com",
+  role: "FranklinCovey program administrator",
+} as const;
