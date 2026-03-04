@@ -1,8 +1,8 @@
 # FranklinCovey Coaching Platform — Project Plan
 
 **Date**: 2026-02-18
-**Last Updated**: 2026-02-28 (Slice 2/3 reorder locked; March 9 admin visibility prioritized; coach portal moved to March 16)
-**Status**: Active Build — Slice 1 staging flow live with launch-safety controls
+**Last Updated**: 2026-03-04 (Slice 1 shipped Mar 2; Mar 1-2 Wistia/CSP/session/contact fixes documented; Slice 2 in progress)
+**Status**: Active Build — Slice 1 shipped; Slice 2 admin visibility sprint is active
 
 ---
 
@@ -36,11 +36,11 @@ The platform ships in three milestones between now and March 16, aligned to the 
 | Date | Milestone | Status |
 |------|-----------|--------|
 | Feb 17 | Workshop — all product decisions locked | ✅ Complete |
-| **Feb 26** | Beta test with Kari on staging | 🔜 Committed |
-| **Mar 2** | **Slice 1 live** — participant auth + coach selection + scheduling-link booking | 🎯 Hard deadline |
-| **Mar 9** | **Slice 2 live** — admin dashboard visibility (KPIs, engagement reporting, coach roster, CSV export) | 🎯 Hard deadline |
-| **Mar 12** | ALP-135 first participants access platform (earliest cohort) | 🎯 Must be live |
-| **Mar 16** | **Slice 3 live** — coach portal: session logging + engagement tracking (+ bulk import execution) | 🎯 Hard deadline |
+| **Feb 26** | Beta test with Kari on staging | ✅ Completed |
+| **Mar 2** | **Slice 1 live** — participant auth + coach selection + scheduling-link booking | ✅ Shipped (Mar 2, 2026) |
+| **Mar 9** | **Slice 2 live** — admin dashboard visibility (KPIs, engagement reporting, coach roster, CSV export) | 🚧 In progress (as of Mar 4, 2026) |
+| **Mar 12** | ALP-135 first participants access platform (earliest cohort) | 🗓 Upcoming (Mar 12, 2026) |
+| **Mar 16** | **Slice 3 live** — coach portal: session logging + engagement tracking (+ bulk import execution) | 🗓 Upcoming (Mar 16, 2026) |
 | Mar 16 | MLP-80 + EF-1 in-person training begins (coaching window opens after) | FC milestone |
 | Mar 23 | ALP-136 + EF-2 in-person training begins | FC milestone |
 | Mar 27+ | EF-1 coaching begins | FC milestone |
@@ -80,6 +80,18 @@ The platform ships in three milestones between now and March 16, aligned to the 
 
 Detailed commit changelog:
 - `docs/briefings/2026-02-25-shipped-changelog.md`
+
+## Implementation Update (Mar 1–3, 2026)
+
+- Wistia coach intro video integration shipped for participant select-coach flow with staged rollout control (`NEXT_PUBLIC_ENABLE_WISTIA_COACH_VIDEOS`).
+- CSP hardening shipped for Wistia + App Router client-side navigation behavior:
+  - Wistia domains included in base CSP to prevent client-navigation resource blocking.
+  - Route-specific Wistia CSP override retained for direct loads and defense-in-depth.
+- Participant shared-browser hardening shipped:
+  - stale sessionStorage carryover prevention for multi-participant use in one browser session.
+  - ownership checks for stored selected-coach payloads before redirect/render.
+- Participant-facing admin contact consistency shipped via `PROGRAM_ADMIN` single source of truth + shared footer component.
+- Staging/launch documentation set expanded with dedicated Mar 1 and Mar 2 fix plans and handoff records.
 
 ---
 
@@ -139,7 +151,7 @@ Detailed commit changelog:
 - Nudge timing anchor is locked: **Day 0 = cohort start date**.
 - Capacity counting rule is locked: count participants in `COACH_SELECTED`, `IN_PROGRESS`, and `ON_HOLD`; exclude `INVITED`, `COMPLETED`, and `CANCELED`.
 - Coach booking is **link-based and tool-agnostic** for MVP: direct coach scheduling URLs are accepted (Calendly, Acuity, or equivalent). Coaches without an active link may still be selected; confirmation should show "Your coach will reach out within 2 business days" and coach outreach follow-up is required, surfaced via "Needs Attention" if delayed.
-- Coach bio **videos are de-scoped from MVP** for the coach selector experience.
+- Coach bio intro videos are **now shipped as a staged rollout enhancement** (post-launch update, Mar 1–2): Wistia embed with CSP hardening and avatar fallback.
 - ALP-138 Session 2 date is confirmed: **Aug 7, 2026**.
 - Participant comms owner confirmed: **USPS** sends welcome email on each cohort's coach-selection window start date.
 - Coach access comms owner confirmed: **Andrea and/or Kari**, sent once coach session logging is active (**March 16**).
@@ -173,7 +185,7 @@ Reference docs:
 
 ---
 
-## Open Questions (Pending Kari/FC)
+## Open Questions (As of 2026-03-04)
 
 | Question | Impact |
 |----------|--------|
@@ -182,7 +194,9 @@ Reference docs:
 | **Kari + Andrea admin launch emails** | Needed to complete admin access seed in staging and run full magic-link acceptance test |
 | **Greg admin launch email** | Needed to seed Greg as full ADMIN for launch-period validation |
 | **Cohort comms tracking fields** — participant send date, coach send date, owner, status | Needed for clean execution tracking across later cohorts |
-| **FC path choice (Path A vs Path B)** — explicit decision required | Needed by EOD Feb 23, 2026 to keep March 2 launch planning stable; Path A implies March 2 rebaseline risk |
+
+Resolved since this plan's original draft:
+- FC infra path is operationally locked to the active MVP architecture (`Vercel + Supabase`) used for Slice 1 launch and current Slice 2 work.
 
 ---
 
@@ -192,7 +206,7 @@ These inputs are on the critical path. Delays here delay the March 2 launch.
 
 | Item | Owner | Needed By | Notes |
 |------|-------|-----------|-------|
-| Coach bios + photos + scheduling links (MLP/ALP panel) | Kari Sadler | Feb 23, 2026 | CSV format; direct booking links may be Calendly, Acuity, or equivalent. Coach bio videos are not required for MVP. Send available batch now, remaining by Monday, Feb 23, 2026. Missing links use coach-outreach fallback in MVP. |
+| Coach bios + photos + scheduling links (MLP/ALP panel) | Kari Sadler | Feb 23, 2026 | CSV format; direct booking links may be Calendly, Acuity, or equivalent. Intro videos are now shipped post-launch as an enhancement; booking links remain the primary scheduling path. Missing links use coach-outreach fallback in MVP. |
 | ALP-135 participant list (first coach selection window starts March 2) | Kari Sadler | Feb 24 | **Received (2026-02-24).** Name + email + cohort code + cohort start date (Day 0 for nudges); platform must be live by 3/2 |
 | `FY26 ALP 136_EF 1 Coaching Bios.xlsx` (participant detail context file) | Kari Sadler | Post-MVP | Contains participant context for potential coach-facing visibility. Not required for random coach selection and not integrated into selector logic in MVP. |
 | MLP-80 participant list | Kari Sadler | Feb 24 | Name + email + cohort code + cohort start date (Day 0 for nudges); coaching window opens 3/16 |
@@ -213,8 +227,8 @@ These inputs are on the critical path. Delays here delay the March 2 launch.
 
 | Slice | Delivery Date | What Ships |
 |-------|--------------|-----------|
-| Staging environment | Feb 25 | Full Slice 1 on Vercel + Supabase; smoke-tested |
-| **Slice 1** | March 2 | Participant roster-email entry auth (USPS-delivered cohort welcome email), coach selector (3 capacity-weighted coaches, 1 remix), confirmation + scheduling-link booking when available or coach-outreach fallback |
+| Staging environment | Feb 25 | ✅ Full Slice 1 on Vercel + Supabase; smoke-tested |
+| **Slice 1** | March 2 | ✅ Participant roster-email entry auth (USPS-delivered cohort welcome email), coach selector (3 capacity-weighted coaches, 1 remix), confirmation + scheduling-link booking when available or coach-outreach fallback |
 | **Slice 2** | March 9 | Admin dashboard visibility: KPI dashboard, engagement reporting, coach roster controls, CSV export, USPS-scoped needs-attention reporting |
 | **Slice 3** | March 16 | Coach magic-link auth, session logging (topic + outcome), engagement tracking, and bulk import execution |
 

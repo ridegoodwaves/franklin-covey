@@ -28,6 +28,13 @@ grep -r "severity: high" docs/solutions/
 |------|-------|----------|------|
 | [coach-selector-session-state-refresh-reset.md](ui-bugs/coach-selector-session-state-refresh-reset.md) | Coach Selector State Not Persisting Across Browser Refreshes | High | 2026-02-27 |
 
+### security-issues/
+
+| File | Title | Severity | Date |
+|------|-------|----------|------|
+| [nextjs-app-router-csp-client-navigation-blocks-third-party-resources.md](security-issues/nextjs-app-router-csp-client-navigation-blocks-third-party-resources.md) | CSP + Client-Side Navigation Blocking Third-Party Resources in Next.js App Router | High | 2026-03-01 |
+| [participant-session-storage-carryover.md](security-issues/participant-session-storage-carryover.md) | Stale Participant Session Carryover Across Users | High | 2026-03-02 |
+
 ## Tags
 
 | Tag | Solutions |
@@ -43,8 +50,12 @@ grep -r "severity: high" docs/solutions/
 | #participant-portal | [coach-selector-session-state-refresh-reset](ui-bugs/coach-selector-session-state-refresh-reset.md) |
 | #next-js | [coach-selector-session-state-refresh-reset](ui-bugs/coach-selector-session-state-refresh-reset.md) |
 | #state-management | [coach-selector-session-state-refresh-reset](ui-bugs/coach-selector-session-state-refresh-reset.md) |
+| #csp | [nextjs-app-router-csp-client-navigation-blocks-third-party-resources](security-issues/nextjs-app-router-csp-client-navigation-blocks-third-party-resources.md) |
+| #client-navigation | [nextjs-app-router-csp-client-navigation-blocks-third-party-resources](security-issues/nextjs-app-router-csp-client-navigation-blocks-third-party-resources.md) |
+| #session-management | [participant-session-storage-carryover](security-issues/participant-session-storage-carryover.md) |
+| #identity-boundary | [participant-session-storage-carryover](security-issues/participant-session-storage-carryover.md) |
 
 ## Statistics
 
-- **Total solutions**: 2
-- **Last updated**: 2026-02-27
+- **Total solutions**: 4
+- **Last updated**: 2026-03-02
