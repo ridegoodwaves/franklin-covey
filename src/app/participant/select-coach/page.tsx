@@ -6,6 +6,10 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
+  isStoredCoachOwnedByParticipant,
+  PARTICIPANT_SESSION_KEYS,
+} from "@/lib/participant-session";
+import {
   Card,
   CardHeader,
   CardTitle,
@@ -20,6 +24,7 @@ import {
   type ParticipantCoachCard,
 } from "@/lib/api-client";
 import { CoachBioModal } from "@/components/CoachBioModal";
+import { HelpFooter } from "@/components/participant/HelpFooter";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -194,16 +199,20 @@ export default function SelectCoachPage() {
   const [isSmallScreen, setIsSmallScreen] = useState(false);
 
   useEffect(() => {
-    const verified = sessionStorage.getItem("participant-verified");
+    const verified = sessionStorage.getItem(PARTICIPANT_SESSION_KEYS.verified);
     if (!verified) {
       router.replace("/participant/");
       return;
     }
-    if (sessionStorage.getItem("selected-coach")) {
-      router.replace("/participant/confirmation");
-      return;
+    const storedEmail = sessionStorage.getItem(PARTICIPANT_SESSION_KEYS.email);
+    const storedCoach = sessionStorage.getItem(PARTICIPANT_SESSION_KEYS.selectedCoach);
+    if (storedCoach) {
+      if (isStoredCoachOwnedByParticipant(storedCoach, storedEmail)) {
+        router.replace("/participant/confirmation");
+        return;
+      }
+      sessionStorage.removeItem(PARTICIPANT_SESSION_KEYS.selectedCoach);
     }
-    const storedEmail = sessionStorage.getItem("participant-email");
     if (storedEmail) {
       const emailPrefix = storedEmail.split("@")[0];
       // Capitalize first letter, replace dots/underscores with spaces for display
@@ -263,7 +272,7 @@ export default function SelectCoachPage() {
           return;
         }
         if (error.code === "WINDOW_CLOSED") {
-          setInlineError("The selection window for your cohort has closed. Contact your program administrator.");
+          setInlineError("The selection window for your cohort has closed. Please contact your program administrator below.");
           setDisplayedCoaches([]);
           setShownIds(new Set());
           setSelectionDisabled(true);
@@ -305,7 +314,7 @@ export default function SelectCoachPage() {
           return;
         }
         if (error.code === "WINDOW_CLOSED") {
-          setInlineError("The selection window for your cohort has closed. Contact your program administrator.");
+          setInlineError("The selection window for your cohort has closed. Please contact your program administrator below.");
           setDisplayedCoaches([]);
           setShownIds(new Set());
           setSelectionDisabled(true);
@@ -368,8 +377,10 @@ export default function SelectCoachPage() {
       try {
         const response = await selectCoach({ coachId: coach.id });
         if (response.success) {
+          const participantEmail = sessionStorage.getItem(PARTICIPANT_SESSION_KEYS.email) ?? undefined;
           const payload = {
             ...coach,
+            participantEmail,
             bookingUrl: response.bookingUrl,
             ...(response.coach ? {
               name: response.coach.name,
@@ -380,7 +391,7 @@ export default function SelectCoachPage() {
               location: response.coach.location,
             } : {}),
           };
-          sessionStorage.setItem("selected-coach", JSON.stringify(payload));
+          sessionStorage.setItem(PARTICIPANT_SESSION_KEYS.selectedCoach, JSON.stringify(payload));
           router.push("/participant/confirmation");
         } else {
           switch (response.error) {
@@ -396,7 +407,7 @@ export default function SelectCoachPage() {
               router.push("/participant/?expired=true");
               break;
             case "WINDOW_CLOSED":
-              setInlineError("The selection window for your cohort has closed. Contact your program administrator.");
+              setInlineError("The selection window for your cohort has closed. Please contact your program administrator below.");
               setSelectionDisabled(true);
               setSelectingCoachId(null);
               break;
@@ -474,7 +485,7 @@ export default function SelectCoachPage() {
             </div>
             <h2 className="font-display text-2xl font-semibold text-fc-900">All Coaches Currently Full</h2>
             <p className="mt-3 text-muted-foreground">
-              All coaches are currently full — your program administrator will assign you a coach
+              All coaches are currently full — your program administrator will assign you a coach. See contact details below.
             </p>
           </div>
         ) : (
@@ -654,12 +665,14 @@ export default function SelectCoachPage() {
 
               {remixUsed && (
                 <p className="text-center text-xs text-muted-foreground">
-                  You have seen all available coach options. Contact your program administrator for additional choices.
+                  You have seen all available coach options. Contact your program administrator below for additional choices.
                 </p>
               )}
             </div>
           </>
         )}
+        {/* Program administrator contact */}
+        <HelpFooter className="mt-12 pb-4 text-xs" />
       </main>
 
       {/* Selection confirmation dialog */}

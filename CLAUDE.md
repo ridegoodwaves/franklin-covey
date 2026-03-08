@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Before Starting Any Task
+
+Always read core project planning docs (MVP contract, project plan, PRD) before starting any audit, review, or implementation task. Never rely on secondary research docs alone — they may be stale.
+
 ## Agent Quickstart — Read Before Implementing
 
 Read these files in order before touching any code:
@@ -78,6 +82,10 @@ git config core.hooksPath .githooks  # One-time: enable repo-managed git hooks
 
 **CI:** `.github/workflows/test.yml` — runs `npm test` on every PR and push to main.
 
+## Code Changes
+
+When performing bulk find-and-replace or migration tasks, always do a final grep/search pass for stale references (old values, legacy prefixes like fc-*, outdated constants) across ALL files before considering the task complete.
+
 ## Languages & Conventions
 
 Primary languages: TypeScript, Markdown. Always validate TypeScript with the project's build/type-check before committing. Format Markdown documents consistently.
@@ -103,6 +111,8 @@ When fixing a bug, verify the fix doesn't introduce new issues before declaring 
 ## Session Management
 
 Session handoff documents should be generated at the end of every significant session. Include: what was done, what's remaining, current branch/PR status, and any known issues.
+
+When context is running long or a task won't finish in this session, proactively generate a session handoff document before hitting limits. Don't wait for the user to ask.
 
 ## Architecture
 
@@ -150,7 +160,7 @@ Icons are inline SVGs throughout — no icon library is imported at the componen
 - `src/components/navigation.tsx` — `PortalShell` component: sidebar + mobile-responsive shell for coach/admin portals. Takes `navItems`, `portalName`, `portalIcon`, `userName`, `userRole`. Supports `disabled` nav items (grayed out, non-clickable, "Soon" pill).
 - `src/lib/nav-config.tsx` — **Single source of truth** for sidebar navigation: `COACH_NAV_ITEMS`, `ADMIN_NAV_ITEMS`, portal icons (`CoachPortalIcon`, `AdminPortalIcon`), portal metadata (`COACH_PORTAL`, `ADMIN_PORTAL`). Add/remove/disable nav items here — all pages import from this file.
 - `src/lib/utils.ts` — `cn()` merge helper, `formatDate()`, `formatRelativeTime()`, `getStatusColor()`, `getStatusLabel()`, `getInitials()`.
-- `src/lib/config.ts` — Domain constants: `SESSION_TOPICS`, `SESSION_OUTCOMES`, `DURATION_OPTIONS`, `NUDGE_THRESHOLDS`, `PROGRAM_TRACK_SESSIONS`. These match the PRD spec.
+- `src/lib/config.ts` — Domain constants: `SESSION_TOPICS`, `SESSION_OUTCOMES`, `DURATION_OPTIONS`, `NUDGE_THRESHOLDS`, `PROGRAM_TRACK_SESSIONS`, and `PROGRAM_ADMIN` (single source of truth for participant-facing admin contact).
 - `src/app/globals.css` — CSS variables (HSL values without `hsl()` wrapper), custom utility classes, status colors.
 - `docs/solutions/` — Documented solutions knowledge base. **Check here first** before investigating issues — past root causes, fixes, and prevention strategies are indexed by category and tags. See `docs/solutions/README.md` for the full index.
 - `docs/research/participant-workflow-research.md` — Complete participant flow reference: all 4 pages in depth, API contract, business rules, session state, error codes, edge cases, and design decisions log.
@@ -179,6 +189,13 @@ The original PRD specified full Calendly API integration (webhooks, embeds, sess
 **Schema impact:** Rename `calendlyUrl` to `meetingBookingUrl` on `CoachProfile` (tool-agnostic name). Remove `calendlyEventUri` from `Session` (no webhook sync). No new models needed.
 
 **What this means for the frontend:** The participant confirmation page shows a "Book Your Session" button that opens the coach's `meetingBookingUrl` (external link, new tab). Sessions appear in the coach's timeline when the coach logs them.
+
+## Current Branch Updates (Mar 1–2, 2026)
+
+- Wistia coach intro videos are now shipped in the participant selector as a staged rollout (`NEXT_PUBLIC_ENABLE_WISTIA_COACH_VIDEOS`), with avatar fallback preserved when disabled or unavailable.
+- CSP now includes Wistia domains in the base policy as well as the select-coach route override. In App Router flows, client-side navigation keeps the entry-route CSP, so route-only allowances are insufficient by themselves.
+- Participant-facing admin contact text is centralized through `PROGRAM_ADMIN` in `src/lib/config.ts` and reused via `src/components/participant/HelpFooter.tsx`.
+- Participant client-state carryover is hardened for shared-browser flows: state is cleared on new identity submission, and stored coach payloads are ownership-checked before redirect/render.
 
 ## Participant Flow (updated Feb 17 workshop)
 
@@ -224,6 +241,22 @@ For endpoints not yet live, use this repo-standard pattern:
 Launch wiring rule:
 
 - When backend endpoint is ready, uncomment `apiFetch`, remove or gate the stub branch, and keep the same typed function signature so UI code does not change.
+
+## Feedback Tracking
+
+Client feedback is tracked in a Notion database via MCP:
+- **Database**: "FC Client Feedback" — https://www.notion.so/67e79bb1c7684b33b87a93137b63e8e1
+- **Data Source ID**: `733befe8-1c56-4ade-9af6-19c2e4889f42`
+- **GitHub label**: `client-feedback` (on `ridegoodwaves/franklin-covey`)
+- **Stakeholders**: Kari Sadler (Director of Coaching), Andrea (Director of Operations)
+
+**Intake SLA**: P0 = same-day triage + email reply; P1/P2 = within 24h. Weekly digest email to Kari/Andrea every Monday.
+
+**Workflow**: Stakeholder emails feedback → dev creates Notion row (Status: NEW) → if code fix needed, create GitHub Issue with `client-feedback` label → fix → update Notion Status to SHIPPED, link PR, write Resolution Notes, set Date Resolved.
+
+**Status values**: NEW, NEEDS_INFO, IN_PROGRESS, SHIPPED, WONT_FIX, DEFERRED, DUPLICATE. **Priority**: P0_CRITICAL, P1_HIGH, P2_MEDIUM, P3_LOW. **Area**: PARTICIPANT_FLOW, COACH_PORTAL, ADMIN_DASHBOARD, AUTHENTICATION, SCHEDULING, EMAILS, DATA_IMPORT, OTHER. **Type**: BUG, SUGGESTION, QUESTION.
+
+**Acknowledgment rule**: Always reply to the stakeholder's original email confirming receipt and triage status. Never let feedback disappear into a void.
 
 ## Engagement Status Values
 

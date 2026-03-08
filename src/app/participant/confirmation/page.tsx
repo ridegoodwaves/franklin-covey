@@ -5,6 +5,12 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { CoachBioModal, type CoachBioModalData } from "@/components/CoachBioModal";
+import {
+  isStoredCoachOwnedByParticipant,
+  PARTICIPANT_SESSION_KEYS,
+} from "@/lib/participant-session";
+import { HelpFooter } from "@/components/participant/HelpFooter";
+import { cn } from "@/lib/utils";
 
 interface StoredCoach {
   id: string;
@@ -17,6 +23,7 @@ interface StoredCoach {
   quotes?: Array<{ quote: string; attribution?: string }>;
   location: string;
   bookingUrl?: string;
+  participantEmail?: string;
 }
 
 function ConfirmationContent() {
@@ -28,17 +35,32 @@ function ConfirmationContent() {
   const alreadySelected = searchParams.get("already") === "true";
 
   useEffect(() => {
+    let shouldSetLoadError = false;
+
     try {
-      const raw = sessionStorage.getItem("selected-coach");
+      const raw = sessionStorage.getItem(PARTICIPANT_SESSION_KEYS.selectedCoach);
+      const participantEmail = sessionStorage.getItem(PARTICIPANT_SESSION_KEYS.email);
       if (raw) {
-        const parsed = JSON.parse(raw) as StoredCoach;
-        setCoach(parsed);
+        if (!isStoredCoachOwnedByParticipant(raw, participantEmail)) {
+          sessionStorage.removeItem(PARTICIPANT_SESSION_KEYS.selectedCoach);
+          if (!alreadySelected) {
+            shouldSetLoadError = true;
+          }
+        } else {
+          const parsed = JSON.parse(raw) as StoredCoach;
+          setCoach(parsed);
+        }
       } else if (!alreadySelected) {
-        setLoadError(true);
+        shouldSetLoadError = true;
       }
     } catch {
+      shouldSetLoadError = true;
+    }
+
+    if (shouldSetLoadError) {
       setLoadError(true);
     }
+
     const t = setTimeout(() => setMounted(true), 50);
     return () => clearTimeout(t);
   }, [alreadySelected]);
@@ -167,15 +189,13 @@ function ConfirmationContent() {
             </div>
           )}
 
-          <p className={`mt-10 text-center text-xs text-muted-foreground transition-all duration-700 ${mounted ? "opacity-100" : "opacity-0"}`} style={{ transitionDelay: "400ms" }}>
-            Need help?{" "}
-            <a
-              href="mailto:Andrea.Sherman@franklincovey.com"
-              className="underline underline-offset-2 hover:text-fc-700 transition-colors"
-            >
-              Contact your program administrator
-            </a>.
-          </p>
+          <HelpFooter
+            className={cn(
+              "mt-10 text-xs transition-all duration-700",
+              mounted ? "opacity-100" : "opacity-0"
+            )}
+            style={{ transitionDelay: "400ms" }}
+          />
         </div>
       </main>
 
