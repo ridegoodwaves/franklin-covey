@@ -1,20 +1,18 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
 import { consumeRateLimit, getRequestIpAddress } from "./rate-limit";
 
 describe("getRequestIpAddress", () => {
-  it("returns first segment from x-forwarded-for", () => {
-    const headers = new Headers({ "x-forwarded-for": "attacker-ip, real-ip" });
-    expect(getRequestIpAddress(headers)).toBe("attacker-ip");
-  });
-
-  it("returns x-real-ip header when x-forwarded-for is absent", () => {
-    const headers = new Headers({ "x-real-ip": "10.0.0.1" });
-    expect(getRequestIpAddress(headers)).toBe("10.0.0.1");
+  it("returns x-real-ip header when request.ip is unavailable", () => {
+    const request = new NextRequest("http://localhost/test", {
+      headers: { "x-real-ip": "10.0.0.1" },
+    });
+    expect(getRequestIpAddress(request)).toBe("10.0.0.1");
   });
 
   it('returns "unknown" when no headers present', () => {
-    const headers = new Headers();
-    expect(getRequestIpAddress(headers)).toBe("unknown");
+    const request = new NextRequest("http://localhost/test");
+    expect(getRequestIpAddress(request)).toBe("unknown");
   });
 });
 

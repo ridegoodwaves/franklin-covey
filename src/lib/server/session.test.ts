@@ -102,17 +102,8 @@ describe("session — token signing & verification", () => {
     const payload = { userId: "u1", email: "test@gov.com", role: "COACH" as const };
     const token = createMagicLinkToken(payload);
 
-    // The split(".") in verifySignedToken only destructures [encoded, signature].
-    // Extra segments are ignored, so encoded+sig remain the same.
-    // But since split returns >2 parts, the signature is still correctly at index 1.
-    // The actual defense here is that the token structure is `encoded.sig` — anything
-    // else is malformed. Let's verify the function handles it gracefully.
     const result = verifyMagicLinkToken(`${token}.extra.segments`);
-    // verifySignedToken splits on "." and takes [0] and [1], so extra segments
-    // don't affect verification. The token still round-trips.
-    // This is acceptable because the signature covers the encoded payload.
-    // If you want to reject extra segments, you'd add a segment count check.
-    expect(result).not.toBeNull(); // Current behavior: passes (split takes first two)
+    expect(result).toBeNull();
   });
 
   it("returns null for empty string token without throwing", () => {

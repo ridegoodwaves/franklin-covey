@@ -8,8 +8,18 @@ vi.mock("@/lib/email/send-with-guard", () => ({
   sendWithEmailGuard: vi.fn(async () => ({ id: "mock-email-id" })),
 }));
 
+vi.mock("@/lib/server/security-guards", () => ({
+  consumeMagicLinkRequestRateLimit: vi.fn(async () => ({
+    allowed: true,
+    retryAfterSeconds: 0,
+    reason: null,
+  })),
+}));
+
 import { sendWithEmailGuard } from "@/lib/email/send-with-guard";
+import { consumeMagicLinkRequestRateLimit } from "@/lib/server/security-guards";
 const mockSendWithGuard = vi.mocked(sendWithEmailGuard);
+const mockConsumeMagicLinkRateLimit = vi.mocked(consumeMagicLinkRequestRateLimit);
 
 vi.stubEnv("AUTH_SECRET", "test-secret-minimum-32-characters-long-here");
 vi.stubEnv("MAGIC_LINK_TTL_MINUTES", "30");
@@ -30,6 +40,12 @@ describe("POST /api/auth/magic-link/request", () => {
     vi.stubEnv("AUTH_SECRET", "test-secret-minimum-32-characters-long-here");
     mockSendWithGuard.mockClear();
     mockSendWithGuard.mockResolvedValue({ id: "mock-email-id" });
+    mockConsumeMagicLinkRateLimit.mockClear();
+    mockConsumeMagicLinkRateLimit.mockResolvedValue({
+      allowed: true,
+      retryAfterSeconds: 0,
+      reason: null,
+    });
   });
 
   it("returns success:true for unknown email (non-enumerating)", async () => {
@@ -89,6 +105,22 @@ describe("POST /api/auth/magic-link/request", () => {
 
     expect(response.status).toBe(403);
     expect(body.error).toBe("EMAIL_BLOCKED");
+  });
+
+  it("returns 429 RATE_LIMITED when magic-link throttle blocks request", async () => {
+    mockConsumeMagicLinkRateLimit.mockResolvedValue({
+      allowed: false,
+      retryAfterSeconds: 60,
+      reason: "EMAIL_COOLDOWN",
+    });
+
+    const response = await POST(buildRequest({ email: "coach@test.gov" }));
+    const body = await response.json();
+
+    expect(response.status).toBe(429);
+    expect(body.error).toBe("RATE_LIMITED");
+    expect(response.headers.get("retry-after")).toBe("60");
+    expect(mockSendWithGuard).not.toHaveBeenCalled();
   });
 
   it("returns success:true for archived user (non-enumerating)", async () => {
