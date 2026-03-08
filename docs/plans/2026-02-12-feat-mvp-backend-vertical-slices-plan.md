@@ -27,7 +27,7 @@ changelog:
   - 2026-02-24d: "Participant auth decision updated per Kari confirmation: MVP uses roster-matched email-entry only (no participant access codes) due USPS cohort group-email workflow + FC sender restrictions. Access-code references in this backlog are now historical unless explicitly re-approved."
   - 2026-02-24e: "Applied 2026-02-24d auth decision to frontend and API client: removed access code field from participant entry page, renamed verifyAccessCode → verifyParticipantEmail, updated endpoint to POST /api/participant/auth/verify-email, replaced INVALID_CREDENTIALS error code with UNRECOGNIZED_EMAIL (specific messaging per product decision). VerificationCode model removal delegated to schema owner. Research doc updated to match."
   - 2026-02-25: "Staging backend foundation executed: Prisma multi-org-ready schema authored, initial migration applied to staging Supabase, USPS baseline seed loaded (4 programs, 14 cohorts, 32 coach memberships, 175 participants/engagements), and centralized outbound-email guard added with EMAIL_OUTBOUND_ENABLED kill-switch enforcement for staging safety."
-  - 2026-02-28: "Applied slice-order lock from source-of-truth project plan: Slice 2 is admin dashboard visibility/reporting (Mar 9), Slice 3 is coach portal + bulk import execution (Mar 16)."
+  - 2026-02-28: "Applied slice-order lock from source-of-truth project plan: Slice 2 is admin dashboard visibility/reporting (Mar 9), Slice 3 is coach portal + bulk import execution (Mar 16). Auth.js references retained only as historical backlog context; implementation remains custom magic-link auth + Resend delivery for MVP."
   - 2026-03-03: "Recorded Mar 1-2 launch-hardening work in pre-main branch: Wistia integration + CSP hardening, participant session carryover fix, and PROGRAM_ADMIN contact consistency."
 ---
 
@@ -48,6 +48,12 @@ Connect the existing polished frontend (~60% built, hardcoded demo data) to a re
 | **1** | Coach Selector + Participant Email Auth (roster-matched) | **March 2** | ~60 participants (first cohort) |
 | **2** | Admin Portal Visibility + Reporting | **March 9** | 3 admins (Ops, Kari, Greg) |
 | **3** | Coach Engagement + Session Logging + Bulk Import Execution | **March 16** | ~15 coaches (MLP/ALP panel) |
+
+> **2026-02-28 sequencing lock:** For current implementation order and acceptance criteria, use:
+> - `docs/plans/2026-02-18-fc-project-plan.md`
+> - `docs/plans/2026-02-27-feat-admin-dashboard-slice-2-reorder-plan.md`
+>
+> Historical Slice 2/3/Auth.js/OTP planning content has been moved into archive appendices below and is not active implementation guidance.
 
 **Key architectural decisions** (from [brainstorm](docs/brainstorms/2026-02-12-mvp-ship-strategy-brainstorm.md)):
 - Participant auth: USPS-delivered coach-selector link + roster-matched participant email entry only (no system participant emails in MVP)
@@ -83,14 +89,14 @@ The CIL Brief (Feb 2026) expanded scope from 5-10 coaches to **35 coaches** and 
 │        │              │              │            │
 │  ┌─────┴──────────────┴──────────────┴───────┐   │
 │  │          API Routes (/api/*)               │   │
-│  │  • /api/auth/[...nextauth] (coach/admin)  │   │
-│  │  • /api/participant/auth   (access-code)  │   │
+│  │  • /api/auth/magic-link/* (coach/admin)   │   │
+│  │  • /api/participant/auth/verify-email     │   │
 │  │  • /api/participant/coaches (selection)    │   │
 │  │  • /api/coach/sessions     (logging)      │   │
 │  │  • /api/admin/import       (bulk)         │   │
 │  │  • /api/admin/dashboard    (KPIs)         │   │
 │  │  • /api/cron/nudges        (dashboard flags only) │   │
-│  │  • /api/export             (CSV stream)   │   │
+│  │  • /api/export             (CSV response) │   │
 │  └─────────────────┬─────────────────────────┘   │
 │                    │                              │
 │  ┌─────────────────┴─────────────────────────┐   │
@@ -316,7 +322,7 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
   - Run via `npx tsx scripts/import-coaches.ts --file coaches-mlp-alp.csv --orgId <orgId> --programs MLP,ALP`
   - Run via `npx tsx scripts/import-coaches.ts --file coaches-ef-el.csv --orgId <orgId> --programs EF,EL`
   - **Sanitize-by-default**: emails rewritten to `{slug}+test@yourdomain.com` unless `--raw` flag is passed. `--raw` prints a warning: "Importing raw email addresses. Only use in production." Safe-by-default prevents accidental email sends to real coaches.
-  - **This is how 35 real coaches get into the system for March 2.** Admin UI for coach management ships in Slice 3 (March 16).
+  - **This is how 35 real coaches get into the system for March 2.** Admin coach roster UI lands in Slice 2 (March 9) for visibility/controls.
   - FC provides the CSV; Amit provides the template (see workshop agenda pre-req)
   - **Git hygiene**: real CSV (with real emails) added to `.gitignore`. Only the template with example rows is committed.
 
@@ -331,19 +337,19 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
   - **Important**: when calling `transitionEngagement` twice in one transaction (e.g., `IN_PROGRESS` then `COMPLETED`), thread the returned `newStatusVersion` into the second call — never reuse the version from transaction start
 - [ ] Validation schemas (Zod) — `src/lib/validations.ts`
   - `participantEmailSchema` — lowercase, trim, valid format
-  - `participantAccessCodeSchema` — code format/length for participant auth
+  - `participantEmailVerifySchema` — normalized participant email verification payload
   - `sessionNoteSchema` — topics from `SESSION_TOPICS_BY_PROGRAM[programType]` (MLP has managerial competencies, ALP/EF/EL have executive competencies), outcomes from `SESSION_OUTCOMES`, duration from `DURATION_OPTIONS`
   - `csvRowSchema` — firstName, lastName, email, org, programTrack, programId, cohortCode, cohortStartDate (ISO date)
 - [ ] Email client — `src/lib/email.ts`
-  - Resend client wrapper (or AWS SES — **decision needed before Slice 1**)
-  - `sendMagicLink(email, url)` — coach/admin auth (via Auth.js)
+  - Resend client wrapper (locked for MVP auth-email delivery)
+  - `sendMagicLink(email, url)` — coach/admin auth (custom magic-link routes, not Auth.js)
   - **Startup assertion**: crash if production SMTP credentials (Resend/SES/SendGrid) detected in non-production `NODE_ENV`. Prevents `.env` mix-ups from sending real emails. Pattern: `if (NODE_ENV !== 'production' && SMTP_HOST matches /resend|ses|sendgrid/) throw Error`
 - [ ] Error classes — `src/lib/errors.ts`
   - `CoachAtCapacityError`, `CoachInactiveError`, `NoInvitedEngagementError`, `AllSessionsCompletedError`, `InvalidTransitionError`
   - Use `instanceof` checks in route handlers (not string comparison)
 - [ ] ~~Structured logging~~ — **Deferred** (use `console.log`/`console.error` for MVP; add pino post-launch)
 - [ ] ~~API response helpers~~ — **Deferred** (use `NextResponse.json()` directly; extract helpers when duplication appears)
-- [ ] Rate limiting — use Vercel's built-in rate limiting or simple in-memory Map with TTL (not custom middleware)
+- [ ] Rate limiting — keep current hybrid model: DB-backed controls for magic-link/participant-email paths plus in-memory IP fallback where appropriate
 
 #### 0.4 Environment + Docker
 
@@ -352,15 +358,15 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 DATABASE_URL="postgresql://user:pass@localhost:5432/franklincovey?connection_limit=20&pool_timeout=10"
 
 # Auth
-NEXTAUTH_SECRET=
-NEXTAUTH_URL=http://localhost:3000
+AUTH_SECRET=
+MAGIC_LINK_TTL_MINUTES=30
 
-# Participant Auth
-ACCESS_CODE_SECRET= # HMAC-SHA256 key for participant access codes. Use crypto.createHmac('sha256', secret).update(code).digest('hex').
+# Participant Auth (MVP is roster-matched email entry only)
+# No participant access-code secret is required.
 
 # Email
 RESEND_API_KEY= # Or AWS SES credentials
-EMAIL_FROM=noreply@franklincovey-coaching.com
+EMAIL_FROM= # Verified sender (preferred on onusleadership.com, or approved fallback)
 
 # Cron
 CRON_SECRET= # Shared secret for /api/cron/* endpoints
@@ -544,14 +550,14 @@ await prisma.$transaction(async (tx) => {
 - [ ] Run `prisma migrate deploy` against production database
 - [ ] Run seed script (4 programs, 35 coaches, 3 admins)
 - [ ] Deploy to Vercel staging (Supabase env)
-- [ ] Configure email provider (Resend / SES — **decision needed**; if Resend, use paid tier for launch window to avoid free-tier daily cap throttling)
+- [ ] Configure email provider (Resend locked for MVP; use paid tier for launch window to avoid free-tier daily cap throttling)
 - [ ] Set environment variables in production
-- [ ] Test participant access-code flow end-to-end on staging
+- [ ] Test participant roster-email auth flow end-to-end on staging
 - [ ] Test coach selection end-to-end on staging
 - [ ] Load test: ~60 concurrent participants hitting coach selector (first cohort; 400 total over 6 months)
 
 **Slice 1 Acceptance Criteria:**
-- [ ] Participant can visit coach-selector link, enter email + access code, verify, and land on coach selector
+- [ ] Participant can visit coach-selector link, enter roster email, verify, and land on coach selector
 - [ ] Coach selector shows 3 capacity-weighted randomized coaches (no filters)
 - [ ] Remix shows 3 different coaches (max 1 remix, one-way door with confirmation warning)
 - [ ] Coach selection creates engagement with `COACH_SELECTED` status
@@ -559,12 +565,16 @@ await prisma.$transaction(async (tx) => {
 - [ ] Capacity is enforced with configured per-coach limits (all pools locked at 20; count active statuses only)
 - [ ] Zero coaches scenario shows appropriate message + notifies ops
 - [ ] Returning participant with valid session skips auth → goes to confirmation (if coach already selected)
-- [ ] Access-code brute force is rate-limited (attempt limit + lockout + IP throttling)
+- [ ] Participant email verification brute force is rate-limited (attempt limit + lockout + IP throttling)
 - [ ] All API responses identical for valid/invalid emails (no enumeration)
 
 ---
 
-### Slice 2: Coach Engagement (Days 9-14) — Deadline: March 9
+## Appendix A (Archive): Superseded Slice 2/3 Implementation Draft (Pre-2026-02-28)
+
+This appendix is retained for historical context only. Current delivery order is controlled by the source-of-truth plans listed above.
+
+### Slice 2: Coach Engagement (Historical Ordering — Superseded by 2026-02-28 lock)
 
 #### 2.1 Coach/Admin Auth (Auth.js Magic Links)
 
@@ -726,7 +736,9 @@ await prisma.$transaction(async (tx) => {
 
 ---
 
-### Slice 3: Admin Portal (Days 15-22) — Deadline: March 16
+### Slice 3: Admin Portal (Historical Ordering — Superseded by 2026-02-28 lock)
+
+> Historical section retained. Current delivery order moved admin visibility/reporting to Slice 2 (March 9).
 
 #### 3.1 Admin Dashboard APIs
 
@@ -886,7 +898,9 @@ await prisma.$transaction(async (tx) => {
 
 ---
 
-## Alternative Approaches Considered
+## Appendix B (Archive): Superseded Alternatives, Acceptance, and Testing Drafts
+
+### Alternative Approaches Considered
 
 ### 1. System-Sent OTP Auth
 - Generic participant URL + system-sent OTP email
@@ -906,7 +920,7 @@ await prisma.$transaction(async (tx) => {
 
 ---
 
-## Acceptance Criteria
+### Acceptance Criteria
 
 ### Functional Requirements
 
@@ -1030,7 +1044,7 @@ Minimal but targeted — cover the flows where bugs cause the most damage:
 
 ---
 
-**Suite 3: Coach Auth + Session Logging** (Slice 2 — run before March 9)
+**Suite 3: Coach Auth + Session Logging** (Slice 3 — run before March 16)
 
 | # | Scenario | Steps | Pass Criteria |
 |---|----------|-------|---------------|
@@ -1046,7 +1060,7 @@ Minimal but targeted — cover the flows where bugs cause the most damage:
 
 ---
 
-**Suite 4: Admin Portal** (Slice 3 — run before March 16)
+**Suite 4: Admin Portal** (Slice 2 — run before March 9)
 
 | # | Scenario | Steps | Pass Criteria |
 |---|----------|-------|---------------|
@@ -1075,7 +1089,7 @@ Minimal but targeted — cover the flows where bugs cause the most damage:
 | 5.3 | Unauthorized access — admin routes | 1. Auth as coach 2. Navigate to `/admin/dashboard` | 403 or redirect to `/auth/signin`. Coach cannot access admin routes. |
 | 5.4 | Role boundary — coach accessing admin API | 1. Auth as coach 2. Fetch `/api/admin/dashboard/kpis` | Returns 403 Forbidden. |
 | 5.5 | Health endpoint | 1. Fetch `/api/health` | Returns `{ status: "ok" }` with 200. Database connectivity verified. |
-| 5.6 | Rate limiting — access-code brute force | 1. Submit repeated invalid access-code attempts from same IP | Requests are throttled and lockout is enforced. |
+| 5.6 | Rate limiting — participant email verification brute force | 1. Submit repeated invalid participant-email verification attempts from same IP | Requests are throttled and lockout is enforced. |
 
 ---
 
@@ -1083,7 +1097,7 @@ Minimal but targeted — cover the flows where bugs cause the most damage:
 
 **When to run:**
 - **Pre-deployment gate**: Full suite runs against staging after `prisma migrate deploy` and before DNS cutover
-- **Per-slice gate**: Only run suites relevant to the slice being deployed (Suite 1+2+5 for Slice 1, add Suite 3 for Slice 2, full suite for Slice 3)
+- **Per-slice gate**: Only run suites relevant to the slice being deployed (Suite 1+2+5 for Slice 1, add Suite 4 for Slice 2, full suite for Slice 3)
 - **Regression on redeploy**: Full suite on any hotfix or schema change
 
 **How to run** (Claude in Chrome operator workflow):
@@ -1128,7 +1142,9 @@ Suites are designed to run **in order** — each suite builds on state created b
 
 ---
 
-## Success Metrics
+## Appendix C (Archive): Historical Dependencies, Risks, and References
+
+### Success Metrics
 
 | Metric | Target | Measurement |
 |--------|--------|-------------|
@@ -1141,21 +1157,21 @@ Suites are designed to run **in order** — each suite builds on state created b
 
 ---
 
-## Dependencies & Prerequisites
+### Dependencies & Prerequisites
 
-### Must Resolve Before Slice 1 (status as of Feb 18)
+#### Must Resolve Before Slice 1 (status as of Feb 18)
 
 | Decision | Options | Impact |
 |----------|---------|--------|
 | **Email provider** | Resend (recommend paid tier at launch) vs AWS SES | Coach/admin magic-link emails depend on this; free-tier daily caps may throttle busy days |
 | **Cloud provider** | **Resolved: Vercel + Supabase (confirmed 2026-02-18)** | MVP hosting and database target locked; remove infra ambiguity |
 | **Domain / DNS** | Who manages? What subdomain? | Deployment URL, email sender domain |
-| **Real coach data entry** | Admin CSV upload vs manual entry vs seed script | 35 coaches need real bios, photos, and booking URLs before March 2 (video is de-scoped for MVP). Seed script only covers dev data. Options: (a) FC provides a CSV and we import via a one-off script, (b) build a minimal coach profile edit form in admin portal (pulls Slice 3 work forward), or (c) Kari/Andrea enter data directly in the database via a simple admin form. **Recommend option (a)** — CSV from FC ops, imported with a script. |
+| **Real coach data entry** | Admin CSV upload vs manual entry vs seed script | 35 coaches need real bios, photos, and booking URLs before March 2 (video is de-scoped for MVP). Seed script only covers dev data. Options: (a) FC provides a CSV and we import via a one-off script, (b) build a minimal coach profile edit form in admin portal (pulls Slice 2 work forward), or (c) Kari/Andrea enter data directly in the database via a simple admin form. **Recommend option (a)** — CSV from FC ops, imported with a script. |
 | **Blocking decision turnaround** | **Resolved: FC 24-hour owner through Mar 16 (confirmed 2026-02-18)** | Protects critical path when implementation questions arise |
 | **Contract status** | **Resolved: signed (confirmed 2026-02-18)** | Removes pre-launch legal/commercial execution risk |
 | **Participant counts by cohort** | Baseline confirmed at 400; per-cohort allocations pending final file lock | Required to validate capacity assumptions and overlap load (all coach capacity locked at 20) |
 
-### Must Resolve Before Slice 3 (by March 9)
+#### Must Resolve Before Slice 3 (by March 16, after slice reorder)
 
 | Decision | Options | Impact |
 |----------|---------|--------|
@@ -1166,7 +1182,7 @@ Suites are designed to run **in order** — each suite builds on state created b
 
 ---
 
-## Risk Analysis & Mitigation
+### Risk Analysis & Mitigation
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
@@ -1174,13 +1190,13 @@ Suites are designed to run **in order** — each suite builds on state created b
 | Resend free-tier daily cap throttles launch-day emails | Medium | Medium — magic-link delays during spikes | Use Resend paid tier for launch window or SES fallback; monitor send rate on high-volume days |
 | ~60 first-cohort users overwhelm coach selector | Low | High — launch day failure | Load test before March 2, validate with first-cohort concurrency assumptions |
 | Coach capacity race condition | Medium | Medium — two participants get same coach | Serialized transaction with capacity recheck (implemented above) |
-| USPS participant email execution issues | Medium | High — participants may not have access codes on time | Provide USPS-ready export early, include checklist + send-date tracking, and define exception-handling path with FC Ops |
+| USPS participant email execution issues | Medium | High — participants may miss coach-selector access instructions or timing | Provide USPS-ready export early, include checklist + send-date tracking, and define exception-handling path with FC Ops |
 | Schema migration needed mid-slice | Low | Medium — deployment complexity | Ship full schema in Phase 0, even for models used in later slices |
 | Feb 18 workshop reveals new requirements | High | Medium — scope creep | Brainstorm decisions are firm; new requirements go to post-launch backlog |
 
 ---
 
-## Future Considerations
+### Future Considerations
 
 Post-launch backlog (NOT in scope for March 16):
 
@@ -1199,9 +1215,9 @@ Post-launch backlog (NOT in scope for March 16):
 
 ---
 
-## References & Research
+### References & Research
 
-### Internal References
+#### Internal References
 
 - PRD: `/Users/amitbhatia/.cursor/prd_for_apps/franklincovey-coaching-platform-prd.md`
   - Schema: lines 167-365
@@ -1215,7 +1231,7 @@ Post-launch backlog (NOT in scope for March 16):
 - Status utilities: `src/lib/utils.ts`
 - Documented solution (communication pattern): `docs/solutions/integration-issues/calendly-api-scope-miscommunication.md`
 
-### External References
+#### External References
 
 - Next.js 15 App Router: https://nextjs.org/docs/app
 - Prisma 6: https://www.prisma.io/docs
@@ -1224,7 +1240,7 @@ Post-launch backlog (NOT in scope for March 16):
 - Resend + React Email: https://resend.com/docs
 - Zod validation: https://zod.dev
 
-### SpecFlow Analysis
+#### SpecFlow Analysis
 
 124 findings analyzed, 16 critical blockers resolved in this plan. Full analysis available from spec-flow-analyzer session (agent ID: a3c6e60).
 

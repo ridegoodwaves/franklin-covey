@@ -2,17 +2,40 @@
 
 **Branch:** `feat/phase-0-backend`
 **Live URL:** https://franklin-covey-git-feat-phase-0-backend-ridegoodwaves-projects.vercel.app/
-**Hard Deadline:** Slice 1 live March 2 | Slice 2 March 9 | Slice 3 March 16
+**Hard Deadline:** Slice 1 live March 2 | Slice 2 (admin visibility/reporting) March 9 | Slice 3 (coach portal + import execution) March 16
 
 ---
 
-## Context
+> **Status note (2026-02-28 lock):** Participant auth is **roster-matched email entry only** (no access code, no OTP page) for MVP.
+>
+> This document contains historical OTP/access-code sections from an earlier draft. Treat those sections as archival context only. Current implementation sequencing and acceptance criteria are controlled by:
+> - `docs/plans/2026-02-18-fc-project-plan.md`
+> - `docs/plans/2026-02-27-feat-admin-dashboard-slice-2-reorder-plan.md`
+
+---
+
+## Active Guidance (Current)
+
+Use this section for implementation decisions. Archive appendices below are historical only.
+
+- Participant auth flow for MVP is email-entry only (no OTP): `/participant` -> verify email -> `/participant/select-coach` -> `/participant/confirmation`.
+- Slice 2 (March 9) is admin visibility/reporting; Slice 3 (March 16) is coach portal + import execution.
+- Coach/admin auth remains custom magic-link + portal session (no Auth.js migration in MVP).
+- USPS-only reporting scope is intentional for MVP even with global-capable admin roles.
+
+---
+
+## Appendix A (Archive): Superseded Frontend Audit Draft (Pre-2026-02-28)
+
+This appendix is retained for historical context and should not be used as current implementation guidance.
+
+### Context
 
 With MVP scope locked (2026-02-17/18), the current frontend codebase needs to be reconciled against the final spec. Several screens exist in wrong form, some are missing entirely, and there are significant participant flow violations that will break the actual user journey if shipped as-is. This plan audits every screen, identifies what to keep vs. fix vs. add, and prioritizes work by the March 2 hard deadline.
 
 ---
 
-## Critical Violations (Fix First)
+### Critical Violations (Fix First)
 
 ### 1. Participant Flow Is Structurally Wrong
 
@@ -45,7 +68,7 @@ With MVP scope locked (2026-02-17/18), the current frontend codebase needs to be
 
 ---
 
-## What to Keep (No Changes Needed)
+### What to Keep (No Changes Needed)
 
 | Item | Notes |
 |------|-------|
@@ -65,7 +88,7 @@ With MVP scope locked (2026-02-17/18), the current frontend codebase needs to be
 
 ---
 
-## What to Fix
+### What to Fix
 
 ### Participant Portal
 
@@ -125,7 +148,7 @@ With MVP scope locked (2026-02-17/18), the current frontend codebase needs to be
 
 ---
 
-## What to Add
+## Appendix B (Archive): Superseded OTP/Auth.js Workplan
 
 ### Slice 1 (Must ship March 2)
 
@@ -212,7 +235,9 @@ With MVP scope locked (2026-02-17/18), the current frontend codebase needs to be
 
 ---
 
-## Edge Cases Not Yet Addressed
+## Appendix C (Archive): Superseded Edge Cases, Timeline, and Verification Draft
+
+### Edge Cases Not Yet Addressed
 
 | Edge Case | Required Behavior | Where |
 |-----------|-------------------|-------|
@@ -236,7 +261,7 @@ With MVP scope locked (2026-02-17/18), the current frontend codebase needs to be
 
 ---
 
-## Implementation Order (Re-baselined for March 2)
+### Implementation Order (Re-baselined for March 2)
 
 ### Must Have by March 2 (P0)
 1. `/` participant entry routes to `/participant/`
@@ -287,7 +312,7 @@ With MVP scope locked (2026-02-17/18), the current frontend codebase needs to be
 
 ---
 
-## Critical Files
+### Critical Files
 
 | File | Action |
 |------|--------|
@@ -311,7 +336,7 @@ With MVP scope locked (2026-02-17/18), the current frontend codebase needs to be
 
 ---
 
-## Verification
+### Verification
 
 **Participant flow end-to-end:**
 1. Hit `/` and choose Participant → lands on `/participant/` (not selector)
