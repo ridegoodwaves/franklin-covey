@@ -1,3 +1,5 @@
+import type { NextRequest } from "next/server";
+
 interface RateLimitBucket {
   hits: number[];
 }
@@ -59,10 +61,17 @@ export function consumeRateLimit({
   };
 }
 
-export function getRequestIpAddress(headers: Headers): string {
-  const forwardedFor = headers.get("x-forwarded-for");
-  if (forwardedFor) {
-    return forwardedFor.split(",")[0]?.trim() || "unknown";
+export function getRequestIpAddress(request: NextRequest): string {
+  const requestWithIp = request as NextRequest & { ip?: string };
+
+  try {
+    if (requestWithIp.ip && requestWithIp.ip.trim().length > 0) {
+      return requestWithIp.ip.trim();
+    }
+  } catch {
+    // Some test/local request objects do not fully support `request.ip`.
   }
-  return headers.get("x-real-ip") || "unknown";
+
+  const realIp = request.headers.get("x-real-ip");
+  return realIp?.trim() || "unknown";
 }

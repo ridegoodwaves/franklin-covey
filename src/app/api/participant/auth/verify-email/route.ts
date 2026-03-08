@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const ip = getRequestIpAddress(request.headers);
+    const ip = getRequestIpAddress(request);
     const rateLimit = consumeRateLimit({
       key: `participant-verify-email:${ip}`,
       maxRequests: MAX_REQUESTS_PER_HOUR,

@@ -47,7 +47,7 @@ async function consumeToken(token: string | null, request: NextRequest) {
     userId: user.id,
     email: user.email,
     role: user.role,
-    ipAddress: getRequestIpAddress(request.headers),
+    ipAddress: getRequestIpAddress(request),
     userAgent: request.headers.get("user-agent") || undefined,
   });
 

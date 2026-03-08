@@ -71,7 +71,10 @@ function createSignedToken<T>(scope: string, payload: T, ttlSeconds: number): st
 }
 
 function verifySignedToken<T>(token: string, expectedScope: string): T | null {
-  const [encoded, signature] = token.split(".");
+  const tokenParts = token.split(".");
+  if (tokenParts.length !== 2) return null;
+
+  const [encoded, signature] = tokenParts;
   if (!encoded || !signature) return null;
 
   const expectedSignature = signSegment(encoded);
