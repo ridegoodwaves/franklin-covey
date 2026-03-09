@@ -265,10 +265,15 @@ export default function AdminDashboardPage() {
     return () => controller.abort();
   }, [coachFilter, page, programFilter, search, sort, statusFilter, tab]);
 
-  const programOptions = useMemo(
-    () => (kpis?.programBreakdown || []).map((item) => item.programCode),
-    [kpis]
-  );
+  const [stableProgramOptions, setStableProgramOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (kpis?.programBreakdown && stableProgramOptions.length === 0) {
+      setStableProgramOptions(kpis.programBreakdown.map((item) => item.programCode));
+    }
+  }, [kpis, stableProgramOptions.length]);
+
+  const programOptions = stableProgramOptions;
 
   const reportDate = useMemo(
     () =>
