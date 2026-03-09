@@ -18,6 +18,7 @@ import type {
   EngagementSortOption,
   EngagementTab,
 } from "@/lib/types/dashboard";
+import { resolveDashboardProgramOptions } from "@/lib/dashboard-program-options";
 import { usePortalUser } from "@/lib/use-portal-user";
 
 interface AdminEngagementRowApi
@@ -265,15 +266,7 @@ export default function AdminDashboardPage() {
     return () => controller.abort();
   }, [coachFilter, page, programFilter, search, sort, statusFilter, tab]);
 
-  const [stableProgramOptions, setStableProgramOptions] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (kpis?.programBreakdown && stableProgramOptions.length === 0) {
-      setStableProgramOptions(kpis.programBreakdown.map((item) => item.programCode));
-    }
-  }, [kpis, stableProgramOptions.length]);
-
-  const programOptions = stableProgramOptions;
+  const programOptions = useMemo(() => resolveDashboardProgramOptions(kpis), [kpis]);
 
   const reportDate = useMemo(
     () =>
