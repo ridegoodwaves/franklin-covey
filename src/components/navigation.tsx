@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -36,7 +37,32 @@ export function PortalShell({
   activeItem,
   children,
 }: PortalShellProps) {
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  async function handleSignOut() {
+    if (isSigningOut) return;
+
+    setIsSigningOut(true);
+    try {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error("Sign out failed");
+      }
+
+      router.replace("/auth/signin");
+      router.refresh();
+    } catch {
+      return;
+    } finally {
+      setIsSigningOut(false);
+    }
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -140,7 +166,15 @@ export function PortalShell({
             </p>
             <p className="truncate text-xs text-muted-foreground">{userRole}</p>
           </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            onClick={() => void handleSignOut()}
+            disabled={isSigningOut}
+            aria-label="Sign out"
+            title="Sign out"
+          >
             <svg
               width="16"
               height="16"

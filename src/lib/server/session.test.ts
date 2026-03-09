@@ -19,6 +19,7 @@ const {
   readPortalSession,
   writePortalSession,
   clearParticipantSession,
+  clearPortalSession,
 } = sessionModule;
 
 // Helper: build a NextRequest with a cookie
@@ -240,6 +241,15 @@ describe("session — participant session read/write", () => {
 
     const setCookie = response.headers.get("set-cookie") || "";
     expect(setCookie).toContain("fc_participant_session=");
+    expect(setCookie).toContain("Max-Age=0");
+  });
+
+  it("clearPortalSession sets maxAge 0", () => {
+    const response = buildResponse();
+    clearPortalSession(response);
+
+    const setCookie = response.headers.get("set-cookie") || "";
+    expect(setCookie).toContain("fc_portal_session=");
     expect(setCookie).toContain("Max-Age=0");
   });
 });

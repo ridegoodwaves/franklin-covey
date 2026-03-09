@@ -157,3 +157,15 @@ export function readPortalSession(request: NextRequest): PortalSession | null {
   if (!raw) return null;
   return verifySignedToken<PortalSession>(raw, "portal");
 }
+
+export function clearPortalSession(response: NextResponse): void {
+  response.cookies.set({
+    name: PORTAL_SESSION_COOKIE,
+    value: "",
+    httpOnly: true,
+    secure: cookieSecure(),
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
+}
