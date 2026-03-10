@@ -152,14 +152,22 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Magic link send blocked";
-    const status = message.toLowerCase().includes("guard") || message.toLowerCase().includes("allow")
-      ? 403
-      : 502;
+    const lowerMessage = message.toLowerCase();
+    const isGuardBlock =
+      lowerMessage.includes("guard") ||
+      lowerMessage.includes("allow") ||
+      lowerMessage.includes("disabled") ||
+      lowerMessage.includes("blocked") ||
+      lowerMessage.includes("email_mode") ||
+      lowerMessage.includes("email_outbound");
+    const status = isGuardBlock ? 403 : 502;
+
+    console.error("[magic-link/request] Email send error:", message);
 
     return NextResponse.json(
       {
         success: false,
-        error: status === 403 ? "EMAIL_BLOCKED" : "EMAIL_SEND_FAILED",
+        error: isGuardBlock ? "EMAIL_BLOCKED" : "EMAIL_SEND_FAILED",
       },
       { status }
     );
