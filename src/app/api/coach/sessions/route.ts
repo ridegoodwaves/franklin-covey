@@ -1,0 +1,333 @@
+import {
+  EngagementStatus,
+  SessionStatus,
+  type Session,
+  type ProgramCode,
+} from "@prisma/client";
+import { NextRequest } from "next/server";
+import { prisma } from "@/lib/db";
+import { transitionEngagement } from "@/lib/server/engagement-transitions";
+import { validateSessionCreateInput } from "@/lib/validation/session-validation";
+import {
+  isConflictPrismaError,
+  isTimeoutPrismaError,
+  jsonNoStore,
+  mapSessionRow,
+  parseIsoDateOrNull,
+  requireCoachScope,
+  toNullableTrimmed,
+} from "@/app/api/coach/_shared";
+
+interface CreateSessionBody {
+  engagementId?: string;
+  occurredAt?: string | null;
+  topic?: string | null;
+  outcome?: string | null;
+  durationMinutes?: number | null;
+  privateNotes?: string | null;
+  status?: SessionStatus;
+}
+
+class NotFoundError extends Error {}
+class ConflictError extends Error {}
+class ValidationError extends Error {
+  readonly messages: string[];
+
+  constructor(messages: string[]) {
+    super(messages.join("; "));
+    this.messages = messages;
+  }
+}
+
+function parseCreateSessionBody(body: CreateSessionBody): {
+  engagementId: string | null;
+  occurredAt: Date | null | "invalid";
+  topic: string | null;
+  outcome: string | null;
+  durationMinutes: number | null;
+  privateNotes: string | null;
+  status: SessionStatus | null;
+  errors: string[];
+} {
+  const errors: string[] = [];
+
+  const engagementId =
+    typeof body.engagementId === "string" ? body.engagementId.trim() : "";
+  if (!engagementId) {
+    errors.push("engagementId is required");
+  }
+
+  const occurredAtRaw = body.occurredAt ?? null;
+  const occurredAt =
+    typeof occurredAtRaw === "string" || occurredAtRaw === null
+      ? parseIsoDateOrNull(occurredAtRaw)
+      : "invalid";
+  if (occurredAt === "invalid") {
+    errors.push("occurredAt must be a valid ISO date string or null");
+  }
+
+  const topicRaw = body.topic ?? null;
+  const topic =
+    typeof topicRaw === "string" || topicRaw === null
+      ? toNullableTrimmed(topicRaw)
+      : null;
+  if (topicRaw !== null && topicRaw !== undefined && typeof topicRaw !== "string") {
+    errors.push("topic must be a string or null");
+  }
+
+  const outcomeRaw = body.outcome ?? null;
+  const outcome =
+    typeof outcomeRaw === "string" || outcomeRaw === null
+      ? toNullableTrimmed(outcomeRaw)
+      : null;
+  if (outcomeRaw !== null && outcomeRaw !== undefined && typeof outcomeRaw !== "string") {
+    errors.push("outcome must be a string or null");
+  }
+
+  const durationMinutesRaw = body.durationMinutes ?? null;
+  let durationMinutes: number | null = null;
+  if (durationMinutesRaw === null) {
+    durationMinutes = null;
+  } else if (
+    typeof durationMinutesRaw === "number" &&
+    Number.isInteger(durationMinutesRaw)
+  ) {
+    durationMinutes = durationMinutesRaw;
+  } else {
+    errors.push("durationMinutes must be an integer or null");
+  }
+
+  const privateNotesRaw = body.privateNotes ?? null;
+  const privateNotes =
+    typeof privateNotesRaw === "string" || privateNotesRaw === null
+      ? privateNotesRaw
+      : null;
+  if (
+    privateNotesRaw !== null &&
+    privateNotesRaw !== undefined &&
+    typeof privateNotesRaw !== "string"
+  ) {
+    errors.push("privateNotes must be a string or null");
+  }
+
+  const status = Object.values(SessionStatus).includes(body.status as SessionStatus)
+    ? (body.status as SessionStatus)
+    : null;
+  if (!status) {
+    errors.push("status is required and must be a valid SessionStatus");
+  }
+
+  return {
+    engagementId: engagementId || null,
+    occurredAt,
+    topic,
+    outcome,
+    durationMinutes,
+    privateNotes,
+    status,
+    errors,
+  };
+}
+
+async function createSessionWithRetry(input: {
+  engagementId: string;
+  occurredAt: Date | null;
+  topic: string | null;
+  outcome: string | null;
+  durationMinutes: number | null;
+  privateNotes: string | null;
+  status: SessionStatus;
+  organizationCoachId: string;
+}): Promise<Session> {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await prisma.$transaction(
+        async (tx) => {
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${input.engagementId}))`;
+
+          const engagement = await tx.engagement.findFirst({
+            where: {
+              id: input.engagementId,
+              organizationCoachId: input.organizationCoachId,
+              archivedAt: null,
+            },
+            select: {
+              id: true,
+              status: true,
+              statusVersion: true,
+              totalSessions: true,
+              program: {
+                select: {
+                  code: true,
+                },
+              },
+            },
+          });
+
+          if (!engagement) {
+            throw new NotFoundError("Engagement not found");
+          }
+
+          if (
+            engagement.status !== EngagementStatus.COACH_SELECTED &&
+            engagement.status !== EngagementStatus.IN_PROGRESS
+          ) {
+            throw new ConflictError("Engagement status does not allow session logging");
+          }
+
+          const sessionStats = await tx.session.aggregate({
+            where: {
+              engagementId: input.engagementId,
+            },
+            _max: {
+              sessionNumber: true,
+            },
+          });
+
+          const maxSessionNumber = sessionStats._max.sessionNumber ?? 0;
+          if (maxSessionNumber >= engagement.totalSessions) {
+            throw new ConflictError("All sessions already logged");
+          }
+
+          const validated = validateSessionCreateInput({
+            status: input.status,
+            programCode: engagement.program.code as ProgramCode,
+            occurredAt: input.occurredAt,
+            topic: input.topic,
+            outcome: input.outcome,
+            durationMinutes: input.durationMinutes,
+            privateNotes: input.privateNotes,
+          });
+
+          if (validated.errors.length > 0) {
+            throw new ValidationError(validated.errors);
+          }
+
+          const sessionNumber = maxSessionNumber + 1;
+          const created = await tx.session.create({
+            data: {
+              engagementId: input.engagementId,
+              sessionNumber,
+              status: input.status,
+              occurredAt: validated.values.occurredAt,
+              topic: validated.values.topic,
+              outcome: validated.values.outcome,
+              durationMinutes: validated.values.durationMinutes,
+              privateNotes: validated.values.privateNotes,
+            },
+          });
+
+          let currentVersion = engagement.statusVersion;
+          if (maxSessionNumber === 0 && engagement.status === EngagementStatus.COACH_SELECTED) {
+            const result = await transitionEngagement(
+              tx,
+              input.engagementId,
+              EngagementStatus.IN_PROGRESS,
+              currentVersion
+            );
+            currentVersion = result.newStatusVersion;
+          }
+
+          if (sessionNumber === engagement.totalSessions) {
+            await transitionEngagement(
+              tx,
+              input.engagementId,
+              EngagementStatus.COMPLETED,
+              currentVersion
+            );
+          } else if (sessionNumber > 1) {
+            await tx.engagement.update({
+              where: { id: input.engagementId },
+              data: {
+                lastActivityAt: new Date(),
+              },
+            });
+          }
+
+          return created;
+        },
+        {
+          maxWait: 3000,
+          timeout: 8000,
+        }
+      );
+    } catch (error) {
+      if (
+        error !== null &&
+        typeof error === "object" &&
+        isConflictPrismaError(error) &&
+        attempt === 0
+      ) {
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw new ConflictError("Concurrent session creation conflict");
+}
+
+export async function POST(request: NextRequest) {
+  const auth = await requireCoachScope(request);
+  if ("response" in auth) {
+    return auth.response;
+  }
+
+  let body: CreateSessionBody;
+  try {
+    body = (await request.json()) as CreateSessionBody;
+  } catch {
+    return jsonNoStore({ error: "Invalid JSON body" }, { status: 422 });
+  }
+
+  const parsed = parseCreateSessionBody(body);
+  if (parsed.errors.length > 0 || !parsed.engagementId || !parsed.status || parsed.occurredAt === "invalid") {
+    return jsonNoStore(
+      {
+        error: parsed.errors.join("; "),
+      },
+      { status: 422 }
+    );
+  }
+
+  try {
+    const created = await createSessionWithRetry({
+      engagementId: parsed.engagementId,
+      occurredAt: parsed.occurredAt,
+      topic: parsed.topic,
+      outcome: parsed.outcome,
+      durationMinutes: parsed.durationMinutes,
+      privateNotes: parsed.privateNotes,
+      status: parsed.status,
+      organizationCoachId: auth.scope.organizationCoachId,
+    });
+
+    return jsonNoStore({ item: mapSessionRow(created) }, { status: 201 });
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      return jsonNoStore({ error: "Not found" }, { status: 404 });
+    }
+
+    if (error instanceof ValidationError) {
+      return jsonNoStore({ error: error.messages.join("; ") }, { status: 422 });
+    }
+
+    if (
+      error instanceof ConflictError ||
+      (error instanceof Error && error.message === "CONCURRENT_STATUS_CHANGE")
+    ) {
+      return jsonNoStore({ error: "Conflict" }, { status: 409 });
+    }
+
+    if (error !== null && typeof error === "object" && isConflictPrismaError(error)) {
+      return jsonNoStore({ error: "Conflict" }, { status: 409 });
+    }
+
+    if (error !== null && typeof error === "object" && isTimeoutPrismaError(error)) {
+      return jsonNoStore({ error: "Request timed out, retry" }, { status: 503 });
+    }
+
+    console.error("POST /api/coach/sessions failed", error);
+    return jsonNoStore({ error: "Failed to create session" }, { status: 500 });
+  }
+}

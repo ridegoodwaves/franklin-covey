@@ -3,6 +3,7 @@ import "server-only";
 import { EngagementStatus, ProgramTrack, type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { NUDGE_THRESHOLDS } from "@/lib/config";
+import type { CoachNeedsAttentionItem } from "@/lib/types/coach";
 import type { NeedsAttentionEngagement } from "@/lib/types/dashboard";
 
 const COACH_STALL_DAYS = NUDGE_THRESHOLDS.coachAttentionDays;
@@ -18,6 +19,29 @@ function daysSince(date: Date, now: Date): number {
 
 function daysOverdue(dueAt: Date, now: Date): number {
   return Math.max(1, Math.floor((now.getTime() - dueAt.getTime()) / DAY_MS));
+}
+
+/**
+ * Compute stall-based overdue days for COACH_SELECTED or IN_PROGRESS engagements.
+ */
+function computeStallOverdue(
+  row: {
+    status: EngagementStatus;
+    coachSelectedAt: Date | null;
+    lastActivityAt: Date | null;
+    _count: { sessions: number };
+  },
+  now: Date,
+  fallbackDate: Date
+): number {
+  const sourceDate =
+    row.status === EngagementStatus.COACH_SELECTED && row.coachSelectedAt
+      ? row.coachSelectedAt
+      : row.lastActivityAt ?? row.coachSelectedAt ?? fallbackDate;
+  const dueAt = new Date(sourceDate.getTime() + COACH_STALL_DAYS * DAY_MS);
+  return row.status === EngagementStatus.COACH_SELECTED && row._count.sessions > 0
+    ? 0
+    : daysOverdue(dueAt, now);
 }
 
 export function buildNeedsAttentionWhere(now: Date = new Date()): Prisma.EngagementWhereInput {
@@ -116,27 +140,66 @@ export async function getNeedsAttentionEngagements(
       };
     }
 
-    const sourceDate =
-      row.status === EngagementStatus.COACH_SELECTED && row.coachSelectedAt
-        ? row.coachSelectedAt
-        : row.lastActivityAt ?? row.coachSelectedAt ?? row.cohort.coachSelectionEnd;
-
-    const dueAt = new Date(sourceDate.getTime() + COACH_STALL_DAYS * DAY_MS);
-
     return {
       engagementId: row.id,
       participantEmail: row.participant.email,
       coachName: row.organizationCoach?.coachProfile.displayName ?? null,
       cohortCode: row.cohort.code,
       flagType: "COACH_STALL" as const,
-      daysOverdue:
-        row.status === EngagementStatus.COACH_SELECTED
-          ? row._count.sessions === 0
-            ? daysOverdue(dueAt, now)
-            : 0
-          : daysOverdue(dueAt, now),
+      daysOverdue: computeStallOverdue(row, now, row.cohort.coachSelectionEnd),
       coachSelectedAt: row.coachSelectedAt,
       lastActivityAt: row.lastActivityAt,
     };
   });
+}
+
+export async function getCoachNeedsAttentionEngagements(input: {
+  organizationId: string;
+  organizationCoachId: string;
+}): Promise<CoachNeedsAttentionItem[]> {
+  const now = new Date();
+  const stallCutoff = subtractDays(now, COACH_STALL_DAYS);
+
+  const rows = await prisma.engagement.findMany({
+    where: {
+      organizationId: input.organizationId,
+      organizationCoachId: input.organizationCoachId,
+      archivedAt: null,
+      OR: [
+        {
+          status: EngagementStatus.COACH_SELECTED,
+          coachSelectedAt: { not: null, lt: stallCutoff },
+          sessions: {
+            none: { archivedAt: null },
+          },
+        },
+        {
+          status: EngagementStatus.IN_PROGRESS,
+          lastActivityAt: { not: null, lt: stallCutoff },
+        },
+      ],
+    },
+    select: {
+      id: true,
+      status: true,
+      coachSelectedAt: true,
+      lastActivityAt: true,
+      participant: { select: { email: true } },
+      cohort: { select: { code: true } },
+      _count: {
+        select: {
+          sessions: {
+            where: { archivedAt: null },
+          },
+        },
+      },
+    },
+  });
+
+  return rows.map((row) => ({
+    engagementId: row.id,
+    participantEmail: row.participant.email,
+    cohortCode: row.cohort.code,
+    daysOverdue: computeStallOverdue(row, now, now),
+  }));
 }

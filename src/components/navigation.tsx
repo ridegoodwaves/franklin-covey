@@ -24,6 +24,7 @@ interface PortalShellProps {
   userAvatar?: string;
   navItems: NavItem[];
   activeItem?: string;
+  onNavigate?: (href: string) => boolean | Promise<boolean>;
   children: React.ReactNode;
 }
 
@@ -35,6 +36,7 @@ export function PortalShell({
   userAvatar,
   navItems,
   activeItem,
+  onNavigate,
   children,
 }: PortalShellProps) {
   const router = useRouter();
@@ -62,6 +64,22 @@ export function PortalShell({
     } finally {
       setIsSigningOut(false);
     }
+  }
+
+  async function handleNavClick(
+    event: React.MouseEvent<HTMLAnchorElement>,
+    href: string
+  ) {
+    if (!onNavigate) {
+      setSidebarOpen(false);
+      return;
+    }
+
+    event.preventDefault();
+    const allowed = await onNavigate(href);
+    if (!allowed) return;
+    setSidebarOpen(false);
+    router.push(href);
   }
 
   return (
@@ -119,6 +137,7 @@ export function PortalShell({
               <a
                 key={item.href}
                 href={item.href}
+                onClick={(event) => void handleNavClick(event, item.href)}
                 className={cn(
                   "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                   item.active || item.href === activeItem

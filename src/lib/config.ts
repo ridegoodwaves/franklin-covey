@@ -1,3 +1,5 @@
+import type { ProgramCode } from "@prisma/client";
+
 // Session topics by program type — from Kari Sadler (Feb 17, 2026)
 // "OTHER" shows static note: "Please email the coaching practice" (no free-text input)
 
@@ -89,6 +91,11 @@ export type SessionTopic = MlpSessionTopic | ExecutiveSessionTopic;
 export type SessionOutcome = (typeof SESSION_OUTCOMES)[number];
 export type DurationOption = (typeof DURATION_OPTIONS)[number];
 export type ProgramType = keyof typeof PROGRAM_TYPES;
+
+export function isValidTopicForProgram(programCode: ProgramCode, topic: string): boolean {
+  const topics = SESSION_TOPICS_BY_PROGRAM[programCode] as readonly string[];
+  return topics.includes(topic);
+}
 
 // Program administrator contact — single source of truth for all participant-facing pages
 export const PROGRAM_ADMIN = {

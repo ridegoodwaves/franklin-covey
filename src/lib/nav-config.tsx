@@ -68,7 +68,7 @@ export function AdminPortalIcon() {
 
 export const COACH_NAV_ITEMS = [
   { label: "Dashboard", href: "/coach/dashboard", icon: <NavDashboardIcon /> },
-  { label: "My Engagements", href: "/coach/engagements", icon: <NavEngagementsIcon />, badge: 6 },
+  { label: "My Engagements", href: "/coach/engagements", icon: <NavEngagementsIcon /> },
   { label: "Profile", href: "/coach/profile", icon: <NavProfileIcon />, disabled: true },
 ];
 
