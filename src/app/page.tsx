@@ -23,7 +23,7 @@ export default function LandingPage() {
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-fc-200 bg-fc-50 px-4 py-1.5">
               <div className="h-1.5 w-1.5 rounded-full bg-fc-600 animate-pulse-subtle" />
               <span className="text-sm font-medium text-fc-700">
-                Government Leadership Coaching Program
+                USPS Leadership Coaching Program
               </span>
             </div>
 
