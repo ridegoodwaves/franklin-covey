@@ -65,7 +65,7 @@ export default function LandingPage() {
                     </svg>
                   </div>
                   <h3 className="font-display text-xl font-semibold text-fc-900">
-                    Participant
+                    Coach Selector
                   </h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                     Select your coach and book your first session.
@@ -110,7 +110,7 @@ export default function LandingPage() {
                     </svg>
                   </div>
                   <h3 className="font-display text-xl font-semibold text-fc-900">
-                    Coach
+                    Coach&apos;s Portal
                   </h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                     Manage engagements, log sessions, and guide your
@@ -159,7 +159,7 @@ export default function LandingPage() {
                     </svg>
                   </div>
                   <h3 className="font-display text-xl font-semibold text-fc-900">
-                    Operations
+                    Coaching Program Overview
                   </h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                     Monitor all engagements, manage coaches, and track program

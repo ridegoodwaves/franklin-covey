@@ -67,13 +67,13 @@ export function AdminPortalIcon() {
 // ─── Nav Item Arrays (single source of truth) ────────────────────────────────
 
 export const COACH_NAV_ITEMS = [
-  { label: "Dashboard", href: "/coach/dashboard", icon: <NavDashboardIcon /> },
+  { label: "Coaching Program Overview", href: "/coach/dashboard", icon: <NavDashboardIcon /> },
   { label: "My Engagements", href: "/coach/engagements", icon: <NavEngagementsIcon /> },
   { label: "Profile", href: "/coach/profile", icon: <NavProfileIcon />, disabled: true },
 ];
 
 export const ADMIN_NAV_ITEMS = [
-  { label: "Dashboard", href: "/admin/dashboard", icon: <NavDashboardIcon /> },
+  { label: "Coaching Program Overview", href: "/admin/dashboard", icon: <NavDashboardIcon /> },
   { label: "Coaches", href: "/admin/coaches", icon: <NavEngagementsIcon /> },
   { label: "Import", href: "/admin/import", icon: <NavImportIcon />, disabled: true },
 ];
@@ -81,13 +81,13 @@ export const ADMIN_NAV_ITEMS = [
 // ─── Portal Metadata ─────────────────────────────────────────────────────────
 
 export const COACH_PORTAL = {
-  portalName: "Coach Portal",
+  portalName: "Coach's Portal",
   userName: "Dr. Sarah Chen",
   userRole: "Executive Coach",
 } as const;
 
 export const ADMIN_PORTAL = {
-  portalName: "Operations",
+  portalName: "Coaching Program Overview",
   userName: "Catherine Reynolds",
   userRole: "Program Administrator",
 } as const;
