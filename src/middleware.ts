@@ -124,8 +124,13 @@ async function createPortalSessionToken(
   return `${encoded}.${signature}`;
 }
 
-function isSecureCookie(): boolean {
-  return process.env.NODE_ENV === "production";
+function isSecureCookie(request: NextRequest): boolean {
+  if (request.nextUrl.protocol === "https:") return true;
+  if (process.env.NODE_ENV === "production") return true;
+  if (process.env.VERCEL === "1") return true;
+
+  const vercelUrl = process.env.VERCEL_URL?.trim();
+  return Boolean(vercelUrl && vercelUrl.length > 0);
 }
 
 function unauthorizedApiResponse(): NextResponse {
@@ -196,7 +201,7 @@ export async function middleware(request: NextRequest) {
     name: PORTAL_SESSION_COOKIE,
     value: refreshedToken,
     httpOnly: true,
-    secure: isSecureCookie(),
+    secure: isSecureCookie(request),
     sameSite: "lax",
     path: "/",
     maxAge: PORTAL_SESSION_TTL_SECONDS,

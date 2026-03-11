@@ -95,7 +95,25 @@ function verifySignedToken<T>(token: string, expectedScope: string): T | null {
 }
 
 function cookieSecure(): boolean {
-  return process.env.NODE_ENV === "production";
+  if (process.env.NODE_ENV === "production") return true;
+  if (process.env.VERCEL === "1") return true;
+
+  const vercelUrl = process.env.VERCEL_URL?.trim();
+  if (vercelUrl && vercelUrl.length > 0) return true;
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || process.env.APP_URL?.trim();
+  if (!appUrl) return false;
+
+  const normalized =
+    appUrl.startsWith("http://") || appUrl.startsWith("https://")
+      ? appUrl
+      : `https://${appUrl}`;
+
+  try {
+    return new URL(normalized).protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 export function readParticipantSession(request: NextRequest): ParticipantSession | null {

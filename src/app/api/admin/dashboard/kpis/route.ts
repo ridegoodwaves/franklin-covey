@@ -167,7 +167,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to load KPI data";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("GET /api/admin/dashboard/kpis failed", error);
+    return NextResponse.json({ error: "Failed to load KPI data" }, { status: 500 });
   }
 }

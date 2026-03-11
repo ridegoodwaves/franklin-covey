@@ -15,6 +15,7 @@ export const dynamic = "force-dynamic";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CONTROL_CHARS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g;
 const FORMULA_PREFIX = /^\s*[=+\-@\t\r]/;
+const EXPORT_ROW_LIMIT = 5000;
 
 type ExportTab = "all" | "needs_attention";
 
@@ -233,76 +234,81 @@ export async function GET(request: NextRequest) {
 
     const where: Prisma.EngagementWhereInput = { AND: whereClauses };
 
-    const rows = await prisma.engagement.findMany({
-      where,
-      select: {
-        status: true,
-        totalSessions: true,
-        lastActivityAt: true,
-        participant: {
-          select: {
-            email: true,
+    const [totalRows, rows] = await Promise.all([
+      prisma.engagement.count({ where }),
+      prisma.engagement.findMany({
+        where,
+        take: EXPORT_ROW_LIMIT,
+        select: {
+          status: true,
+          totalSessions: true,
+          lastActivityAt: true,
+          participant: {
+            select: {
+              email: true,
+            },
           },
-        },
-        organization: {
-          select: {
-            code: true,
+          organization: {
+            select: {
+              code: true,
+            },
           },
-        },
-        program: {
-          select: {
-            code: true,
+          program: {
+            select: {
+              code: true,
+            },
           },
-        },
-        cohort: {
-          select: {
-            code: true,
+          cohort: {
+            select: {
+              code: true,
+            },
           },
-        },
-        organizationCoach: {
-          select: {
-            coachProfile: {
-              select: {
-                displayName: true,
-                firstName: true,
-                lastName: true,
-                user: {
-                  select: {
-                    email: true,
+          organizationCoach: {
+            select: {
+              coachProfile: {
+                select: {
+                  displayName: true,
+                  firstName: true,
+                  lastName: true,
+                  user: {
+                    select: {
+                      email: true,
+                    },
                   },
                 },
               },
             },
           },
-        },
-        _count: {
-          select: {
-            sessions: {
-              where: {
-                archivedAt: null,
+          _count: {
+            select: {
+              sessions: {
+                where: {
+                  archivedAt: null,
+                },
               },
             },
           },
         },
-      },
-      orderBy: [
-        {
-          program: {
-            code: "asc",
+        orderBy: [
+          {
+            program: {
+              code: "asc",
+            },
           },
-        },
-        {
-          cohort: {
-            code: "asc",
+          {
+            cohort: {
+              code: "asc",
+            },
           },
-        },
-        {
-          participant: {
-            email: "asc",
+          {
+            participant: {
+              email: "asc",
+            },
           },
-        },
-      ],
-    });
+        ],
+      }),
+    ]);
+    const truncated = totalRows > EXPORT_ROW_LIMIT;
 
     const coachSegment = await resolveCoachFilenameSegment(scopeOrgId, coachId);
     const filename = buildFilename({
@@ -359,17 +365,27 @@ export async function GET(request: NextRequest) {
       .map((line) => line.map((value) => sanitizeCsvField(value)).join(","))
       .join("\r\n");
 
+    const responseHeaders: Record<string, string> = {
+      "Content-Type": "text/csv; charset=utf-8",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+      "X-Export-Row-Limit": String(EXPORT_ROW_LIMIT),
+      "X-Export-Total-Rows": String(totalRows),
+      "X-Export-Truncated": String(truncated),
+    };
+
+    if (truncated) {
+      responseHeaders["X-Export-Warning"] =
+        `Truncated to ${EXPORT_ROW_LIMIT} rows (of ${totalRows} total)`;
+    }
+
     return new NextResponse(csv, {
       status: 200,
-      headers: {
-        "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="${filename}"`,
-        "Cache-Control": "no-store",
-        "X-Content-Type-Options": "nosniff",
-      },
+      headers: responseHeaders,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to export CSV";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("GET /api/export failed", error);
+    return NextResponse.json({ error: "Failed to export CSV" }, { status: 500 });
   }
 }

@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
       }
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to load coaches";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("GET /api/admin/coaches failed", error);
+    return NextResponse.json({ error: "Failed to load coaches" }, { status: 500 });
   }
 }

@@ -162,6 +162,7 @@ export async function PATCH(
       },
       select: {
         id: true,
+        engagementId: true,
         sessionNumber: true,
         status: true,
         occurredAt: true,
@@ -227,13 +228,44 @@ export async function PATCH(
       data.privateNotes = validated.values.privateNotes;
     }
 
-    const updated = await prisma.session.update({
+    const updateResult = await prisma.session.updateMany({
       where: {
         id: existing.id,
         archivedAt: null,
+        updatedAt: existing.updatedAt,
       },
       data,
     });
+
+    if (updateResult.count === 0) {
+      return jsonNoStore({ error: "Conflict" }, { status: 409 });
+    }
+
+    await prisma.engagement.updateMany({
+      where: {
+        id: existing.engagementId,
+        organizationCoachId: auth.scope.organizationCoachId,
+        archivedAt: null,
+      },
+      data: {
+        lastActivityAt: new Date(),
+      },
+    });
+
+    const updated = await prisma.session.findFirst({
+      where: {
+        id: existing.id,
+        archivedAt: null,
+        engagement: {
+          organizationCoachId: auth.scope.organizationCoachId,
+          archivedAt: null,
+        },
+      },
+    });
+
+    if (!updated) {
+      return jsonNoStore({ error: "Conflict" }, { status: 409 });
+    }
 
     return jsonNoStore({ item: mapSessionRow(updated) }, { status: 200 });
   } catch (error) {

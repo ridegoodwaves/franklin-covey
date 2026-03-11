@@ -49,6 +49,14 @@ Nothing in progress — clean review completion point. All findings documented, 
 
 6. **Smoke test on staging** (~0.5 day)
 
+## Final Launch Hardening (Items 1-5)
+
+- [x] Item 1: Add optimistic concurrency control to `PATCH /api/coach/sessions/[id]` (prevent lost updates)
+- [x] Item 2: Update engagement `lastActivityAt` on successful session PATCH edit
+- [x] Item 3: Replace admin/export raw error responses with generic 500 + `console.error`
+- [x] Item 4: Add CSV export hard row cap + truncation warning metadata
+- [x] Item 5: Fix secure cookie policy to account for HTTPS deployment context (including preview)
+
 ## Key Files Modified (Slice 3 implementation)
 
 ### New files

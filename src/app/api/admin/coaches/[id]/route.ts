@@ -147,7 +147,7 @@ export async function PATCH(
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to update coach";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("PATCH /api/admin/coaches/[id] failed", error);
+    return NextResponse.json({ error: "Failed to update coach" }, { status: 500 });
   }
 }

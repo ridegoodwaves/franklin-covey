@@ -59,35 +59,39 @@ describe("PATCH /api/coach/sessions/[id]", () => {
   });
 
   it("updates whitelisted fields", async () => {
-    prismaMock.session.findFirst.mockResolvedValue({
-      id: "s-1",
-      sessionNumber: 1,
-      status: "COMPLETED",
-      occurredAt: new Date("2026-03-01T12:00:00.000Z"),
-      topic: "Developing People",
-      outcome: "In Progress",
-      durationMinutes: 60,
-      privateNotes: "old",
-      createdAt: new Date("2026-03-01T12:00:00.000Z"),
-      updatedAt: new Date("2026-03-01T12:00:00.000Z"),
-      engagement: { program: { code: "ALP" } },
-    } as never);
-    prismaMock.session.update.mockResolvedValue({
-      id: "s-1",
-      engagementId: "eng-1",
-      sessionNumber: 1,
-      status: "COMPLETED",
-      occurredAt: new Date("2026-03-01T12:00:00.000Z"),
-      topic: "Developing People",
-      outcome: "Goal Achieved",
-      durationMinutes: 60,
-      privateNotes: "new note",
-      createdAt: new Date("2026-03-01T12:00:00.000Z"),
-      updatedAt: new Date("2026-03-02T12:00:00.000Z"),
-      createdBy: null,
-      updatedBy: null,
-      archivedAt: null,
-    } as never);
+    prismaMock.session.findFirst
+      .mockResolvedValueOnce({
+        id: "s-1",
+        engagementId: "eng-1",
+        sessionNumber: 1,
+        status: "COMPLETED",
+        occurredAt: new Date("2026-03-01T12:00:00.000Z"),
+        topic: "Developing People",
+        outcome: "In Progress",
+        durationMinutes: 60,
+        privateNotes: "old",
+        createdAt: new Date("2026-03-01T12:00:00.000Z"),
+        updatedAt: new Date("2026-03-01T12:00:00.000Z"),
+        engagement: { program: { code: "ALP" } },
+      } as never)
+      .mockResolvedValueOnce({
+        id: "s-1",
+        engagementId: "eng-1",
+        sessionNumber: 1,
+        status: "COMPLETED",
+        occurredAt: new Date("2026-03-01T12:00:00.000Z"),
+        topic: "Developing People",
+        outcome: "Goal Achieved",
+        durationMinutes: 60,
+        privateNotes: "new note",
+        createdAt: new Date("2026-03-01T12:00:00.000Z"),
+        updatedAt: new Date("2026-03-02T12:00:00.000Z"),
+        createdBy: null,
+        updatedBy: null,
+        archivedAt: null,
+      } as never);
+    prismaMock.session.updateMany.mockResolvedValue({ count: 1 } as never);
+    prismaMock.engagement.updateMany.mockResolvedValue({ count: 1 } as never);
 
     const response = await PATCH(
       buildRequest({
@@ -101,5 +105,34 @@ describe("PATCH /api/coach/sessions/[id]", () => {
     expect(response.status).toBe(200);
     expect(body.item.id).toBe("s-1");
     expect(body.item.outcome).toBe("Goal Achieved");
+    expect(prismaMock.engagement.updateMany).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns 409 when update conflict occurs", async () => {
+    prismaMock.session.findFirst.mockResolvedValue({
+      id: "s-1",
+      engagementId: "eng-1",
+      sessionNumber: 1,
+      status: "COMPLETED",
+      occurredAt: new Date("2026-03-01T12:00:00.000Z"),
+      topic: "Developing People",
+      outcome: "In Progress",
+      durationMinutes: 60,
+      privateNotes: "old",
+      createdAt: new Date("2026-03-01T12:00:00.000Z"),
+      updatedAt: new Date("2026-03-01T12:00:00.000Z"),
+      engagement: { program: { code: "ALP" } },
+    } as never);
+    prismaMock.session.updateMany.mockResolvedValue({ count: 0 } as never);
+
+    const response = await PATCH(
+      buildRequest({
+        outcome: "Goal Achieved",
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(409);
+    expect(prismaMock.engagement.updateMany).not.toHaveBeenCalled();
   });
 });

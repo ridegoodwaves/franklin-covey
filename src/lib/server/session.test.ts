@@ -252,4 +252,19 @@ describe("session — participant session read/write", () => {
     expect(setCookie).toContain("fc_portal_session=");
     expect(setCookie).toContain("Max-Age=0");
   });
+
+  it("writes secure portal cookie when running in preview-like environment", () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("VERCEL_URL", "franklin-covey-preview.vercel.app");
+
+    const response = buildResponse();
+    writePortalSession(response, {
+      userId: "coach-user-1",
+      email: "coach@test.gov",
+      role: "COACH",
+    });
+
+    const setCookie = response.headers.get("set-cookie") || "";
+    expect(setCookie).toContain("Secure");
+  });
 });

@@ -48,6 +48,17 @@ describe("middleware auth guards", () => {
     expect(response.headers.get("set-cookie")).toContain("fc_portal_session=");
   });
 
+  it("sets Secure on refreshed cookie for HTTPS requests", async () => {
+    vi.stubEnv("AUTH_SECRET", "test-secret-minimum-32-characters-long-here");
+    vi.stubEnv("NODE_ENV", "development");
+    const cookie = buildPortalCookie("ADMIN");
+    const request = buildRequest("https://preview.vercel.app/admin/dashboard", cookie);
+    const response = await middleware(request);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("set-cookie")).toContain("Secure");
+  });
+
   it("denies COACH role on /admin/*", async () => {
     vi.stubEnv("AUTH_SECRET", "test-secret-minimum-32-characters-long-here");
     const cookie = buildPortalCookie("COACH");
