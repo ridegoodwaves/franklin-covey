@@ -14,11 +14,16 @@ const mockConsumeOneTime = vi.mocked(consumeMagicLinkOneTime);
 vi.stubEnv("AUTH_SECRET", "test-secret-minimum-32-characters-long-here");
 vi.stubEnv("MAGIC_LINK_TTL_MINUTES", "30");
 
-// We need to create real tokens for consume tests
 const { createMagicLinkToken } = await import("@/lib/server/session");
 const { GET, POST } = await import("./route");
 
-function createValidToken(overrides: Record<string, unknown> = {}) {
+interface TokenOverrides {
+  userId?: string;
+  email?: string;
+  role?: "COACH" | "ADMIN";
+}
+
+function createValidToken(overrides: TokenOverrides = {}) {
   return createMagicLinkToken({
     userId: "user-1",
     email: "coach@test.gov",
@@ -27,17 +32,28 @@ function createValidToken(overrides: Record<string, unknown> = {}) {
   });
 }
 
-function buildGetRequest(token: string) {
+function buildGetRequest(token?: string) {
   const url = new URL("http://localhost/api/auth/magic-link/consume");
-  url.searchParams.set("token", token);
+  if (token) {
+    url.searchParams.set("token", token);
+  }
   return new NextRequest(url);
 }
 
-function buildPostRequest(body: Record<string, unknown> = {}) {
+function buildJsonPostRequest(body: { token?: string } = {}) {
   return new NextRequest("http://localhost/api/auth/magic-link/consume", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
+  });
+}
+
+function buildFormPostRequest(token: string) {
+  const body = new URLSearchParams({ token, _redirect: "1" });
+  return new NextRequest("http://localhost/api/auth/magic-link/consume", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
   });
 }
 
@@ -50,16 +66,36 @@ describe("GET /api/auth/magic-link/consume", () => {
     prismaMock.user.findFirst.mockResolvedValue(user as never);
   });
 
-  it("sets fc_portal_session cookie and redirects for valid token", async () => {
+  it("returns HTML landing page for valid token and does not consume", async () => {
     const token = createValidToken();
+    mockConsumeOneTime.mockClear();
+    prismaMock.user.findFirst.mockClear();
     const response = await GET(buildGetRequest(token));
+    const body = await response.text();
 
-    expect(response.status).toBe(307); // redirect
-    const location = response.headers.get("location") ?? "";
-    expect(location).toContain("/coach/dashboard");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/html");
+    expect(response.headers.get("cache-control")).toContain("no-store");
+    expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+    expect(response.headers.get("x-robots-tag")).toContain("noindex");
+
+    expect(body).toContain('<form method="POST" action="/api/auth/magic-link/consume"');
+    expect(body).toContain('<input type="hidden" name="token"');
+    expect(body).toContain('<input type="hidden" name="_redirect" value="1"');
+    expect(body).toContain('<html lang="en">');
+    expect(body).toContain('<meta name="viewport" content="width=device-width, initial-scale=1" />');
+    expect(body).toContain("<h1");
+    expect(body).toContain("Sign in to FranklinCovey");
+    expect(body).toContain("<button");
+    expect(body).toContain("Sign in");
+    expect(body).not.toContain("<img");
+    expect(body).not.toContain("<link");
+    expect(body).not.toContain('src="http');
 
     const setCookie = response.headers.get("set-cookie") ?? "";
-    expect(setCookie).toContain("fc_portal_session=");
+    expect(setCookie).not.toContain("fc_portal_session=");
+    expect(mockConsumeOneTime).not.toHaveBeenCalled();
+    expect(prismaMock.user.findFirst).not.toHaveBeenCalled();
   });
 
   it("redirects to /auth/signin?error=expired for expired token", async () => {
@@ -76,15 +112,16 @@ describe("GET /api/auth/magic-link/consume", () => {
     vi.useRealTimers();
   });
 
-  it("redirects to error page for already-consumed token", async () => {
+  it("returns HTML for token even if consume check would fail", async () => {
     mockConsumeOneTime.mockResolvedValue(false);
 
     const token = createValidToken();
     const response = await GET(buildGetRequest(token));
-    const location = response.headers.get("location") ?? "";
+    const body = await response.text();
 
-    expect(location).toContain("/auth/signin");
-    expect(location).toContain("error=expired");
+    expect(response.status).toBe(200);
+    expect(body).toContain("Sign in to FranklinCovey");
+    expect(mockConsumeOneTime).not.toHaveBeenCalled();
   });
 
   it("redirects to error page for tampered token", async () => {
@@ -95,43 +132,20 @@ describe("GET /api/auth/magic-link/consume", () => {
     expect(location).toContain("error=expired");
   });
 
-  it("redirects COACH to /coach/dashboard", async () => {
-    const token = createValidToken({ role: "COACH" });
-    const response = await GET(buildGetRequest(token));
+  it("redirects to signin when token is missing", async () => {
+    const response = await GET(buildGetRequest());
     const location = response.headers.get("location") ?? "";
 
-    expect(location).toContain("/coach/dashboard");
-  });
-
-  it("redirects ADMIN to /admin/dashboard", async () => {
-    const adminUser = buildUser({ id: "user-1", email: "admin@test.gov", role: "ADMIN" });
-    prismaMock.user.findFirst.mockResolvedValue(adminUser as never);
-
-    const token = createValidToken({ role: "ADMIN", email: "admin@test.gov" });
-    const response = await GET(buildGetRequest(token));
-    const location = response.headers.get("location") ?? "";
-
-    expect(location).toContain("/admin/dashboard");
-  });
-
-  it("rejects inactive user (findFirst returns null)", async () => {
-    prismaMock.user.findFirst.mockResolvedValue(null);
-
-    const token = createValidToken();
-    const response = await GET(buildGetRequest(token));
-    const location = response.headers.get("location") ?? "";
-
+    expect(response.status).toBe(307);
     expect(location).toContain("/auth/signin");
     expect(location).toContain("error=expired");
   });
 
-  it("sets cookie with httpOnly and sameSite=lax attributes", async () => {
-    const token = createValidToken();
+  it("does not set session cookie on valid GET", async () => {
+    const token = createValidToken({ role: "COACH" });
     const response = await GET(buildGetRequest(token));
-
     const setCookie = response.headers.get("set-cookie") ?? "";
-    expect(setCookie.toLowerCase()).toContain("httponly");
-    expect(setCookie.toLowerCase()).toContain("samesite=lax");
+    expect(setCookie).not.toContain("fc_portal_session=");
   });
 });
 
@@ -144,9 +158,42 @@ describe("POST /api/auth/magic-link/consume", () => {
     prismaMock.user.findFirst.mockResolvedValue(user as never);
   });
 
+  it("redirects with 303 and sets cookie for valid form token", async () => {
+    const token = createValidToken();
+    const response = await POST(buildFormPostRequest(token));
+    const location = response.headers.get("location") ?? "";
+    const setCookie = response.headers.get("set-cookie") ?? "";
+
+    expect(response.status).toBe(303);
+    expect(location).toContain("/coach/dashboard");
+    expect(setCookie).toContain("fc_portal_session=");
+    expect(setCookie.toLowerCase()).toContain("httponly");
+    expect(setCookie.toLowerCase()).toContain("samesite=lax");
+  });
+
+  it("redirects form mode to signin when token already consumed", async () => {
+    mockConsumeOneTime.mockResolvedValue(false);
+    const token = createValidToken();
+    const response = await POST(buildFormPostRequest(token));
+    const location = response.headers.get("location") ?? "";
+
+    expect(response.status).toBe(303);
+    expect(location).toContain("/auth/signin");
+    expect(location).toContain("error=expired");
+  });
+
+  it("redirects form mode to signin for invalid token", async () => {
+    const response = await POST(buildFormPostRequest("bad.token"));
+    const location = response.headers.get("location") ?? "";
+
+    expect(response.status).toBe(303);
+    expect(location).toContain("/auth/signin");
+    expect(location).toContain("error=expired");
+  });
+
   it("returns role and redirectTo JSON for valid token", async () => {
     const token = createValidToken();
-    const response = await POST(buildPostRequest({ token }));
+    const response = await POST(buildJsonPostRequest({ token }));
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -159,7 +206,7 @@ describe("POST /api/auth/magic-link/consume", () => {
   });
 
   it("returns 400 for invalid/expired token via POST", async () => {
-    const response = await POST(buildPostRequest({ token: "bad.token" }));
+    const response = await POST(buildJsonPostRequest({ token: "bad.token" }));
     const body = await response.json();
 
     expect(response.status).toBe(400);
