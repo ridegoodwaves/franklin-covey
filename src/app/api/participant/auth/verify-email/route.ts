@@ -69,6 +69,16 @@ export async function POST(request: NextRequest) {
       return response;
     }
 
+    if (match.selectionWindowNotOpen) {
+      const response = NextResponse.json({
+        success: false,
+        error: "WINDOW_NOT_OPEN",
+        openDate: match.selectionWindowOpenDate,
+      });
+      clearParticipantSession(response);
+      return response;
+    }
+
     if (match.selectionWindowClosed) {
       const response = NextResponse.json({ success: false, error: "WINDOW_CLOSED" });
       clearParticipantSession(response);

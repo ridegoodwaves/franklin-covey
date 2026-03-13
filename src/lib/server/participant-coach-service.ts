@@ -32,6 +32,8 @@ export interface AuthLookupResult {
   organizationId: string;
   cohortId: string;
   email: string;
+  selectionWindowNotOpen: boolean;
+  selectionWindowOpenDate?: string;
   selectionWindowClosed: boolean;
   alreadySelected: boolean;
 }
@@ -180,11 +182,23 @@ export async function lookupParticipantForEmailAuth(email: string): Promise<Auth
 
   if (participants.length === 0) return null;
 
-  const openRecord = participants.find((record) => record.cohort.coachSelectionEnd >= now);
-  const record = openRecord ?? participants[0];
+  const openRecord = participants.find(
+    (record) =>
+      record.cohort.coachSelectionStart <= now &&
+      record.cohort.coachSelectionEnd >= now
+  );
+  const upcomingRecord = participants
+    .filter((record) => record.cohort.coachSelectionStart > now)
+    .sort(
+      (a, b) =>
+        a.cohort.coachSelectionStart.getTime() -
+        b.cohort.coachSelectionStart.getTime()
+    )[0];
+  const record = openRecord ?? upcomingRecord ?? participants[0];
   if (!record?.engagement) return null;
 
   const engagementStatus = record.engagement.status;
+  const selectionWindowNotOpen = record.cohort.coachSelectionStart > now;
 
   return {
     participantId: record.id,
@@ -192,6 +206,10 @@ export async function lookupParticipantForEmailAuth(email: string): Promise<Auth
     organizationId: record.organizationId,
     cohortId: record.cohortId,
     email: record.email,
+    selectionWindowNotOpen,
+    selectionWindowOpenDate: selectionWindowNotOpen
+      ? record.cohort.coachSelectionStart.toISOString()
+      : undefined,
     selectionWindowClosed: record.cohort.coachSelectionEnd < now,
     alreadySelected: SELECTED_ENGAGEMENT_STATUSES.has(engagementStatus),
   };

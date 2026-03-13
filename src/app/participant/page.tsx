@@ -8,6 +8,17 @@ import { verifyParticipantEmail } from "@/lib/api-client";
 import { clearParticipantClientState, PARTICIPANT_SESSION_KEYS } from "@/lib/participant-session";
 import { HelpFooter } from "@/components/participant/HelpFooter";
 
+function formatOpenDate(value?: string): string | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toLocaleDateString(undefined, {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 export default function ParticipantEntryPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -45,6 +56,15 @@ export default function ParticipantEntryPage() {
           case "UNRECOGNIZED_EMAIL":
             setError("We couldn't find your email. Please contact your program administrator below for help.");
             break;
+          case "WINDOW_NOT_OPEN": {
+            const openDate = formatOpenDate(response.openDate);
+            setError(
+              openDate
+                ? `Coach selection for your cohort opens on ${openDate}. Please return then.`
+                : "Coach selection for your cohort is not yet open. Please return then."
+            );
+            break;
+          }
           case "WINDOW_CLOSED":
             setError(
               "The selection window for your cohort has closed. Please contact your program administrator below."

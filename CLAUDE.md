@@ -190,6 +190,25 @@ The original PRD specified full Calendly API integration (webhooks, embeds, sess
 
 **What this means for the frontend:** The participant confirmation page shows a "Book Your Session" button that opens the coach's `meetingBookingUrl` (external link, new tab). Sessions appear in the coach's timeline when the coach logs them.
 
+**EF/EL Coach Interview Selection: Manual ops workflow (decided 2026-03-11, client-confirmed)**
+
+EF and EL program participants have the option to conduct 30-minute chemistry interviews with coaches before making a selection. This is a **manual, off-platform workflow** — not automated in the system.
+
+**How it works:**
+1. Coach selector for EF/EL cohorts displays an info message: _"If you would like to conduct 30-minute chemistry interviews with any of the coaches prior to selection, please reach out to andrea.sherman@franklincovey.com"_
+2. Participant emails Andrea → Andrea sends them coach scheduling links
+3. Participant conducts interviews, then reports their selection back to Andrea
+4. Andrea collects manual matches and reports them to the dev team
+5. Dev team updates the database via import (sets engagement to `COACH_SELECTED` for the participant + chosen coach)
+
+**What this means for the platform:**
+- The info message is conditional — only shown for EF and EL program cohorts (not MLP/ALP)
+- Participants who interview may NOT use the in-app coach selector — their match is entered via DB import
+- Most EF/EL participants will still use the normal in-app selection flow; interviews are optional
+- Andrea is the single point of contact for interview coordination
+
+**What NOT to build:** No interview scheduling UI, no in-app messaging, no interview tracking. This stays manual through Andrea.
+
 ## Current Branch Updates (Mar 1–2, 2026)
 
 - Wistia coach intro videos are now shipped in the participant selector as a staged rollout (`NEXT_PUBLIC_ENABLE_WISTIA_COACH_VIDEOS`), with avatar fallback preserved when disabled or unavailable.

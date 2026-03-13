@@ -291,8 +291,6 @@ async function seedParticipantsAndEngagements(organizationId) {
         organizationId,
         programId: cohort.programId,
         cohortId: cohort.id,
-        totalSessions: cohort.program.defaultSessions,
-        status: "INVITED",
       },
       create: {
         organization: { connect: { id: organizationId } },

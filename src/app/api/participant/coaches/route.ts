@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
       coaches: [],
       allAtCapacity: true,
       remixUsed: participantSession.remixUsed,
+      programCode: context.program.code,
     });
     writeParticipantSession(response, {
       ...participantSession,
@@ -67,6 +68,7 @@ export async function GET(request: NextRequest) {
         coaches: cards,
         allAtCapacity: false,
         remixUsed: participantSession.remixUsed,
+        programCode: context.program.code,
       });
       // Refresh cookie TTL without changing any state.
       writeParticipantSession(response, { ...participantSession, currentBatchIds });
@@ -91,6 +93,7 @@ export async function GET(request: NextRequest) {
     coaches: cards,
     allAtCapacity: false,
     remixUsed: participantSession.remixUsed,
+    programCode: context.program.code,
   });
 
   writeParticipantSession(response, {

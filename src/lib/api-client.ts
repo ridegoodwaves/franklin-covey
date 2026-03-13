@@ -1,3 +1,5 @@
+import type { ProgramCode } from "@prisma/client";
+
 // ---------------------------------------------------------------------------
 // Participant Portal API Client
 // Typed fetch wrappers for all participant API endpoints.
@@ -38,6 +40,7 @@ export interface VerifyEmailInput {
 }
 export type VerifyEmailErrorCode =
   | "UNRECOGNIZED_EMAIL" // Email not found in participant roster
+  | "WINDOW_NOT_OPEN"    // Cohort selection window has not opened yet
   | "WINDOW_CLOSED"      // Cohort selection window has closed
   | "RATE_LIMITED";      // Too many attempts
 
@@ -45,6 +48,8 @@ export interface VerifyEmailResponse {
   success: boolean;
   /** True when participant has already selected a coach. */
   alreadySelected?: boolean;
+  /** Present when error=WINDOW_NOT_OPEN. ISO timestamp. */
+  openDate?: string;
   error?: VerifyEmailErrorCode;
 }
 
@@ -55,6 +60,8 @@ export interface CoachesResponse {
   allAtCapacity: boolean;
   /** True when this participant has already used their one remix. Drives client UI state. */
   remixUsed: boolean;
+  /** Participant program code for conditional selector messaging. */
+  programCode: ProgramCode;
 }
 
 // POST /api/participant/coaches/remix
@@ -140,6 +147,7 @@ export async function verifyParticipantEmail(
     if (error instanceof ApiError) {
       if (
         error.code === "UNRECOGNIZED_EMAIL" ||
+        error.code === "WINDOW_NOT_OPEN" ||
         error.code === "WINDOW_CLOSED" ||
         error.code === "RATE_LIMITED"
       ) {

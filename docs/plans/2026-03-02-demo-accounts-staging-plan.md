@@ -1,7 +1,7 @@
 # Demo Accounts for USPS Staging Environment
 
 **Date:** 2026-03-02
-**Status:** Plan (deepened)
+**Status:** Plan (deepened; EF demo addendum applied 2026-03-13)
 **Purpose:** Create 5 demo participant accounts in staging for client demo recordings
 
 ---
@@ -42,9 +42,9 @@ Creating dedicated demo accounts is standard practice. The main risk is **data c
 
 ## Recommended Email Domain
 
-**Do NOT use:** `imaclient1-5@usps.gov`
+**Do NOT use:** `iamclient1-5@usps.gov`
 
-**Use instead:** `imaclient1@demo.usps.example` through `imaclient5@demo.usps.example`
+**Use instead:** `iamclient*@demo.usps.example` patterns tied to a specific demo cohort (for example `iamclient1-5@demo.usps.example` for ALP, `iamclient-ef1-5@demo.usps.example` for EF)
 
 **Why:**
 - `@usps.gov` is a real government domain — emails could route to real USPS mailboxes
@@ -59,17 +59,24 @@ If the demo recording must show `@usps.gov` in the UI, use the synthetic domain 
 
 ## Implementation Plan
 
-### Step 1: Create Demo Cohort
+### Step 1: Create Demo Cohort(s)
 
-No schema change needed. Create a cohort under the existing ALP program (most likely demo target per client request for ALP-135 cohort launch):
+No schema change needed. Use separate demo cohorts per program family to avoid ambiguous email-only auth routing when multiple demo windows are open.
 
 ```
-Cohort code: DEMO-ALP-REC1
+ALP cohort code: USPS-DEMO-RECORDING-2026-03
 Program: ALP (TWO_SESSION track, MLP_ALP coach pool)
 coachSelectionStart: 2026-03-01
 coachSelectionEnd: 2026-06-01 (generous window for repeated demos)
 session1Start/End: 2026-03-15 / 2026-05-15
 session2Start/End: 2026-05-15 / 2026-07-15
+```
+
+```
+EF cohort code: USPS-DEMO-EF-RECORDING-2026-03
+Program: EF (FIVE_SESSION track, EF_EL coach pool)
+coachSelectionStart: open window in staging for repeated demos
+coachSelectionEnd: open window in staging for repeated demos
 ```
 
 ### Step 2: Seed Script (`scripts/seed-demo-accounts.mjs`)
@@ -85,17 +92,17 @@ Idempotent upsert script following the existing `seed-staging-from-artifacts.mjs
 // 5. Advisory lock at script start to prevent concurrent runs
 
 const DEMO_EMAILS = [
-  "imaclient1@demo.usps.example",
-  "imaclient2@demo.usps.example",
-  "imaclient3@demo.usps.example",
-  "imaclient4@demo.usps.example",
-  "imaclient5@demo.usps.example",
+  "iamclient-ef1@demo.usps.example",
+  "iamclient-ef2@demo.usps.example",
+  "iamclient-ef3@demo.usps.example",
+  "iamclient-ef4@demo.usps.example",
+  "iamclient-ef5@demo.usps.example",
 ];
 
-const DEMO_COHORT_CODE = "DEMO-ALP-REC1";
+const DEMO_COHORT_CODE = "USPS-DEMO-EF-RECORDING-2026-03";
 ```
 
-**npm script:** `"data:seed:demo": "node scripts/seed-demo-accounts.mjs"`
+**npm script:** `"data:seed:staging:demo": "node scripts/seed-demo-participants.mjs"`
 
 ### Step 3: Reset Script (`scripts/reset-demo-accounts.mjs`)
 
@@ -119,7 +126,7 @@ Run before each demo recording to return accounts to clean state:
 //    coachSelectedAt=null, lastActivityAt=null, statusVersion=1
 ```
 
-**npm script:** `"data:reset:demo": "node scripts/reset-demo-accounts.mjs"`
+**npm script:** `"data:reset:staging:demo": "node scripts/reset-demo-cohort.mjs"`
 
 ### Step 4: Pre-Demo Verification Checklist
 
@@ -127,7 +134,7 @@ Before recording, verify these known issues are resolved in staging:
 
 - [ ] **Session carryover fix deployed** (commit `29cae1d`) — Without this, switching between demo accounts in the same browser tab shows the wrong coach. Verified by: enter email A, select coach, go back, enter email B → B should see coach selector, not A's confirmation.
 - [ ] **Coach selector state fix deployed** — Without this, browser refresh re-randomizes the coach batch. Verified by: land on coach selector, note 3 coaches, refresh → same 3 coaches appear.
-- [ ] **Reset script run** — `npm run data:reset:demo -- --confirm`
+- [ ] **Reset script run** — `npm run data:reset:staging:demo -- --env-file .env.local --cohort-code USPS-DEMO-EF-RECORDING-2026-03 --apply --confirm`
 - [ ] **EMAIL_OUTBOUND_ENABLED=false** confirmed in staging env vars
 
 ---
@@ -153,19 +160,21 @@ These are nice-to-haves if demo usage becomes frequent:
 ## Operational Workflow
 
 ```
-Before demo:  npm run data:reset:demo -- --confirm
+Before demo:  npm run data:reset:staging:demo -- --env-file .env.local --cohort-code USPS-DEMO-EF-RECORDING-2026-03 --apply --confirm
               → All 5 accounts return to INVITED status, clean slate
 
-During demo:  Use imaclient1-5@demo.usps.example in the participant flow
+During demo:  Use cohort-scoped emails in the participant flow
+              → ALP demo set: iamclient1-5@demo.usps.example
+              → EF demo set: iamclient-ef1-5@demo.usps.example
               → Each account goes through: email verify → coach select → confirmation
 
 After demo:   No action required (accounts stay in COACH_SELECTED state)
               → Run reset again before next demo
 ```
 
-## Files to Create
+## Scripts Used
 
 | File | Purpose |
 |------|---------|
-| `scripts/seed-demo-accounts.mjs` | One-time: create demo cohort + 5 participants + 5 engagements |
-| `scripts/reset-demo-accounts.mjs` | Repeatable: reset demo accounts to clean state before each demo |
+| `scripts/seed-demo-participants.mjs` | One-time or repeatable upsert: create/update demo cohort + participant + engagement rows |
+| `scripts/reset-demo-cohort.mjs` | Repeatable reset: clear demo cohort engagement state between takes |

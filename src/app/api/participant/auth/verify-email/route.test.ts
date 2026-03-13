@@ -175,6 +175,33 @@ describe("POST /api/participant/auth/verify-email", () => {
     expect(setCookie).toContain("Max-Age=0");
   });
 
+  it("returns WINDOW_NOT_OPEN with openDate and clears session cookie", async () => {
+    const openDate = new Date("2099-03-16T00:00:00.000Z");
+    const cohort = buildCohort({
+      coachSelectionStart: openDate,
+      coachSelectionEnd: new Date("2099-04-30T00:00:00.000Z"),
+    });
+    const participant = buildParticipant({ cohortId: cohort.id });
+    const engagement = buildEngagement({
+      participantId: participant.id,
+      cohortId: cohort.id,
+      status: "INVITED",
+    });
+
+    prismaMock.participant.findMany.mockResolvedValue([
+      { ...participant, cohort, engagement } as never,
+    ]);
+
+    const response = await POST(buildRequest({ email: "not-open@test.gov" }));
+    const body = await response.json();
+
+    expect(body.error).toBe("WINDOW_NOT_OPEN");
+    expect(body.openDate).toBe(openDate.toISOString());
+
+    const setCookie = response.headers.get("set-cookie") ?? "";
+    expect(setCookie).toContain("Max-Age=0");
+  });
+
   it("returns UNRECOGNIZED_EMAIL for missing email in body", async () => {
     const response = await POST(buildRequest({}));
     const body = await response.json();
