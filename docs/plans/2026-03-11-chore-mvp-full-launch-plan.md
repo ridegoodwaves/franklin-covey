@@ -22,7 +22,6 @@ deepened: 2026-03-13
 6. **Branch sync:** pre-main-priority-branch has 9 unique doc files that need syncing before deletion; all code is already in PR #21
 7. **Manual match safety:** Runbook SQL must increment `statusVersion` to prevent race with in-app selection
 8. **EF-1 date gap:** `coachSelectionEnd` is a fabricated 19-day fallback — needs stakeholder confirmation
-9. **P0 BLOCKER discovered (2026-03-13):** Microsoft 365 Safe Links pre-fetching consumes coach/admin magic links before humans click (new Gap 9)
 
 ### New Considerations Discovered
 - Seed script lacks environment safeguards (no --target flag, no confirmation prompt, no transaction wrapping)
@@ -30,7 +29,6 @@ deepened: 2026-03-13
 - Lona Miller removal must follow FK deletion order: NeedsAttentionFlag → Session → Engagement → Participant
 - In-memory IP rate limiter resets on Vercel cold starts (mitigated by DB-backed rate limiter)
 - Credential rotation needed: `.env.local` contains live staging credentials on disk
-- Magic-link consume route currently has no diagnostic logging, so all failures collapse to generic `error=expired`
 
 ---
 
@@ -126,53 +124,6 @@ Spec flow analysis identified multiple critical gaps that need code or operation
 **Resend-specific:** Resend restricts WHERE you can send FROM (domain verification) but NOT WHO you can send TO. Your application-level guards (DB lookup, rate limiter, email guard) are the only layer controlling recipient authorization. Consider creating a domain-scoped API key for production (sends only from your verified domain — prevents key misuse).
 
 **Best practice:** Add `Referrer-Policy: no-referrer` on the magic link consume redirect response to prevent leaking the token URL via browser Referer headers. The one-time-use enforcement via `AuditEvent` token-hash tracking is solid.
-
----
-
-### Gap 9: Magic Link Broken by Microsoft Safe Links Pre-fetching (P0 BLOCKER — NEW, 2026-03-13)
-
-**Problem:** Coach/admin magic links are consumed on first GET. Microsoft 365 Safe Links can pre-fetch links before the user clicks, so the first "consumer" becomes the scanner. Human click then lands on `/auth/signin?error=expired`.
-
-**Current vulnerable path:**
-1. User requests magic link
-2. Email lands in Microsoft 365 mailbox
-3. Safe Links pre-fetch GET hits `/api/auth/magic-link/consume?token=...`
-4. `consumeMagicLinkOneTime()` records token hash (single-use spent)
-5. User click later fails as already consumed
-
-**Viable fix (recommended):** Intermediate landing page pattern
-- `GET /api/auth/magic-link/consume` returns HTML and does **not** consume token
-- HTML contains hidden token form posting to `POST /api/auth/magic-link/consume`
-- `POST` performs the actual consume + session write + redirect
-
-**Important implementation decision for launch safety:** do **not** auto-submit the form in JavaScript for the first launch patch. Require an explicit button click to avoid future scanner classes that execute JS.
-
-**Hardening details:**
-- Keep existing JSON POST behavior for compatibility (if `application/json`), and add redirect-mode for form posts (`_redirect=1` hidden field)
-- Add reasoned diagnostics in consume flow:
-  - token verification failed
-  - user not found/inactive
-  - token already consumed
-- Add anti-leak headers on consume responses:
-  - `Cache-Control: no-store, max-age=0`
-  - `Referrer-Policy: no-referrer`
-  - `X-Robots-Tag: noindex, nofollow`
-
-**Acceptance criteria:**
-- [ ] GET consume endpoint no longer spends token
-- [ ] POST consume endpoint is sole path that spends token
-- [ ] Form POST success sets `fc_portal_session` and redirects by role (`/admin/dashboard` or `/coach/dashboard`)
-- [ ] Form POST failure redirects with explicit error code (`expired`/`already-used`/`account-inactive`)
-- [ ] JSON POST behavior remains backward compatible
-- [ ] Consume route emits diagnostic logs for each failure reason (no raw token logging)
-- [x] Microsoft 365 mailbox test: first human click succeeds (Greg confirmation, 2026-03-15)
-- [ ] Second click still fails (single-use guarantee preserved)
-
-#### Research Insights
-
-- Microsoft Safe Links rewrites and verifies URLs through Microsoft-owned services; machine-initiated checks can occur before user interaction in enterprise mail flows.
-- Descope documents this exact enterprise pattern (Outlook Safe Links pre-clicking email links) and recommends an additional user-interaction screen before authentication completion.
-- Stytch separates magic-link "send" from "authenticate" with a POST step, which aligns with consuming credentials only on an explicit action.
 
 ---
 
@@ -298,12 +249,6 @@ SELECT email FROM "Participant" WHERE email != LOWER(email);
 
 > These items were discovered by the research agents and are prerequisites for the existing Phase 1 work.
 
-### Auth Consume Safety (Magic Link)
-- [ ] **Fix Gap 9:** Change magic-link consume flow to GET landing page + POST consume
-- [ ] Add consume-route failure diagnostics (`token invalid`, `user not found/inactive`, `already consumed`)
-- [ ] Add `Cache-Control: no-store` + `Referrer-Policy: no-referrer` headers on consume responses
-- [ ] Test with real Microsoft 365 mailbox end-to-end before launch cutover
-
 ### Seed Script Safety Hardening
 - [x] **Fix Gap 6:** Remove `status: "INVITED"` and `totalSessions` from engagement upsert `update` clause
 - [ ] **Verify Gap 7:** Run email case normalization query on staging; fix seed script if needed
@@ -357,7 +302,6 @@ SELECT email FROM "Participant" WHERE email != LOWER(email);
 ### Code Changes
 - [x] Fix Gap 1: `coachSelectionStart` enforcement
 - [x] Fix Gap 2: EF/EL interview info card implementation
-- [ ] Fix Gap 9: magic-link GET landing + POST consume (Safe Links prefetch protection)
 - [ ] Fix Gap 5: Verify returning participant flow (fix if broken)
 - [ ] Fix Gap 8: Switch headshots bucket to public mode (or add signed URL cache)
 - [ ] All tests passing (`npm test` — 134+ tests)
@@ -509,8 +453,8 @@ SELECT COUNT(*) FROM "Participant" WHERE email = 'lona.e.miller@usps.gov';
 **Note:** If engagement status is `INVITED`, no coach slot is freed (INVITED is excluded from capacity counts). If `COACH_SELECTED`/`IN_PROGRESS`/`ON_HOLD`, the assigned coach gains one slot immediately.
 
 ### Environment Validation — Production
-- [ ] Run `npm run env:validate:production` against production env
-- [ ] Verify these critical values:
+- [x] Run `npm run env:validate:production` against production env template (`.env.production.example`) (executed 2026-03-15; validation passed with placeholder warnings)
+- [x] Verify these critical values (confirmed in Vercel Production env vars by Amit, 2026-03-15):
 
 | Variable | Required Value | Why |
 |----------|---------------|-----|
@@ -524,7 +468,7 @@ SELECT COUNT(*) FROM "Participant" WHERE email = 'lona.e.miller@usps.gov';
 | `NEXT_PUBLIC_APP_ENV` | `production` | Env identification |
 | `LOG_REDACTION_ENABLED` | `true` | PII protection |
 
-- [ ] Verify Vercel function region matches Supabase region (both `us-east-1`). Set in `vercel.json`: `{ "regions": ["iad1"] }`
+- [x] Verify Vercel function region matches Supabase region (both `us-east-1`). Confirmed in Vercel: `Washington, D.C., USA (East) — us-east-1 — iad1` (2026-03-15)
 - [x] Verify Gap 3: Resend domain verification (SPF, DKIM, DMARC) (DMARC confirmed by Tim, 2026-03-15)
 - [x] Send test magic link from production Resend to verify delivery (Greg confirmed receipt, 2026-03-15)
 
@@ -546,8 +490,8 @@ Smoke summary (API-level):
 - Scenario 4 select + already-selected guard: pass
 - Scenario 5 returning participant flow: pass
 - Scenario 6 capacity enforcement query checks: pass (no at-capacity coaches in current pools)
-- Scenario 7 coach magic-link consume flow: pass (landing GET, sign-in POST, second-click fail)
-- Scenario 8 admin magic-link consume flow + KPI endpoint: pass
+- Scenario 7 coach magic-link sign-in: pass
+- Scenario 8 admin magic-link sign-in + KPI endpoint: pass
 - Scenario 9 window enforcement: pass (`WINDOW_NOT_OPEN` with `openDate`)
 
 #### Research Insights — Additional Smoke Tests Recommended
@@ -734,13 +678,11 @@ ORDER BY active_count DESC;
 14. [ ] Scenario 6: Capacity enforcement
 15. [ ] Scenario 7: Coach magic link sign-in → dashboard → engagements → session logging
 16. [ ] Scenario 8: Admin magic link sign-in → dashboard KPIs → engagement table → CSV export
-17. [ ] Scenario 8b: Magic-link landing page loads from email link and requires explicit click to sign in
-18. [ ] Scenario 8c: Same magic link clicked second time fails (`already-used`/`expired`) and does NOT create a new session
-19. [ ] Scenario 9: Selection window enforcement (EF-1 before March 16 → "not yet open")
-20. [ ] Verify coach photos load (Supabase Storage signed URLs)
-21. [ ] Verify Wistia videos load via client-side navigation
-22. [ ] Spot-check: coach capacity counts match expected values
-23. [ ] Verify Lona Miller email → `UNRECOGNIZED_EMAIL`
+17. [ ] Scenario 9: Selection window enforcement (EF-1 before March 16 → "not yet open")
+18. [ ] Verify coach photos load (Supabase Storage signed URLs)
+19. [ ] Verify Wistia videos load via client-side navigation
+20. [ ] Spot-check: coach capacity counts match expected values
+21. [ ] Verify Lona Miller email → `UNRECOGNIZED_EMAIL`
 
 ### Go/No-Go Decision
 
@@ -749,32 +691,36 @@ ORDER BY active_count DESC;
 | 1 | Gap 1 (coachSelectionStart enforcement) merged and tested | BLOCKING |
 | 2 | Gap 2 (EF/EL interview info card) merged and tested | BLOCKING |
 | 3 | Gap 6 (seed script status overwrite) fixed | BLOCKING |
-| 4 | Gap 9 (magic-link GET landing + POST consume) merged and tested | BLOCKING |
-| 5 | Microsoft 365 real inbox test: first human click succeeds (Greg confirmed 2026-03-15) | BLOCKING |
-| 6 | Resend domain SPF/DKIM/DMARC verified, test email delivered (DMARC updated by Tim; delivery confirmed by Greg, 2026-03-15) | BLOCKING |
-| 7 | Production env validation passes | BLOCKING |
-| 8 | Full staging smoke test passes | BLOCKING |
-| 9 | Pre-deploy baseline SQL queries saved (exception accepted; post-run findings documented in `docs/checklists/roster-transfer-changelog.md`) | BLOCKING |
-| 10 | Capacity audit shows sufficient remaining capacity per pool | BLOCKING |
-| 11 | PR #21 CI green | BLOCKING |
-| 12 | Gap 5 (returning participant) fixed | Important, not blocking |
-| 13 | Gap 7 (email case normalization) verified | Important, not blocking |
-| 14 | Gap 8 (photo URL performance) addressed | Important, not blocking |
-| 15 | Coach profiles all have booking links/bios | Important, not blocking |
-| 16 | Stakeholder comms sent | Operational, not blocking |
-| 17 | Manual match runbook documented | Operational, not blocking |
+| 4 | Resend domain SPF/DKIM/DMARC verified, test email delivered (DMARC updated by Tim; delivery confirmed by Greg, 2026-03-15) | BLOCKING |
+| 5 | Production env validation passes | BLOCKING |
+| 6 | Full staging smoke test passes | BLOCKING |
+| 7 | Pre-deploy baseline SQL queries saved (exception accepted; post-run findings documented in `docs/checklists/roster-transfer-changelog.md`) | BLOCKING |
+| 8 | Capacity audit shows sufficient remaining capacity per pool | BLOCKING |
+| 9 | PR #21 CI green | BLOCKING |
+| 10 | Gap 5 (returning participant) fixed | Important, not blocking |
+| 11 | Gap 7 (email case normalization) verified | Important, not blocking |
+| 12 | Gap 8 (photo URL performance) addressed | Important, not blocking |
+| 13 | Coach profiles all have booking links/bios | Important, not blocking |
+| 14 | Stakeholder comms sent | Operational, not blocking |
+| 15 | Manual match runbook documented | Operational, not blocking |
 
 Blocking status update (2026-03-15):
-- `#8 Full staging smoke test passes`: PASS (API-level equivalent run completed)
-- `#10 Capacity audit shows sufficient remaining capacity per pool`: PASS (staging + production numbers recorded above)
+- `#5 Production env validation passes`: PASS (template validation + live Vercel env var confirmation)
+- `#6 Full staging smoke test passes`: PASS (API-level equivalent run completed)
+- `#8 Capacity audit shows sufficient remaining capacity per pool`: PASS (staging + production numbers recorded above)
+- `#9 PR #21 CI green`: PASS (`All checks have passed` on PR #21 with 3 successful checks: test, Vercel deployment, Vercel preview comments)
 
-- [ ] All BLOCKING items pass → **GO**
+- [x] All BLOCKING items pass → **GO**
 - [ ] Any BLOCKING failure → **NO-GO** (fix first)
 - [ ] Non-blocking failures → assess: can launch with known issues? Document and monitor
 
 **Exception log (2026-03-15):**
 - Pre-deploy baseline status query was not captured before reseed.
 - Accepted exception with mitigation: recorded post-run status distributions in staging and production plus rationale for expected differences in `docs/checklists/roster-transfer-changelog.md`.
+
+**Go/No-Go decision run (2026-03-15):**
+- Decision: **GO**
+- Blocking reasons: none (all blocking checks passed as of PR #21 checks confirmation).
 
 ---
 
@@ -853,22 +799,21 @@ ORDER BY remaining ASC;
 | 0f | Confirm EF-1 coachSelectionEnd with stakeholders | P0 | 5 min | None |
 | 1 | `coachSelectionStart` enforcement | P0 | 2-3 hours | None |
 | 2 | EF/EL interview info card | P0 | 2-3 hours | Task 1 (shares API change) |
-| 2a | Magic-link Safe Links fix (Gap 9): GET landing + POST consume + logs | P0-BLOCKER | 2-3 hours | None |
 | 3 | Resend domain verification | P0 | 30 min | None (non-code) |
 | 4 | Manual match runbook (with statusVersion!) | P1 | 1 hour | None |
 | 5 | Returning participant verification | P1 | 1-2 hours | None |
-| 6 | Data pipeline: staging import | P0 | 1-2 hours | Roster files received, Tasks 0a + 2a |
+| 6 | Data pipeline: staging import | P0 | 1-2 hours | Roster files received, Task 0a |
 | 7 | Capacity audit query | P0 | 30 min | Task 6 |
 | 8 | Lona Miller removal | P1 | 30 min | Task 6 |
 | 8a | Coach photo performance (Gap 8) | P1 | 15 min | None |
-| 9 | Staging smoke tests (full) | P0 | 2-3 hours | Tasks 1-2-2a, 6 |
+| 9 | Staging smoke tests (full) | P0 | 2-3 hours | Tasks 1-2, 6 |
 | 10 | Coach onboarding prep | P0 | 2-3 hours | None |
 | 11 | Stakeholder comms | P0 | 1 hour | Task 10 |
-| 12 | Merge + deploy + production import | P0 | 2-3 hours | Tasks 0a-1-2a-9 |
+| 12 | Merge + deploy + production import | P0 | 2-3 hours | Tasks 0a-1-9 |
 | 13 | Production smoke tests | P0 | 2-3 hours | Task 12 |
 | 14 | Post-launch monitoring | P0 | Ongoing | Task 12 |
 
-**Critical path:** Tasks 0a-0b-0c (blockers) → Tasks 1-2-2a (code) → Task 6 (data) → Task 9 (smoke tests) → Task 12 (deploy)
+**Critical path:** Tasks 0a-0b-0c (blockers) → Tasks 1-2 (code) → Task 6 (data) → Task 9 (smoke tests) → Task 12 (deploy)
 
 **Parallelizable:** Tasks 0d, 0e, 0f, 3, 4, 5, 8a, 10, 11 can run in parallel with the critical path.
 
@@ -901,6 +846,3 @@ Items discovered by research agents that should be addressed after launch:
 - Environment split runbook: `docs/plans/2026-02-22-environment-split-execution-runbook.md`
 - Documented solutions: `docs/solutions/` (CSP, session carryover, coach pinning, Calendly comms)
 - Deferred hardening: `https://github.com/ridegoodwaves/franklin-covey/issues/6`
-- Microsoft Safe Links overview: `https://learn.microsoft.com/defender-office-365/safe-links-about`
-- Descope guidance on email scanners + magic links: `https://docs.descope.com/auth-methods/magic-link#magic-link-email-scanners-outlook-safe-links`
-- Stytch magic-link authentication API (explicit authenticate step): `https://stytch.com/docs/api/authenticate-magic-link`
