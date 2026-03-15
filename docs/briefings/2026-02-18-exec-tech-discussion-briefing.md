@@ -36,7 +36,7 @@ Align on technology ecosystem, security posture, procurement path, and operating
 - App: Next.js 15 (single repo, API routes + portals)
 - Data: PostgreSQL on Supabase (Prisma planned as ORM layer)
 - Hosting: Vercel
-- Auth: Participant OTP; Coach/Admin magic link (MVP)
+- Auth: Participant email + USPS-delivered access code; Coach/Admin magic link (MVP)
 - Email: Resend (MVP path)
 - Scheduling: Calendly links
 
@@ -64,7 +64,7 @@ The system is being built so migration is configuration/integration work, not pr
 - Role-segmented access model by portal (participant, coach, admin).
 - Coach private notes remain coach-only.
 - Coach/admin migrate to Okta SSO in FC production.
-- Participant OTP flow remains external-user friendly and independent of FC identity tenant.
+- Participant access-code flow remains external-user friendly and independent of FC identity tenant.
 
 ### Data protection
 
@@ -76,8 +76,8 @@ The system is being built so migration is configuration/integration work, not pr
 ### Application security controls
 
 - Input validation and constrained enums for critical status transitions.
-- Rate limiting and OTP attempt/expiry controls.
-- Auditability for key state changes (selection, auto-assign, session status updates).
+- Rate limiting and participant access-code lockout/expiry controls.
+- Auditability for key state changes (selection, needs-attention flagging, session status updates).
 - Environment segregation: dev/staging/prod controls and secret management.
 
 ### Operational security controls

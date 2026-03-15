@@ -71,7 +71,10 @@ function createSignedToken<T>(scope: string, payload: T, ttlSeconds: number): st
 }
 
 function verifySignedToken<T>(token: string, expectedScope: string): T | null {
-  const [encoded, signature] = token.split(".");
+  const tokenParts = token.split(".");
+  if (tokenParts.length !== 2) return null;
+
+  const [encoded, signature] = tokenParts;
   if (!encoded || !signature) return null;
 
   const expectedSignature = signSegment(encoded);
@@ -92,7 +95,25 @@ function verifySignedToken<T>(token: string, expectedScope: string): T | null {
 }
 
 function cookieSecure(): boolean {
-  return process.env.NODE_ENV === "production";
+  if (process.env.NODE_ENV === "production") return true;
+  if (process.env.VERCEL === "1") return true;
+
+  const vercelUrl = process.env.VERCEL_URL?.trim();
+  if (vercelUrl && vercelUrl.length > 0) return true;
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || process.env.APP_URL?.trim();
+  if (!appUrl) return false;
+
+  const normalized =
+    appUrl.startsWith("http://") || appUrl.startsWith("https://")
+      ? appUrl
+      : `https://${appUrl}`;
+
+  try {
+    return new URL(normalized).protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 export function readParticipantSession(request: NextRequest): ParticipantSession | null {
@@ -153,4 +174,16 @@ export function readPortalSession(request: NextRequest): PortalSession | null {
   const raw = request.cookies.get(PORTAL_SESSION_COOKIE)?.value;
   if (!raw) return null;
   return verifySignedToken<PortalSession>(raw, "portal");
+}
+
+export function clearPortalSession(response: NextResponse): void {
+  response.cookies.set({
+    name: PORTAL_SESSION_COOKIE,
+    value: "",
+    httpOnly: true,
+    secure: cookieSecure(),
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
 }

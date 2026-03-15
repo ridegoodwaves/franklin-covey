@@ -79,6 +79,7 @@ function mockValidContext(overrides: Record<string, unknown> = {}) {
     program: {
       id: "program-1",
       pool: "MLP_ALP",
+      code: "ALP",
     },
     ...overrides,
   } as never);
@@ -106,6 +107,7 @@ describe("GET /api/participant/coaches", () => {
 
     expect(response.status).toBe(401);
     expect(body.error).toBe("INVALID_SESSION");
+    expect(body.programCode).toBeUndefined();
   });
 
   it("returns 409 ALREADY_SELECTED when engagement is not INVITED", async () => {
@@ -116,6 +118,7 @@ describe("GET /api/participant/coaches", () => {
 
     expect(response.status).toBe(409);
     expect(body.error).toBe("ALREADY_SELECTED");
+    expect(body.programCode).toBeUndefined();
   });
 
   it("returns 409 WINDOW_CLOSED when selection window is past", async () => {
@@ -129,6 +132,7 @@ describe("GET /api/participant/coaches", () => {
 
     expect(response.status).toBe(409);
     expect(body.error).toBe("WINDOW_CLOSED");
+    expect(body.programCode).toBeUndefined();
   });
 
   it("returns 3 coaches and sets currentBatchIds for first GET", async () => {
@@ -139,6 +143,7 @@ describe("GET /api/participant/coaches", () => {
     expect(body.coaches).toHaveLength(3);
     expect(body.coaches[0].wistiaMediaId).toBe("test-media-id");
     expect(body.allAtCapacity).toBe(false);
+    expect(body.programCode).toBe("ALP");
 
     // writeParticipantSession was called with currentBatchIds set
     expect(mockWriteSession).toHaveBeenCalled();
@@ -159,6 +164,7 @@ describe("GET /api/participant/coaches", () => {
 
     expect(response.status).toBe(200);
     expect(body.coaches).toHaveLength(3);
+    expect(body.programCode).toBe("ALP");
     // The IDs should match the pinned ones
     const ids = body.coaches.map((c: { id: string }) => c.id);
     expect(ids).toEqual(expect.arrayContaining(["c1", "c2", "c3"]));
@@ -191,6 +197,7 @@ describe("GET /api/participant/coaches", () => {
     expect(body.allAtCapacity).toBe(true);
     expect(body.remixUsed).toBe(true);
     expect(body.coaches).toHaveLength(0);
+    expect(body.programCode).toBe("ALP");
   });
 
   it("always includes remixUsed in response", async () => {
@@ -199,5 +206,22 @@ describe("GET /api/participant/coaches", () => {
 
     expect(body).toHaveProperty("remixUsed");
     expect(body.remixUsed).toBe(false);
+    expect(body).toHaveProperty("programCode", "ALP");
+  });
+
+  it("returns programCode from session context for EF participants", async () => {
+    mockValidContext({
+      program: {
+        id: "program-ef",
+        pool: "EF_EL",
+        code: "EF",
+      },
+    });
+
+    const response = await GET(buildGetRequest());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.programCode).toBe("EF");
   });
 });

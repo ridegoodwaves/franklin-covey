@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const ip = getRequestIpAddress(request.headers);
+    const ip = getRequestIpAddress(request);
     const rateLimit = consumeRateLimit({
       key: `participant-verify-email:${ip}`,
       maxRequests: MAX_REQUESTS_PER_HOUR,
@@ -65,6 +65,16 @@ export async function POST(request: NextRequest) {
     const match = await lookupParticipantForEmailAuth(email);
     if (!match) {
       const response = NextResponse.json({ success: false, error: "UNRECOGNIZED_EMAIL" });
+      clearParticipantSession(response);
+      return response;
+    }
+
+    if (match.selectionWindowNotOpen) {
+      const response = NextResponse.json({
+        success: false,
+        error: "WINDOW_NOT_OPEN",
+        openDate: match.selectionWindowOpenDate,
+      });
       clearParticipantSession(response);
       return response;
     }

@@ -48,7 +48,7 @@ Lock the minimum technical and governance decisions needed to protect March MVP 
 
 ### "How are you handling identity and PII?"
 
-"Participants use OTP because they are external users. Coach/admin access moves to Okta in FC production. We enforce role boundaries, limit sensitive data visibility (coach private notes), and keep non-prod data handling sanitized by default."
+"Participants use email + USPS-delivered access codes because they are external users. Coach/admin access moves to Okta in FC production. We enforce role boundaries, limit sensitive data visibility (coach private notes), and keep non-prod data handling sanitized by default."
 
 ### "Can you legally send from franklincovey.com today?"
 

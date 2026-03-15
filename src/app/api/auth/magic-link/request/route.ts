@@ -2,12 +2,20 @@ import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendWithEmailGuard } from "@/lib/email/send-with-guard";
+import { getRequestIpAddress } from "@/lib/server/rate-limit";
+import { consumeMagicLinkRequestRateLimit } from "@/lib/server/security-guards";
 import { createMagicLinkToken } from "@/lib/server/session";
 
 interface ResendResponse {
   id?: string;
   message?: string;
 }
+
+const MAX_REQUESTS_PER_HOUR_PER_EMAIL = 6;
+const MAX_REQUESTS_PER_HOUR_PER_IP = 30;
+const RESEND_COOLDOWN_SECONDS = 60;
+const MAX_REQUESTS_PER_BURST_WINDOW = 10;
+const BURST_WINDOW_MS = 10 * 60 * 1000;
 
 function resolveSiteUrl(): string {
   return process.env.NEXT_PUBLIC_SITE_URL?.trim() || "http://localhost:3000";
@@ -62,6 +70,30 @@ export async function POST(request: NextRequest) {
 
   if (!email || !email.includes("@")) {
     return NextResponse.json({ success: false, error: "INVALID_EMAIL" }, { status: 400 });
+  }
+
+  const ipAddress = getRequestIpAddress(request);
+  const rateLimit = await consumeMagicLinkRequestRateLimit({
+    email,
+    ipAddress,
+    userAgent: request.headers.get("user-agent") || undefined,
+    maxRequestsPerHourPerEmail: MAX_REQUESTS_PER_HOUR_PER_EMAIL,
+    maxRequestsPerHourPerIp: MAX_REQUESTS_PER_HOUR_PER_IP,
+    cooldownSeconds: RESEND_COOLDOWN_SECONDS,
+    maxRequestsPerBurstWindow: MAX_REQUESTS_PER_BURST_WINDOW,
+    burstWindowMs: BURST_WINDOW_MS,
+  });
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { success: false, error: "RATE_LIMITED" },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(rateLimit.retryAfterSeconds),
+        },
+      }
+    );
   }
 
   const user = await prisma.user.findFirst({
@@ -120,14 +152,22 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Magic link send blocked";
-    const status = message.toLowerCase().includes("guard") || message.toLowerCase().includes("allow")
-      ? 403
-      : 502;
+    const lowerMessage = message.toLowerCase();
+    const isGuardBlock =
+      lowerMessage.includes("guard") ||
+      lowerMessage.includes("allow") ||
+      lowerMessage.includes("disabled") ||
+      lowerMessage.includes("blocked") ||
+      lowerMessage.includes("email_mode") ||
+      lowerMessage.includes("email_outbound");
+    const status = isGuardBlock ? 403 : 502;
+
+    console.error("[magic-link/request] Email send error:", message);
 
     return NextResponse.json(
       {
         success: false,
-        error: status === 403 ? "EMAIL_BLOCKED" : "EMAIL_SEND_FAILED",
+        error: isGuardBlock ? "EMAIL_BLOCKED" : "EMAIL_SEND_FAILED",
       },
       { status }
     );

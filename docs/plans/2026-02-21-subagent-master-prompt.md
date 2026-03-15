@@ -25,14 +25,13 @@ Read these first:
 Assigned files:
 - `src/app/page.tsx`
 - `src/app/participant/page.tsx`
-- `src/app/participant/verify-otp/page.tsx`
 - `src/app/participant/select-coach/page.tsx`
 - `src/app/participant/confirmation/page.tsx`
 - `src/app/participant/engagement/page.tsx` (delete)
 - `src/middleware.ts` (or equivalent guard layer)
 
 Deliver:
-- OTP request/verify flow
+- Access-code verification flow (single step on `/participant`)
 - Filterless coach selector
 - Standalone confirmation page
 - One-way routing guards and invalid deep-link handling
@@ -70,8 +69,7 @@ Assigned files:
 
 Deliver:
 - Consistent request/response/error handling for:
-  - `POST /api/participant/auth/request-otp`
-  - `POST /api/participant/auth/verify-otp`
+  - `POST /api/participant/auth/verify-access-code`
   - `GET /api/participant/coaches`
   - `POST /api/participant/coaches/remix`
   - `POST /api/participant/coaches/select`

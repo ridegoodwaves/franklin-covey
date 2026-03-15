@@ -16,9 +16,9 @@ Establish technical, security, and operational alignment required to:
 
 ## In Scope (MVP)
 
-- Participant portal: OTP access, 3-coach selection, one remix, final selection, Calendly handoff
+- Participant portal: email + USPS-delivered access code, 3-coach selection, one remix, final selection, scheduling-link handoff
 - Coach portal: engagement visibility, session status + structured note logging
-- Admin portal: participant CSV import, Day 5/10 nudges, Day 15 auto-assign, KPI dashboard, CSV export
+- Admin portal: participant CSV import, day-based needs-attention flags, KPI dashboard, CSV export
 
 ## Locked Milestones
 
@@ -41,7 +41,7 @@ Establish technical, security, and operational alignment required to:
 - App runtime: Next.js 15 (App Router + API routes)
 - Hosting: Vercel
 - Data: Supabase PostgreSQL
-- Auth (participant): OTP-based verification flow
+- Auth (participant): email + USPS-delivered access code
 - Auth (coach/admin): magic-link auth (MVP)
 - Email: Resend (MVP)
 - Scheduling integration: Calendly link handoff (no webhook dependency in MVP)
@@ -79,7 +79,7 @@ Migration is structured as integration/configuration transition, not domain-logi
 - Least-privilege role enforcement across routes and data access
 - Coach private notes isolated to coach context
 - Coach/admin production auth target: Okta SSO
-- Participant auth remains OTP due to external-user model
+- Participant auth remains access-code based due to external-user model
 
 ## Encryption and Transport
 
@@ -90,10 +90,10 @@ Migration is structured as integration/configuration transition, not domain-logi
 ## Application Security Controls
 
 - Input validation and enum constraints at API boundaries
-- OTP controls: expiry, attempts threshold, replay prevention
+- Access-code controls: expiry, participant-level attempt threshold, replay prevention
 - Rate limiting on auth-sensitive endpoints
 - Immutable audit events for key state changes
-- Audit event scope: OTP verification outcomes
+- Audit event scope: participant access-code verification outcomes
 - Audit event scope: coach selection and assignment state changes
 - Audit event scope: session status updates
 - Audit event scope: nudge execution actions

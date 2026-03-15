@@ -1,747 +1,565 @@
-/**
- * SLICE 2 PARTIAL — ships March 9, not March 2.
- *
- * This page is scaffolded and UI-complete but is NOT wired to the real API yet.
- * The session logging form (topic/outcome/duration/notes) renders with demo data.
- * Full wiring requires Slice 2 backend:
- *   - GET /api/coach/engagements/:id  (fetch real engagement by route param)
- *   - POST /api/coach/sessions         (submit session log)
- * Do not include this page in Slice 1 scope claims or beta test scripts.
- */
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useParams } from "next/navigation";
+import { SessionStatus } from "@prisma/client";
 import { PortalShell } from "@/components/navigation";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { cn, getInitials, getStatusColor, getStatusLabel } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { COACH_NAV_ITEMS, COACH_PORTAL, CoachPortalIcon } from "@/lib/nav-config";
-import { MLP_SESSION_TOPICS, SESSION_OUTCOMES, DURATION_OPTIONS } from "@/lib/config";
+import { DURATION_OPTIONS, SESSION_OUTCOMES, SESSION_TOPICS_BY_PROGRAM } from "@/lib/config";
+import { cn, formatDate, getStatusColor, getStatusLabel } from "@/lib/utils";
+import { usePortalUser } from "@/lib/use-portal-user";
+import {
+  CoachApiError,
+  createCoachSession,
+  fetchCoachEngagementDetail,
+  fetchCoachSessions,
+  updateCoachSession,
+} from "@/lib/coach-api-client";
+import type { CoachEngagementDetail, CoachSessionRow } from "@/lib/types/coach";
+import { useAutoSave } from "@/hooks/use-auto-save";
+import { useUnsavedChangesWarning } from "@/hooks/use-unsaved-changes-warning";
 
-// ─── Icons ────────────────────────────────────────────────────────────────────
-
-function CalendarIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-      <line x1="16" y1="2" x2="16" y2="6" />
-      <line x1="8" y1="2" x2="8" y2="6" />
-      <line x1="3" y1="10" x2="21" y2="10" />
-    </svg>
-  );
+interface SessionFormState {
+  status: SessionStatus;
+  occurredAt: string;
+  topic: string;
+  outcome: string;
+  durationMinutes: number | null;
+  privateNotes: string;
 }
 
-function ClockIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <polyline points="12 6 12 12 16 14" />
-    </svg>
-  );
+function toDateInput(iso: string | null): string {
+  if (!iso) return "";
+  const parsed = new Date(iso);
+  if (!Number.isFinite(parsed.getTime())) return "";
+  return parsed.toISOString().slice(0, 10);
 }
 
-function LockIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
-  );
+function defaultFormState(): SessionFormState {
+  return {
+    status: SessionStatus.COMPLETED,
+    occurredAt: "",
+    topic: "",
+    outcome: "",
+    durationMinutes: null,
+    privateNotes: "",
+  };
 }
 
-function SaveIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-      <polyline points="22 4 12 14.01 9 11.01" />
-    </svg>
-  );
+function toPatchPayload(form: SessionFormState): {
+  occurredAt: string | null;
+  topic: string | null;
+  outcome: string | null;
+  durationMinutes: number | null;
+  privateNotes: string | null;
+} {
+  return {
+    occurredAt: form.occurredAt ? new Date(form.occurredAt).toISOString() : null,
+    topic: form.topic.trim() || null,
+    outcome: form.outcome.trim() || null,
+    durationMinutes: form.durationMinutes,
+    privateNotes: form.privateNotes.trim() || null,
+  };
 }
 
-function SendIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="22" y1="2" x2="11" y2="13" />
-      <polygon points="22 2 15 22 11 13 2 9 22 2" />
-    </svg>
-  );
+function hasForfeitStatus(status: SessionStatus): boolean {
+  return status === SessionStatus.FORFEITED_CANCELLED || status === SessionStatus.FORFEITED_NOT_USED;
 }
 
-function ArrowLeftIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="19" y1="12" x2="5" y2="12" />
-      <polyline points="12 19 5 12 12 5" />
-    </svg>
-  );
-}
-
-function BuildingIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
-      <path d="M9 22v-4h6v4" />
-      <line x1="8" y1="6" x2="10" y2="6" />
-      <line x1="14" y1="6" x2="16" y2="6" />
-      <line x1="8" y1="10" x2="10" y2="10" />
-      <line x1="14" y1="10" x2="16" y2="10" />
-      <line x1="8" y1="14" x2="10" y2="14" />
-      <line x1="14" y1="14" x2="16" y2="14" />
-    </svg>
-  );
-}
-
-
-function SpinnerIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
-      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-    </svg>
-  );
-}
-
-// ─── Demo Data ────────────────────────────────────────────────────────────────
-
-const participant = {
-  name: "James Rodriguez",
-  organization: "Dept. of Commerce",
-  title: "Deputy Director, Office of Policy Analysis",
-  email: "j.rodriguez@commerce.gov",
-  programTrack: "FIVE_SESSION",
-  engagementStatus: "IN_PROGRESS",
-  startDate: "Jan 15, 2026",
-  targetEndDate: "Mar 30, 2026",
-  currentSession: 3,
-  totalSessions: 5,
-};
-
-const sessionHistory = [
-  {
-    id: "sh-1",
-    sessionNumber: 1,
-    date: "Jan 20, 2026",
-    duration: 60,
-    status: "completed" as const,
-    topics: ["Goal Setting", "Leadership Development"],
-    outcomes: ["Action Plan Created", "In Progress"],
-    notesPreview:
-      "Established baseline leadership assessment. James identified three key areas for growth: delegation, strategic communication, and conflict resolution. Strong engagement and self-awareness.",
-    privateNotes:
-      "James seems highly motivated but may need support with delegation specifically. His 360 feedback highlighted a tendency to micromanage. Approach gently.",
-  },
-  {
-    id: "sh-2",
-    sessionNumber: 2,
-    date: "Feb 3, 2026",
-    duration: 45,
-    status: "completed" as const,
-    topics: ["Communication Skills", "Team Building"],
-    outcomes: ["In Progress", "Needs Follow-up"],
-    notesPreview:
-      "Deep dive into communication frameworks. Practiced active listening techniques. James shared a recent team conflict situation that we role-played through. Good progress on awareness, needs practice.",
-    privateNotes:
-      "The team conflict he mentioned seems more serious than initially presented. May want to revisit next session. He responded well to the SBAR framework.",
-  },
-];
-
-// ─── Duration Selector ────────────────────────────────────────────────────────
-
-function DurationSelector({
-  value,
-  onChange,
-}: {
-  value: number | null;
-  onChange: (duration: number) => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {DURATION_OPTIONS.map((mins) => (
-        <button
-          key={mins}
-          type="button"
-          onClick={() => onChange(mins)}
-          className={cn(
-            "rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200",
-            value === mins
-              ? "border-fc-700 bg-fc-800 text-white shadow-sm"
-              : "border-border/60 bg-white text-muted-foreground hover:border-fc-200 hover:bg-fc-50/30 hover:text-fc-700"
-          )}
-        >
-          {mins} min
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// ─── Session Timeline Item ────────────────────────────────────────────────────
-
-function TimelineItem({
-  session,
-  isLast,
-  delay,
-}: {
-  session: (typeof sessionHistory)[0];
-  isLast: boolean;
-  delay: number;
-}) {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <div
-      className="relative flex gap-4 opacity-0 animate-fade-in"
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      {/* Timeline line */}
-      <div className="flex flex-col items-center">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 ring-4 ring-white">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        </div>
-        {!isLast && (
-          <div className="w-px flex-1 bg-gradient-to-b from-emerald-200 to-border/30" />
-        )}
-      </div>
-
-      {/* Content */}
-      <div className={cn("flex-1 pb-8", isLast && "pb-0")}>
-        <div className="flex items-center gap-2 mb-1">
-          <p className="text-sm font-medium text-fc-900">
-            Session {session.sessionNumber}
-          </p>
-          <span className="text-xs text-muted-foreground">&middot;</span>
-          <span className="text-xs text-muted-foreground">{session.date}</span>
-          <span className="text-xs text-muted-foreground">&middot;</span>
-          <span className="text-xs text-muted-foreground">{session.duration} min</span>
-        </div>
-
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          {session.topics.map((topic) => (
-            <Badge key={topic} variant="outline" className="text-[10px] font-normal">
-              {topic}
-            </Badge>
-          ))}
-        </div>
-
-        <p className="text-xs leading-relaxed text-muted-foreground line-clamp-2">
-          {session.notesPreview}
-        </p>
-
-        {expanded && (
-          <div className="mt-3 space-y-2 animate-fade-in">
-            <div className="flex flex-wrap gap-1.5">
-              {session.outcomes.map((outcome) => (
-                <Badge key={outcome} variant="info" className="text-[10px] font-normal">
-                  {outcome}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="mt-2 text-xs font-medium text-fc-600 hover:text-fc-800 transition-colors"
-        >
-          {expanded ? "Show less" : "Show more"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Auto-Save Indicator ──────────────────────────────────────────────────────
-
-function AutoSaveIndicator({
+function AutoSaveText({
   status,
+  savedAt,
 }: {
-  status: "idle" | "saving" | "saved" | "draft";
+  status: "idle" | "saving" | "saved" | "error";
+  savedAt: string | null;
 }) {
-  if (status === "idle") return null;
-
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-1.5 text-xs font-medium transition-all duration-300",
-        status === "saving" && "text-fc-500",
-        status === "saved" && "text-emerald-600",
-        status === "draft" && "text-fc-700"
-      )}
-    >
-      {status === "saving" && (
-        <>
-          <SpinnerIcon />
-          <span>Saving...</span>
-        </>
-      )}
-      {status === "saved" && (
-        <>
-          <SaveIcon />
-          <span>Saved as draft</span>
-        </>
-      )}
-      {status === "draft" && (
-        <>
-          <div className="h-1.5 w-1.5 rounded-full bg-fc-500 animate-pulse-subtle" />
-          <span>Draft</span>
-        </>
-      )}
-    </div>
-  );
+  if (status === "saving") return <p className="text-xs text-fc-600">Saving...</p>;
+  if (status === "error") return <p className="text-xs text-red-700">Auto-save failed. Changes remain in the form.</p>;
+  if (status === "saved") return <p className="text-xs text-emerald-700">Saved</p>;
+  if (savedAt) {
+    const date = new Date(savedAt);
+    return (
+      <p className="text-xs text-muted-foreground">
+        Last saved {date.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+      </p>
+    );
+  }
+  return null;
 }
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function CoachEngagementDetailPage() {
-  // Form state — dropdowns per spec
-  const [selectedTopic, setSelectedTopic] = useState("");
-  const [selectedOutcome, setSelectedOutcome] = useState("");
-  const [duration, setDuration] = useState<number | null>(null);
-  const [privateNotes, setPrivateNotes] = useState("");
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "draft">("idle");
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [activeTab, setActiveTab] = useState("log");
+  const params = useParams<{ id: string }>();
+  const engagementId = params.id;
 
-  // Track whether the form has any content for auto-save
-  const hasFormContent =
-    selectedTopic !== "" ||
-    selectedOutcome !== "" ||
-    duration !== null ||
-    privateNotes.length > 0;
+  const portalUser = usePortalUser({
+    name: COACH_PORTAL.userName,
+    roleLabel: COACH_PORTAL.userRole,
+  });
 
-  // Auto-save simulation
-  const triggerAutoSave = useCallback(() => {
-    if (!hasFormContent || isSubmitted) return;
-    setSaveStatus("saving");
-    const timer = setTimeout(() => {
-      setSaveStatus("saved");
-      const resetTimer = setTimeout(() => {
-        setSaveStatus("draft");
-      }, 2000);
-      return () => clearTimeout(resetTimer);
-    }, 800);
-    return () => clearTimeout(timer);
-  }, [hasFormContent, isSubmitted]);
+  const [activeTab, setActiveTab] = useState<"log" | "history">("log");
+  const [engagement, setEngagement] = useState<CoachEngagementDetail | null>(null);
+  const [sessions, setSessions] = useState<CoachSessionRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Trigger auto-save on form changes
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [form, setForm] = useState<SessionFormState>(defaultFormState());
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+
+  const selectedSession = useMemo(
+    () => (selectedSessionId ? sessions.find((row) => row.id === selectedSessionId) || null : null),
+    [selectedSessionId, sessions]
+  );
+
+  const isEditingExisting = Boolean(selectedSession);
+  const isForfeited = hasForfeitStatus(form.status);
+
+  const topics = useMemo(() => {
+    if (!engagement) return [] as readonly string[];
+    return SESSION_TOPICS_BY_PROGRAM[engagement.programCode] as readonly string[];
+  }, [engagement]);
+
+  const nextSessionNumber = useMemo(() => {
+    if (!engagement) return 1;
+    return Math.min(sessions.length + 1, engagement.totalSessions);
+  }, [engagement, sessions.length]);
+
   useEffect(() => {
-    if (!hasFormContent) {
-      setSaveStatus("idle");
+    const controller = new AbortController();
+
+    async function load() {
+      setLoading(true);
+      setLoadError(null);
+      try {
+        const [detail, sessionList] = await Promise.all([
+          fetchCoachEngagementDetail(engagementId, controller.signal),
+          fetchCoachSessions(engagementId, controller.signal),
+        ]);
+        setEngagement(detail.item);
+        setSessions(sessionList.items);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        const message = error instanceof CoachApiError ? error.message : "Failed to load engagement";
+        setLoadError(message);
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    if (engagementId) {
+      void load();
+    }
+
+    return () => controller.abort();
+  }, [engagementId]);
+
+  useEffect(() => {
+    if (!selectedSession) {
+      setForm(defaultFormState());
+      setLastSavedAt(null);
       return;
     }
-    const debounce = setTimeout(() => {
-      triggerAutoSave();
-    }, 1500);
-    return () => clearTimeout(debounce);
-  }, [selectedTopic, selectedOutcome, duration, privateNotes, hasFormContent, triggerAutoSave]);
 
-  // Handle submit — require topic (any, including "Other"), outcome (non-empty), duration
-  const canSubmit =
-    selectedTopic !== "" &&
-    selectedOutcome !== "" &&
-    duration !== null;
+    setForm({
+      status: selectedSession.status,
+      occurredAt: toDateInput(selectedSession.occurredAt),
+      topic: selectedSession.topic || "",
+      outcome: selectedSession.outcome || "",
+      durationMinutes: selectedSession.durationMinutes,
+      privateNotes: selectedSession.privateNotes || "",
+    });
+    setLastSavedAt(selectedSession.updatedAt);
+  }, [selectedSession]);
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
-    setSaveStatus("saving");
-    setTimeout(() => {
-      setIsSubmitted(true);
-      setSaveStatus("idle");
-    }, 1200);
-  };
+  const autoSavePayload = useMemo(() => toPatchPayload(form), [form]);
 
-  const progressPercent =
-    ((participant.currentSession - 1) / participant.totalSessions) * 100;
+  const autoSave = useAutoSave({
+    data: autoSavePayload,
+    identity: selectedSessionId || "new",
+    enabled: isEditingExisting,
+    debounceMs: 5000,
+    onSave: async (payload) => {
+      if (!selectedSessionId) return;
+      const response = await updateCoachSession(selectedSessionId, payload);
+      setSessions((previous) =>
+        previous.map((row) => (row.id === response.item.id ? response.item : row))
+      );
+      setLastSavedAt(response.item.updatedAt);
+      setSubmitError(null);
+    },
+  });
+
+  const hasComposeChanges =
+    !isEditingExisting &&
+    (form.occurredAt.length > 0 ||
+      form.topic.length > 0 ||
+      form.outcome.length > 0 ||
+      form.durationMinutes !== null ||
+      form.privateNotes.trim().length > 0 ||
+      form.status !== SessionStatus.COMPLETED);
+
+  const unsaved = useUnsavedChangesWarning({
+    hasUnsavedChanges:
+      hasComposeChanges || autoSave.hasPendingChanges || autoSave.isSaving || autoSave.hasError,
+  });
+
+  const handleShellNavigate = useCallback(
+    async (_href: string) => {
+      if (isEditingExisting && autoSave.hasPendingChanges) {
+        await autoSave.flush();
+      }
+      return unsaved.confirmNavigation();
+    },
+    [autoSave, isEditingExisting, unsaved]
+  );
+
+  const canSubmit = useMemo(() => {
+    if (isEditingExisting || !engagement) return false;
+    if (sessions.length >= engagement.totalSessions) return false;
+    if (isForfeited) return true;
+    return (
+      form.occurredAt.length > 0 &&
+      form.topic.length > 0 &&
+      form.outcome.length > 0 &&
+      form.durationMinutes !== null
+    );
+  }, [engagement, form, isEditingExisting, isForfeited, sessions.length]);
+
+  async function handleSubmitNewSession() {
+    if (!engagement || !canSubmit || submitLoading) return;
+    setSubmitLoading(true);
+    setSubmitError(null);
+
+    try {
+      const response = await createCoachSession({
+        engagementId: engagement.engagementId,
+        status: form.status,
+        occurredAt: form.occurredAt ? new Date(form.occurredAt).toISOString() : null,
+        topic: form.topic.trim() || null,
+        outcome: form.outcome.trim() || null,
+        durationMinutes: form.durationMinutes,
+        privateNotes: form.privateNotes.trim() || null,
+      });
+
+      setSessions((previous) => {
+        const next = [...previous, response.item];
+        next.sort((a, b) => a.sessionNumber - b.sessionNumber);
+        return next;
+      });
+      setSelectedSessionId(response.item.id);
+      setLastSavedAt(response.item.updatedAt);
+    } catch (error) {
+      const message = error instanceof CoachApiError ? error.message : "Failed to log session";
+      setSubmitError(message);
+    } finally {
+      setSubmitLoading(false);
+    }
+  }
+
+  async function handleBack() {
+    if (isEditingExisting && autoSave.hasPendingChanges) {
+      await autoSave.flush();
+    }
+    await unsaved.guardedPush("/coach/engagements");
+  }
+
+  if (loading) {
+    return (
+      <PortalShell
+        portalName={COACH_PORTAL.portalName}
+        portalIcon={<CoachPortalIcon />}
+        userName={portalUser.name}
+        userRole={portalUser.roleLabel}
+        navItems={COACH_NAV_ITEMS}
+        activeItem="/coach/engagements"
+      >
+        <Card>
+          <CardContent className="py-12 text-center text-sm text-muted-foreground">Loading engagement...</CardContent>
+        </Card>
+      </PortalShell>
+    );
+  }
+
+  if (!engagement) {
+    return (
+      <PortalShell
+        portalName={COACH_PORTAL.portalName}
+        portalIcon={<CoachPortalIcon />}
+        userName={portalUser.name}
+        userRole={portalUser.roleLabel}
+        navItems={COACH_NAV_ITEMS}
+        activeItem="/coach/engagements"
+      >
+        <Card>
+          <CardContent className="py-12 text-center text-sm text-red-700">{loadError || "Engagement not found"}</CardContent>
+        </Card>
+      </PortalShell>
+    );
+  }
 
   return (
     <PortalShell
       portalName={COACH_PORTAL.portalName}
       portalIcon={<CoachPortalIcon />}
-      userName={COACH_PORTAL.userName}
-      userRole={COACH_PORTAL.userRole}
+      userName={portalUser.name}
+      userRole={portalUser.roleLabel}
       navItems={COACH_NAV_ITEMS}
       activeItem="/coach/engagements"
+      onNavigate={handleShellNavigate}
     >
-      {/* Back nav */}
-      <div
-        className="mb-6 opacity-0 animate-fade-in"
-        style={{ animationDelay: "50ms" }}
-      >
-        <a
-          href="/coach/dashboard"
-          className="group inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-fc-800 transition-colors"
-        >
-          <span className="transition-transform duration-200 group-hover:-translate-x-0.5">
-            <ArrowLeftIcon />
-          </span>
-          Back to Dashboard
-        </a>
+      <div className="mb-6 flex items-center justify-between">
+        <Button variant="ghost" size="sm" onClick={() => void handleBack()}>
+          Back to Engagements
+        </Button>
+        {engagement.meetingBookingUrl ? (
+          <Button variant="outline" size="sm" asChild>
+            <a href={engagement.meetingBookingUrl} target="_blank" rel="noreferrer">
+              Book Next Session
+            </a>
+          </Button>
+        ) : (
+          <p className="text-xs text-muted-foreground">Contact your program administrator for scheduling.</p>
+        )}
       </div>
 
-      {/* Participant Info Header */}
-      <Card
-        className="mb-8 opacity-0 animate-fade-in"
-        style={{ animationDelay: "100ms" }}
-      >
-        <CardContent className="p-6">
-          <div className="flex flex-col lg:flex-row lg:items-center gap-5">
-            {/* Avatar + name */}
-            <div className="flex items-center gap-4 flex-1 min-w-0">
-              <Avatar className="h-14 w-14 shrink-0">
-                <AvatarFallback className="bg-fc-100 text-fc-700 font-display font-semibold text-lg">
-                  {getInitials(participant.name)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <h1 className="font-display text-xl sm:text-2xl font-semibold text-fc-900 truncate">
-                  {participant.name}
-                </h1>
-                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <BuildingIcon />
-                    {participant.organization}
-                  </span>
-                  <span className="text-xs text-muted-foreground hidden sm:inline">
-                    &middot;
-                  </span>
-                  <span className="text-xs text-muted-foreground hidden sm:inline">
-                    {participant.title}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Badges + dates */}
-            <div className="flex flex-wrap items-center gap-3 lg:gap-4">
-              <Badge variant="default" className="text-xs">
-                {getStatusLabel(participant.programTrack)}
-              </Badge>
-              <Badge className={cn("text-xs", getStatusColor(participant.engagementStatus))}>
-                {getStatusLabel(participant.engagementStatus)}
-              </Badge>
-              <Separator orientation="vertical" className="h-5 hidden lg:block" />
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <CalendarIcon />
-                  {participant.startDate}
-                </span>
-                <span>&rarr;</span>
-                <span>{participant.targetEndDate}</span>
-              </div>
-            </div>
+      <Card className="mb-6">
+        <CardContent className="py-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="font-display text-2xl font-semibold text-fc-900">{engagement.participantEmail}</h1>
+            <Badge className={cn("text-[10px]", getStatusColor(engagement.status))}>
+              {getStatusLabel(engagement.status)}
+            </Badge>
+            <Badge variant="outline" className="text-[10px]">
+              {getStatusLabel(engagement.programCode)}
+            </Badge>
           </div>
-
-          {/* Progress bar */}
-          <div className="mt-5 pt-5 border-t border-border/40">
-            <div className="flex items-center justify-between mb-2.5">
-              <span className="text-xs font-medium text-fc-700">
-                Engagement Progress
-              </span>
-              <span className="text-xs font-medium text-fc-700">
-                Session {participant.currentSession} of {participant.totalSessions}
-              </span>
-            </div>
-            <div className="relative">
-              <Progress value={progressPercent} className="h-2" />
-              {/* Session dots */}
-              <div className="absolute inset-0 flex items-center justify-between px-0">
-                {Array.from({ length: participant.totalSessions }).map((_, i) => {
-                  const dotPos = (i / (participant.totalSessions - 1)) * 100;
-                  const isCompleted = i < participant.currentSession - 1;
-                  const isCurrent = i === participant.currentSession - 1;
-                  return (
-                    <div
-                      key={i}
-                      className={cn(
-                        "absolute h-3 w-3 rounded-full border-2 transition-all duration-300",
-                        isCompleted
-                          ? "border-fc-600 bg-fc-600"
-                          : isCurrent
-                          ? "border-fc-600 bg-white ring-2 ring-fc-200"
-                          : "border-fc-200 bg-white"
-                      )}
-                      style={{ left: `${dotPos}%`, transform: "translateX(-50%)" }}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-            <div className="flex justify-between mt-2">
-              {Array.from({ length: participant.totalSessions }).map((_, i) => (
-                <span
-                  key={i}
-                  className={cn(
-                    "text-[10px] font-medium",
-                    i < participant.currentSession - 1
-                      ? "text-fc-700"
-                      : i === participant.currentSession - 1
-                      ? "text-fc-800 font-semibold"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  S{i + 1}
-                </span>
-              ))}
-            </div>
-          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {engagement.organizationName} · {engagement.cohortCode}
+          </p>
+          <p className="mt-2 text-xs text-fc-700">
+            Progress: {engagement.sessionsCompleted}/{engagement.totalSessions}
+          </p>
         </CardContent>
       </Card>
 
-      {/* Tabs: Log Session / History */}
-      <Tabs
-        value={activeTab}
-        onValueChange={setActiveTab}
-        className="opacity-0 animate-fade-in"
-        style={{ animationDelay: "200ms" }}
-      >
-        <TabsList className="mb-6">
-          <TabsTrigger value="log">
-            Log Session {participant.currentSession}
-          </TabsTrigger>
-          <TabsTrigger value="history">
-            Session History
-            <span className="ml-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-fc-100 px-1 text-[9px] font-semibold text-fc-700">
-              {sessionHistory.length}
-            </span>
-          </TabsTrigger>
+      {loadError ? (
+        <Card className="mb-6 border-red-200">
+          <CardContent className="py-4 text-sm text-red-700">{loadError}</CardContent>
+        </Card>
+      ) : null}
+
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "log" | "history")}>
+        <TabsList className="mb-5">
+          <TabsTrigger value="log">Log Session {nextSessionNumber}</TabsTrigger>
+          <TabsTrigger value="history">Session History ({sessions.length})</TabsTrigger>
         </TabsList>
 
-        {/* ─── LOG SESSION TAB ─────────────────────────────────────── */}
-        <TabsContent value="log">
-          {isSubmitted ? (
-            /* Submitted confirmation */
-            <Card className="animate-scale-in">
-              <CardContent className="py-16 text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-700">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </div>
-                <h3 className="font-display text-xl font-semibold text-fc-900 mb-2">
-                  Session Logged Successfully
-                </h3>
-                <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-6">
-                  Session {participant.currentSession} for {participant.name} has been
-                  recorded. The participant can view the shared notes.
-                </p>
-                <div className="flex items-center justify-center gap-3">
-                  <Button variant="outline" size="sm" asChild>
-                    <a href="/coach/dashboard">Return to Dashboard</a>
+        <TabsContent value="log" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">
+                {isEditingExisting
+                  ? `Editing Session ${selectedSession?.sessionNumber}`
+                  : `Session ${nextSessionNumber} Details`}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label htmlFor="session-status" className="mb-1 block text-xs font-medium text-fc-800">
+                  Session Status
+                </label>
+                <select
+                  id="session-status"
+                  value={form.status}
+                  disabled={isEditingExisting}
+                  onChange={(event) => {
+                    const status = event.target.value as SessionStatus;
+                    setForm((previous) => ({
+                      ...previous,
+                      status,
+                      ...(hasForfeitStatus(status)
+                        ? { topic: "", outcome: "", durationMinutes: null }
+                        : {}),
+                    }));
+                  }}
+                  className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                >
+                  <option value={SessionStatus.COMPLETED}>Completed</option>
+                  <option value={SessionStatus.FORFEITED_CANCELLED}>Forfeited - Cancelled &lt;24h</option>
+                  <option value={SessionStatus.FORFEITED_NOT_USED}>Forfeited - Not Used</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="occurred-at" className="mb-1 block text-xs font-medium text-fc-800">
+                  Session Date
+                </label>
+                <input
+                  id="occurred-at"
+                  type="date"
+                  value={form.occurredAt}
+                  onChange={(event) => setForm((previous) => ({ ...previous, occurredAt: event.target.value }))}
+                  className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                />
+              </div>
+
+              {!isForfeited ? (
+                <>
+                  <div>
+                    <label htmlFor="topic" className="mb-1 block text-xs font-medium text-fc-800">
+                      Topic
+                    </label>
+                    <select
+                      id="topic"
+                      value={form.topic}
+                      onChange={(event) => setForm((previous) => ({ ...previous, topic: event.target.value }))}
+                      className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                    >
+                      <option value="">Select topic</option>
+                      {topics.map((topic) => (
+                        <option key={topic} value={topic}>
+                          {topic}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor="outcome" className="mb-1 block text-xs font-medium text-fc-800">
+                      Outcome
+                    </label>
+                    <select
+                      id="outcome"
+                      value={form.outcome}
+                      onChange={(event) => setForm((previous) => ({ ...previous, outcome: event.target.value }))}
+                      className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                    >
+                      <option value="">Select outcome</option>
+                      {SESSION_OUTCOMES.map((outcome) => (
+                        <option key={outcome} value={outcome}>
+                          {outcome}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor="duration" className="mb-1 block text-xs font-medium text-fc-800">
+                      Duration
+                    </label>
+                    <select
+                      id="duration"
+                      value={form.durationMinutes === null ? "" : String(form.durationMinutes)}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setForm((previous) => ({
+                          ...previous,
+                          durationMinutes: value ? Number.parseInt(value, 10) : null,
+                        }));
+                      }}
+                      className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                    >
+                      <option value="">Select duration</option>
+                      {DURATION_OPTIONS.map((duration) => (
+                        <option key={duration} value={duration}>
+                          {duration} minutes
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              ) : null}
+
+              <div>
+                <label htmlFor="private-notes" className="mb-1 block text-xs font-medium text-fc-800">
+                  Private Notes
+                </label>
+                <textarea
+                  id="private-notes"
+                  value={form.privateNotes}
+                  onChange={(event) => setForm((previous) => ({ ...previous, privateNotes: event.target.value }))}
+                  rows={5}
+                  className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                />
+              </div>
+
+              <AutoSaveText status={autoSave.saveStatus} savedAt={lastSavedAt} />
+
+              {submitError ? <p className="text-sm text-red-700">{submitError}</p> : null}
+
+              <div className="flex flex-wrap items-center gap-2">
+                {!isEditingExisting ? (
+                  <Button onClick={() => void handleSubmitNewSession()} disabled={!canSubmit || submitLoading}>
+                    {submitLoading ? "Logging Session..." : "Log Session"}
                   </Button>
-                  <Button size="sm">Schedule Next Session</Button>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            /* Session logging form */
-            <div className="space-y-6">
+                ) : null}
 
-                {/* Topic — single-select dropdown */}
-                <Card
-                  className="opacity-0 animate-fade-in"
-                  style={{ animationDelay: "250ms" }}
-                >
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Topic Discussed</CardTitle>
-                    <CardDescription className="text-xs mt-1">
-                      Select the primary topic covered in this session
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <select
-                      value={selectedTopic}
-                      onChange={(e) => setSelectedTopic(e.target.value)}
-                      className="w-full border border-fc-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-fc-600/20 text-fc-800"
+                {isEditingExisting && sessions.length < engagement.totalSessions ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedSessionId(null);
+                      setSubmitError(null);
+                    }}
+                  >
+                    Log Next Session
+                  </Button>
+                ) : null}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="history">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Session Timeline</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {sessions.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">No sessions logged yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {sessions.map((session) => (
+                    <div
+                      key={session.id}
+                      className={cn(
+                        "rounded-md border px-4 py-3",
+                        selectedSessionId === session.id ? "border-fc-400 bg-fc-50" : "border-border/60"
+                      )}
                     >
-                      <option value="">Select a topic...</option>
-                      {MLP_SESSION_TOPICS.map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
-                      ))}
-                    </select>
-
-                    {selectedTopic === "Other" && (
-                      <div className="mt-3 rounded-lg border border-fc-200 bg-fc-50 px-4 py-3 text-sm text-fc-700">
-                        Please email the coaching practice
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Outcome — single-select dropdown */}
-                <Card
-                  className="opacity-0 animate-fade-in"
-                  style={{ animationDelay: "300ms" }}
-                >
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Session Outcome</CardTitle>
-                    <CardDescription className="text-xs mt-1">
-                      What was accomplished in this session?
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <select
-                      value={selectedOutcome}
-                      onChange={(e) => setSelectedOutcome(e.target.value)}
-                      className="w-full border border-fc-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-fc-600/20 text-fc-800"
-                    >
-                      <option value="">Select an outcome...</option>
-                      {SESSION_OUTCOMES.map((o) => (
-                        <option key={o} value={o}>
-                          {o}
-                        </option>
-                      ))}
-                    </select>
-                  </CardContent>
-                </Card>
-
-                {/* Duration — pill selector */}
-                <Card
-                  className="opacity-0 animate-fade-in"
-                  style={{ animationDelay: "350ms" }}
-                >
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Session Duration</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <DurationSelector value={duration} onChange={setDuration} />
-                  </CardContent>
-                </Card>
-
-                {/* Private Notes */}
-                <Card
-                  className="opacity-0 animate-fade-in border-dashed border-fc-200/80 bg-gradient-to-br from-white to-fc-50/20"
-                  style={{ animationDelay: "400ms" }}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-6 w-6 items-center justify-center rounded bg-fc-100 text-fc-600">
-                          <LockIcon />
-                        </div>
+                      <div className="flex items-center justify-between gap-3">
                         <div>
-                          <CardTitle className="text-base">Private Notes</CardTitle>
-                          <CardDescription className="text-[11px] mt-0.5">
-                            Only visible to you &mdash; never shared with the participant
-                          </CardDescription>
+                          <p className="text-sm font-medium text-fc-900">
+                            Session {session.sessionNumber} · {getStatusLabel(session.status)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {session.occurredAt
+                              ? formatDate(session.occurredAt)
+                              : "No date"}
+                          </p>
                         </div>
-                      </div>
-                      <AutoSaveIndicator status={saveStatus} />
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <textarea
-                      value={privateNotes}
-                      onChange={(e) => setPrivateNotes(e.target.value)}
-                      placeholder="Observations, follow-up ideas, notes for next session..."
-                      rows={5}
-                      className="w-full rounded-lg border border-fc-200/60 bg-white/80 px-4 py-3 text-sm font-body text-fc-800 placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-fc-300 focus:border-fc-300 transition-all duration-200 resize-none leading-relaxed"
-                    />
-                    <p className="mt-2 text-[11px] text-muted-foreground flex items-center gap-1">
-                      <LockIcon />
-                      Encrypted and private. Only accessible by you.
-                    </p>
-                  </CardContent>
-                </Card>
-
-                {/* Submit */}
-                <Card
-                  className="opacity-0 animate-fade-in"
-                  style={{ animationDelay: "450ms" }}
-                >
-                  <CardContent className="p-5">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-fc-800">
-                          Ready to submit?
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Once submitted, session notes will be visible to the program
-                          administrator.
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <AutoSaveIndicator status={saveStatus} />
                         <Button
-                          onClick={handleSubmit}
-                          disabled={!canSubmit}
-                          className="min-w-[140px]"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedSessionId(session.id);
+                            setActiveTab("log");
+                          }}
                         >
-                          {saveStatus === "saving" ? (
-                            <>
-                              <SpinnerIcon />
-                              Submitting...
-                            </>
-                          ) : (
-                            <>
-                              <SendIcon />
-                              Submit Session
-                            </>
-                          )}
+                          Edit
                         </Button>
                       </div>
                     </div>
-
-                    {/* Validation hint */}
-                    {!canSubmit && (
-                      <div className="mt-4 rounded-lg bg-fc-50/50 px-4 py-2.5 text-xs text-muted-foreground">
-                        <span className="font-medium">To submit:</span>{" "}
-                        {selectedTopic === "" && "Select a topic. "}
-                        {selectedOutcome === "" && "Select an outcome. "}
-                        {duration === null && "Choose a session duration."}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-          </div>
-          )}
-        </TabsContent>
-
-        {/* ─── SESSION HISTORY TAB ─────────────────────────────────── */}
-        <TabsContent value="history">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Session History</CardTitle>
-              <CardDescription className="text-xs">
-                {sessionHistory.length} of {participant.totalSessions} sessions completed
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {sessionHistory.length > 0 ? (
-                <div className="space-y-0">
-                  {sessionHistory.map((session, i) => (
-                    <TimelineItem
-                      key={session.id}
-                      session={session}
-                      isLast={i === sessionHistory.length - 1}
-                      delay={250 + i * 80}
-                    />
                   ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-fc-50 text-fc-300 mb-3">
-                    <ClockIcon />
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    No sessions logged yet.
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Session notes will appear here after logging.
-                  </p>
                 </div>
               )}
             </CardContent>

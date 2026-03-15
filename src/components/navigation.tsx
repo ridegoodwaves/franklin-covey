@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ interface PortalShellProps {
   userAvatar?: string;
   navItems: NavItem[];
   activeItem?: string;
+  onNavigate?: (href: string) => boolean | Promise<boolean>;
   children: React.ReactNode;
 }
 
@@ -34,9 +36,51 @@ export function PortalShell({
   userAvatar,
   navItems,
   activeItem,
+  onNavigate,
   children,
 }: PortalShellProps) {
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  async function handleSignOut() {
+    if (isSigningOut) return;
+
+    setIsSigningOut(true);
+    try {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error("Sign out failed");
+      }
+
+      router.replace("/auth/signin");
+      router.refresh();
+    } catch {
+      return;
+    } finally {
+      setIsSigningOut(false);
+    }
+  }
+
+  async function handleNavClick(
+    event: React.MouseEvent<HTMLAnchorElement>,
+    href: string
+  ) {
+    if (!onNavigate) {
+      setSidebarOpen(false);
+      return;
+    }
+
+    event.preventDefault();
+    const allowed = await onNavigate(href);
+    if (!allowed) return;
+    setSidebarOpen(false);
+    router.push(href);
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -93,6 +137,7 @@ export function PortalShell({
               <a
                 key={item.href}
                 href={item.href}
+                onClick={(event) => void handleNavClick(event, item.href)}
                 className={cn(
                   "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                   item.active || item.href === activeItem
@@ -140,7 +185,15 @@ export function PortalShell({
             </p>
             <p className="truncate text-xs text-muted-foreground">{userRole}</p>
           </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            onClick={() => void handleSignOut()}
+            disabled={isSigningOut}
+            aria-label="Sign out"
+            title="Sign out"
+          >
             <svg
               width="16"
               height="16"

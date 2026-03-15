@@ -43,14 +43,6 @@ function NavImportIcon() {
   );
 }
 
-function NavBookIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-    </svg>
-  );
-}
-
 // ─── Portal Icons (used in PortalShell header) ───────────────────────────────
 
 export function CoachPortalIcon() {
@@ -75,28 +67,27 @@ export function AdminPortalIcon() {
 // ─── Nav Item Arrays (single source of truth) ────────────────────────────────
 
 export const COACH_NAV_ITEMS = [
-  { label: "Dashboard", href: "/coach/dashboard", icon: <NavDashboardIcon /> },
-  { label: "My Engagements", href: "/coach/engagements", icon: <NavEngagementsIcon />, badge: 6 },
+  { label: "Coaching Program Overview", href: "/coach/dashboard", icon: <NavDashboardIcon /> },
+  { label: "My Engagements", href: "/coach/engagements", icon: <NavEngagementsIcon /> },
   { label: "Profile", href: "/coach/profile", icon: <NavProfileIcon />, disabled: true },
 ];
 
 export const ADMIN_NAV_ITEMS = [
-  { label: "Dashboard", href: "/admin/dashboard", icon: <NavDashboardIcon /> },
+  { label: "Coaching Program Overview", href: "/admin/dashboard", icon: <NavDashboardIcon /> },
   { label: "Coaches", href: "/admin/coaches", icon: <NavEngagementsIcon /> },
-  { label: "Import", href: "/admin/import", icon: <NavImportIcon /> },
-  { label: "Engagements", href: "/admin/engagements", icon: <NavBookIcon />, badge: 12, disabled: true },
+  { label: "Import", href: "/admin/import", icon: <NavImportIcon />, disabled: true },
 ];
 
 // ─── Portal Metadata ─────────────────────────────────────────────────────────
 
 export const COACH_PORTAL = {
-  portalName: "Coach Portal",
+  portalName: "Coach's Portal",
   userName: "Dr. Sarah Chen",
   userRole: "Executive Coach",
 } as const;
 
 export const ADMIN_PORTAL = {
-  portalName: "Operations",
+  portalName: "Coaching Program Overview",
   userName: "Catherine Reynolds",
   userRole: "Program Administrator",
 } as const;

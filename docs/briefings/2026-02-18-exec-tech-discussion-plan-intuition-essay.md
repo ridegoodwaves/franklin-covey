@@ -74,7 +74,7 @@ Avoid saying "secure, enterprise-grade, robust."
 Say what happens:
 - Access is role-segmented by portal
 - Coach private notes are isolated
-- Participant auth works for external users (OTP), while coach/admin auth upgrades to Okta in production
+- Participant auth works for external users (email + USPS-delivered access code), while coach/admin auth upgrades to Okta in production
 - Encryption at rest and in transit is explicit
 - Sensitive workflows are rate-limited, validated, and auditable
 - Non-production data handling defaults to sanitized behavior
@@ -127,4 +127,3 @@ If you keep the conversation on runway, control tower, and expansion plan, you w
 
 not a vendor shipping screens,  
 but a platform partner who can operate under real enterprise constraints.
-

@@ -23,7 +23,7 @@ export default function LandingPage() {
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-fc-200 bg-fc-50 px-4 py-1.5">
               <div className="h-1.5 w-1.5 rounded-full bg-fc-600 animate-pulse-subtle" />
               <span className="text-sm font-medium text-fc-700">
-                Government Leadership Coaching Program
+                USPS Leadership Coaching Program
               </span>
             </div>
 
@@ -65,7 +65,7 @@ export default function LandingPage() {
                     </svg>
                   </div>
                   <h3 className="font-display text-xl font-semibold text-fc-900">
-                    Participant
+                    Coach Selector
                   </h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                     Select your coach and book your first session.
@@ -110,7 +110,7 @@ export default function LandingPage() {
                     </svg>
                   </div>
                   <h3 className="font-display text-xl font-semibold text-fc-900">
-                    Coach
+                    Coach&apos;s Portal
                   </h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                     Manage engagements, log sessions, and guide your
@@ -159,7 +159,7 @@ export default function LandingPage() {
                     </svg>
                   </div>
                   <h3 className="font-display text-xl font-semibold text-fc-900">
-                    Operations
+                    Coaching Program Overview
                   </h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                     Monitor all engagements, manage coaches, and track program

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import type { ProgramCode } from "@prisma/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +26,7 @@ import {
 } from "@/lib/api-client";
 import { CoachBioModal } from "@/components/CoachBioModal";
 import { HelpFooter } from "@/components/participant/HelpFooter";
+import { InterviewInfoCard } from "@/components/participant/InterviewInfoCard";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -196,6 +198,7 @@ export default function SelectCoachPage() {
   const [confirmCoach, setConfirmCoach] = useState<Coach | null>(null);
   const [participantDisplayName, setParticipantDisplayName] = useState<string>(CURRENT_PARTICIPANT.name);
   const [participantInitials, setParticipantInitials] = useState<string>(CURRENT_PARTICIPANT.initials);
+  const [programCode, setProgramCode] = useState<ProgramCode | null>(null);
   const [isSmallScreen, setIsSmallScreen] = useState(false);
 
   useEffect(() => {
@@ -256,6 +259,7 @@ export default function SelectCoachPage() {
       const result = await fetchCoaches();
       // Sync remix state from server — prevents browser refresh from resetting the limit.
       setRemixUsed(result.remixUsed);
+      setProgramCode(result.programCode);
       if (result.allAtCapacity) {
         setAllAtCapacity(true);
         setMounted(true);
@@ -338,6 +342,10 @@ export default function SelectCoachPage() {
 
   const availableCount = displayedCoaches.filter((c) => !c.atCapacity).length;
   const canRemix = !remixUsed && availableCount > 0;
+  const showInterviewInfoCard =
+    (programCode === "EF" || programCode === "EL") &&
+    !allAtCapacity &&
+    !selectionDisabled;
 
   const handleRemixClick = useCallback(() => {
     if (remixUsed || !canRemix || selectionDisabled) return;
@@ -671,6 +679,7 @@ export default function SelectCoachPage() {
             </div>
           </>
         )}
+        {showInterviewInfoCard && <InterviewInfoCard className="mt-10" />}
         {/* Program administrator contact */}
         <HelpFooter className="mt-12 pb-4 text-xs" />
       </main>

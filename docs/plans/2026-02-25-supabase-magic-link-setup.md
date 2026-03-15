@@ -1,20 +1,31 @@
-# Supabase Magic-Link Setup (Sender: coachinginnovationlab.com)
+# Magic-Link Email Sender Setup (Superseded Draft)
 
 **Date:** 2026-02-25  
-**Goal:** Coach/admin magic-link emails use `@coachinginnovationlab.com` sender identity.
+**Goal (historical):** Coach/admin magic-link emails use a verified custom sender domain.
 
-## Decision
+> **Status (2026-02-28 lock):** This draft is superseded by current source-of-truth docs.
+> - Auth model for MVP is **custom magic-link routes + signed portal session**, not Supabase Auth-managed sign-in.
+> - Email delivery remains **Resend-backed** for MVP.
+> - Preferred sender domain is `onusleadership.com` (or approved verified fallback).
+>
+> Use:
+> - `docs/plans/2026-02-18-fc-project-plan.md`
+> - `docs/plans/2026-02-22-environment-split-execution-runbook.md`
+> - `docs/plans/2026-02-27-chore-production-launch-and-smoke-test-plan.md`
+> for active implementation guidance.
 
-- Use Supabase Auth magic links for coach/admin sign-in.
-- Sender domain target: `coachinginnovationlab.com`.
+## Decision (Historical)
+
+- Original draft assumed Supabase Auth magic links for coach/admin sign-in.
+- Sender domain target in this draft was `coachinginnovationlab.com`.
 
 ## Required Setup
 
-1. Verify `coachinginnovationlab.com` in email provider (Resend or SES) with DNS (SPF/DKIM).
-2. In Supabase Auth email settings, configure custom SMTP using that provider.
+1. Verify approved sender domain in email provider (Resend) with DNS (SPF/DKIM).
+2. If using Supabase Auth in a future phase, configure custom SMTP in Supabase Auth email settings.
 3. Set sender address to:
-   - Staging: `coaching-staging@coachinginnovationlab.com`
-   - Production: `coaching@coachinginnovationlab.com`
+   - Staging: verified staging sender
+   - Production: verified production sender (preferred on `onusleadership.com`)
 4. Configure Supabase Site URL + allowed redirect URLs for staging and production.
 
 ## Important Safety Constraint
