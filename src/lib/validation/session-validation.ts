@@ -1,11 +1,20 @@
 import type { ProgramCode, SessionStatus } from "@prisma/client";
-import { DURATION_OPTIONS, SESSION_OUTCOMES, isValidTopicForProgram } from "@/lib/config";
+import {
+  ACTION_COMMITMENT_OPTIONS,
+  NEXT_STEPS_OPTIONS,
+  SESSION_OUTCOMES,
+  isValidTopicForProgram,
+} from "@/lib/config";
 
 const MIN_OCCURRED_AT = new Date("2026-01-01T00:00:00.000Z");
 const CONTROL_CHARS_REGEX = /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g;
 
 function isDateValid(value: Date): boolean {
   return Number.isFinite(value.getTime());
+}
+
+function isForfeitedStatus(status: SessionStatus): boolean {
+  return status === "FORFEITED_CANCELLED" || status === "FORFEITED_NOT_USED";
 }
 
 function validateOccurredAt(occurredAt: Date): string | null {
@@ -17,7 +26,31 @@ function validateOccurredAt(occurredAt: Date): string | null {
   return null;
 }
 
-export function sanitizePrivateNotes(input: string | null): string | null {
+function isValidEngagementLevel(value: number): boolean {
+  return Number.isInteger(value) && value >= 1 && value <= 5;
+}
+
+function validateOutcomes(outcomes: string[]): string[] {
+  const errors: string[] = [];
+
+  if (outcomes.length === 0) {
+    errors.push("outcomes is required for completed sessions");
+    return errors;
+  }
+
+  if (new Set(outcomes).size !== outcomes.length) {
+    errors.push("outcomes cannot contain duplicate values");
+  }
+
+  const invalid = outcomes.filter((outcome) => !(SESSION_OUTCOMES as readonly string[]).includes(outcome));
+  if (invalid.length > 0) {
+    errors.push("outcomes contains invalid values");
+  }
+
+  return errors;
+}
+
+export function sanitizeNotes(input: string | null): string | null {
   if (input === null) return null;
   const cleaned = input.replace(CONTROL_CHARS_REGEX, "").trim();
   if (!cleaned) return null;
@@ -29,9 +62,11 @@ export interface SessionCreateValidationInput {
   programCode: ProgramCode;
   occurredAt: Date | null;
   topic: string | null;
-  outcome: string | null;
-  durationMinutes: number | null;
-  privateNotes: string | null;
+  outcomes: string[] | null;
+  nextSteps: string | null;
+  engagementLevel: number | null;
+  actionCommitment: string | null;
+  notes: string | null;
 }
 
 export interface SessionCreateValidationResult {
@@ -39,9 +74,11 @@ export interface SessionCreateValidationResult {
   values: {
     occurredAt: Date | null;
     topic: string | null;
-    outcome: string | null;
-    durationMinutes: number | null;
-    privateNotes: string | null;
+    outcomes: string[] | null;
+    nextSteps: string | null;
+    engagementLevel: number | null;
+    actionCommitment: string | null;
+    notes: string | null;
   };
 }
 
@@ -49,10 +86,8 @@ export function validateSessionCreateInput(
   input: SessionCreateValidationInput
 ): SessionCreateValidationResult {
   const errors: string[] = [];
-  const isForfeited =
-    input.status === "FORFEITED_CANCELLED" || input.status === "FORFEITED_NOT_USED";
-
-  const privateNotes = sanitizePrivateNotes(input.privateNotes);
+  const isForfeited = isForfeitedStatus(input.status);
+  const notes = sanitizeNotes(input.notes);
 
   if (isForfeited) {
     if (input.occurredAt) {
@@ -65,9 +100,11 @@ export function validateSessionCreateInput(
       values: {
         occurredAt: input.occurredAt,
         topic: null,
-        outcome: null,
-        durationMinutes: null,
-        privateNotes,
+        outcomes: null,
+        nextSteps: null,
+        engagementLevel: null,
+        actionCommitment: null,
+        notes,
       },
     };
   }
@@ -85,16 +122,28 @@ export function validateSessionCreateInput(
     errors.push("topic is not valid for this program");
   }
 
-  if (!input.outcome) {
-    errors.push("outcome is required for completed sessions");
-  } else if (!(SESSION_OUTCOMES as readonly string[]).includes(input.outcome)) {
-    errors.push("outcome is not valid");
+  if (!input.outcomes) {
+    errors.push("outcomes is required for completed sessions");
+  } else {
+    errors.push(...validateOutcomes(input.outcomes));
   }
 
-  if (input.durationMinutes === null) {
-    errors.push("durationMinutes is required for completed sessions");
-  } else if (!(DURATION_OPTIONS as readonly number[]).includes(input.durationMinutes)) {
-    errors.push("durationMinutes is not valid");
+  if (!input.nextSteps) {
+    errors.push("nextSteps is required for completed sessions");
+  } else if (!(NEXT_STEPS_OPTIONS as readonly string[]).includes(input.nextSteps)) {
+    errors.push("nextSteps is not valid");
+  }
+
+  if (input.engagementLevel === null) {
+    errors.push("engagementLevel is required for completed sessions");
+  } else if (!isValidEngagementLevel(input.engagementLevel)) {
+    errors.push("engagementLevel is not valid");
+  }
+
+  if (!input.actionCommitment) {
+    errors.push("actionCommitment is required for completed sessions");
+  } else if (!(ACTION_COMMITMENT_OPTIONS as readonly string[]).includes(input.actionCommitment)) {
+    errors.push("actionCommitment is not valid");
   }
 
   return {
@@ -102,9 +151,11 @@ export function validateSessionCreateInput(
     values: {
       occurredAt: input.occurredAt,
       topic: input.topic,
-      outcome: input.outcome,
-      durationMinutes: input.durationMinutes,
-      privateNotes,
+      outcomes: input.outcomes,
+      nextSteps: input.nextSteps,
+      engagementLevel: input.engagementLevel,
+      actionCommitment: input.actionCommitment,
+      notes,
     },
   };
 }
@@ -114,9 +165,11 @@ export interface SessionPatchValidationInput {
   programCode: ProgramCode;
   occurredAt?: Date | null;
   topic?: string | null;
-  outcome?: string | null;
-  durationMinutes?: number | null;
-  privateNotes?: string | null;
+  outcomes?: string[] | null;
+  nextSteps?: string | null;
+  engagementLevel?: number | null;
+  actionCommitment?: string | null;
+  notes?: string | null;
 }
 
 export interface SessionPatchValidationResult {
@@ -124,9 +177,11 @@ export interface SessionPatchValidationResult {
   values: {
     occurredAt?: Date | null;
     topic?: string | null;
-    outcome?: string | null;
-    durationMinutes?: number | null;
-    privateNotes?: string | null;
+    outcomes?: string[] | null;
+    nextSteps?: string | null;
+    engagementLevel?: number | null;
+    actionCommitment?: string | null;
+    notes?: string | null;
   };
 }
 
@@ -135,8 +190,7 @@ export function validateSessionPatchInput(
 ): SessionPatchValidationResult {
   const errors: string[] = [];
   const values: SessionPatchValidationResult["values"] = {};
-  const isForfeited =
-    input.status === "FORFEITED_CANCELLED" || input.status === "FORFEITED_NOT_USED";
+  const isForfeited = isForfeitedStatus(input.status);
 
   if (input.occurredAt !== undefined) {
     if (input.occurredAt !== null) {
@@ -159,34 +213,60 @@ export function validateSessionPatchInput(
     values.topic = input.topic;
   }
 
-  if (input.outcome !== undefined) {
-    if (isForfeited && input.outcome !== null) {
-      errors.push("outcome must be null for forfeited sessions");
+  if (input.outcomes !== undefined) {
+    if (isForfeited && input.outcomes !== null) {
+      errors.push("outcomes must be null for forfeited sessions");
     } else if (!isForfeited) {
-      if (!input.outcome) {
-        errors.push("outcome cannot be null or empty for completed sessions");
-      } else if (!(SESSION_OUTCOMES as readonly string[]).includes(input.outcome)) {
-        errors.push("outcome is not valid");
+      if (input.outcomes === null) {
+        errors.push("outcomes cannot be null for completed sessions");
+      } else {
+        errors.push(...validateOutcomes(input.outcomes));
       }
     }
-    values.outcome = input.outcome;
+    values.outcomes = input.outcomes;
   }
 
-  if (input.durationMinutes !== undefined) {
-    if (isForfeited && input.durationMinutes !== null) {
-      errors.push("durationMinutes must be null for forfeited sessions");
+  if (input.nextSteps !== undefined) {
+    if (isForfeited && input.nextSteps !== null) {
+      errors.push("nextSteps must be null for forfeited sessions");
     } else if (!isForfeited) {
-      if (input.durationMinutes === null) {
-        errors.push("durationMinutes cannot be null for completed sessions");
-      } else if (!(DURATION_OPTIONS as readonly number[]).includes(input.durationMinutes)) {
-        errors.push("durationMinutes is not valid");
+      if (!input.nextSteps) {
+        errors.push("nextSteps cannot be null or empty for completed sessions");
+      } else if (!(NEXT_STEPS_OPTIONS as readonly string[]).includes(input.nextSteps)) {
+        errors.push("nextSteps is not valid");
       }
     }
-    values.durationMinutes = input.durationMinutes;
+    values.nextSteps = input.nextSteps;
   }
 
-  if (input.privateNotes !== undefined) {
-    values.privateNotes = sanitizePrivateNotes(input.privateNotes);
+  if (input.engagementLevel !== undefined) {
+    if (isForfeited && input.engagementLevel !== null) {
+      errors.push("engagementLevel must be null for forfeited sessions");
+    } else if (!isForfeited) {
+      if (input.engagementLevel === null) {
+        errors.push("engagementLevel cannot be null for completed sessions");
+      } else if (!isValidEngagementLevel(input.engagementLevel)) {
+        errors.push("engagementLevel is not valid");
+      }
+    }
+    values.engagementLevel = input.engagementLevel;
+  }
+
+  if (input.actionCommitment !== undefined) {
+    if (isForfeited && input.actionCommitment !== null) {
+      errors.push("actionCommitment must be null for forfeited sessions");
+    } else if (!isForfeited) {
+      if (!input.actionCommitment) {
+        errors.push("actionCommitment cannot be null or empty for completed sessions");
+      } else if (!(ACTION_COMMITMENT_OPTIONS as readonly string[]).includes(input.actionCommitment)) {
+        errors.push("actionCommitment is not valid");
+      }
+    }
+    values.actionCommitment = input.actionCommitment;
+  }
+
+  if (input.notes !== undefined) {
+    values.notes = sanitizeNotes(input.notes);
   }
 
   return { errors, values };

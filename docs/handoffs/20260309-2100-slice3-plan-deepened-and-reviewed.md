@@ -15,7 +15,7 @@
   - Advisory lock (`pg_advisory_xact_lock`) added to session creation transaction
   - Auto-save lifecycle resolved: "local-until-submit" model (POST first, PATCH after)
   - `status` removed from PATCH request body (security hardening)
-  - FORFEITED sessions: topic/outcome/duration nulled server-side
+  - FORFEITED sessions: topic/outcomes/nextSteps/actionCommitment/engagementLevel nulled server-side
   - Data fetching locked to `useEffect + fetch + AbortController` (no SWR)
   - Debounce increased from 2s to 5s for serverless performance
 - **Document-reviewed and refined** — stripped 18 blockquotes, removed YAGNI `AdminSessionRow`, fixed stale SWR reference, tightened to ~500 lines

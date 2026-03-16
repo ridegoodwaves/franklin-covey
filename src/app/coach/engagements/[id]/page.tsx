@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { SessionStatus } from "@prisma/client";
 import { PortalShell } from "@/components/navigation";
@@ -8,8 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  ACTION_COMMITMENT_OPTIONS,
+  ENGAGEMENT_LEVEL_OPTIONS,
+  NEXT_STEPS_OPTIONS,
+  SESSION_OUTCOMES,
+  SESSION_TOPICS_BY_PROGRAM,
+} from "@/lib/config";
 import { COACH_NAV_ITEMS, COACH_PORTAL, CoachPortalIcon } from "@/lib/nav-config";
-import { DURATION_OPTIONS, SESSION_OUTCOMES, SESSION_TOPICS_BY_PROGRAM } from "@/lib/config";
 import { cn, formatDate, getStatusColor, getStatusLabel } from "@/lib/utils";
 import { usePortalUser } from "@/lib/use-portal-user";
 import {
@@ -18,6 +24,7 @@ import {
   fetchCoachEngagementDetail,
   fetchCoachSessions,
   updateCoachSession,
+  type UpdateCoachSessionInput,
 } from "@/lib/coach-api-client";
 import type { CoachEngagementDetail, CoachSessionRow } from "@/lib/types/coach";
 import { useAutoSave } from "@/hooks/use-auto-save";
@@ -27,9 +34,11 @@ interface SessionFormState {
   status: SessionStatus;
   occurredAt: string;
   topic: string;
-  outcome: string;
-  durationMinutes: number | null;
-  privateNotes: string;
+  outcomes: string[];
+  nextSteps: string;
+  engagementLevel: number | null;
+  actionCommitment: string;
+  notes: string;
 }
 
 function toDateInput(iso: string | null): string {
@@ -44,30 +53,29 @@ function defaultFormState(): SessionFormState {
     status: SessionStatus.COMPLETED,
     occurredAt: "",
     topic: "",
-    outcome: "",
-    durationMinutes: null,
-    privateNotes: "",
-  };
-}
-
-function toPatchPayload(form: SessionFormState): {
-  occurredAt: string | null;
-  topic: string | null;
-  outcome: string | null;
-  durationMinutes: number | null;
-  privateNotes: string | null;
-} {
-  return {
-    occurredAt: form.occurredAt ? new Date(form.occurredAt).toISOString() : null,
-    topic: form.topic.trim() || null,
-    outcome: form.outcome.trim() || null,
-    durationMinutes: form.durationMinutes,
-    privateNotes: form.privateNotes.trim() || null,
+    outcomes: [],
+    nextSteps: "",
+    engagementLevel: null,
+    actionCommitment: "",
+    notes: "",
   };
 }
 
 function hasForfeitStatus(status: SessionStatus): boolean {
   return status === SessionStatus.FORFEITED_CANCELLED || status === SessionStatus.FORFEITED_NOT_USED;
+}
+
+function toPatchPayload(form: SessionFormState): UpdateCoachSessionInput {
+  const isForfeited = hasForfeitStatus(form.status);
+  return {
+    occurredAt: form.occurredAt ? new Date(form.occurredAt).toISOString() : null,
+    topic: form.topic.trim() || null,
+    outcomes: isForfeited ? null : form.outcomes,
+    nextSteps: isForfeited ? null : (form.nextSteps || null),
+    actionCommitment: isForfeited ? null : (form.actionCommitment || null),
+    engagementLevel: isForfeited ? null : form.engagementLevel,
+    notes: form.notes.trim() || null,
+  };
 }
 
 function AutoSaveText({
@@ -78,13 +86,21 @@ function AutoSaveText({
   savedAt: string | null;
 }) {
   if (status === "saving") return <p className="text-xs text-fc-600">Saving...</p>;
-  if (status === "error") return <p className="text-xs text-red-700">Auto-save failed. Changes remain in the form.</p>;
+  if (status === "error") {
+    return <p className="text-xs text-red-700">Auto-save failed. Changes remain in the form.</p>;
+  }
   if (status === "saved") return <p className="text-xs text-emerald-700">Saved</p>;
   if (savedAt) {
     const date = new Date(savedAt);
     return (
       <p className="text-xs text-muted-foreground">
-        Last saved {date.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+        Last saved{" "}
+        {date.toLocaleString("en-US", {
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        })}
       </p>
     );
   }
@@ -112,6 +128,14 @@ export default function CoachEngagementDetailPage() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
 
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+  const [outcomesError, setOutcomesError] = useState(false);
+  const [nextStepsError, setNextStepsError] = useState(false);
+  const [actionCommitmentError, setActionCommitmentError] = useState(false);
+  const [engagementLevelError, setEngagementLevelError] = useState(false);
+
+  const firstOutcomeRef = useRef<HTMLInputElement | null>(null);
+
   const selectedSession = useMemo(
     () => (selectedSessionId ? sessions.find((row) => row.id === selectedSessionId) || null : null),
     [selectedSessionId, sessions]
@@ -130,6 +154,20 @@ export default function CoachEngagementDetailPage() {
     return Math.min(sessions.length + 1, engagement.totalSessions);
   }, [engagement, sessions.length]);
 
+  const activeSessionNumber = selectedSession?.sessionNumber ?? nextSessionNumber;
+
+  const showEarlyFinalOutcomeWarning =
+    !isForfeited &&
+    engagement !== null &&
+    activeSessionNumber < engagement.totalSessions &&
+    form.outcomes.includes("Engagement concluded / final session");
+
+  const showEarlyProgramConcludedWarning =
+    !isForfeited &&
+    engagement !== null &&
+    activeSessionNumber < engagement.totalSessions &&
+    form.nextSteps === "Program concluded, no next session";
+
   useEffect(() => {
     const controller = new AbortController();
 
@@ -145,7 +183,8 @@ export default function CoachEngagementDetailPage() {
         setSessions(sessionList.items);
       } catch (error) {
         if (controller.signal.aborted) return;
-        const message = error instanceof CoachApiError ? error.message : "Failed to load engagement";
+        const message =
+          error instanceof CoachApiError ? error.message : "Failed to load engagement";
         setLoadError(message);
       } finally {
         if (!controller.signal.aborted) {
@@ -162,6 +201,12 @@ export default function CoachEngagementDetailPage() {
   }, [engagementId]);
 
   useEffect(() => {
+    setHasAttemptedSubmit(false);
+    setOutcomesError(false);
+    setNextStepsError(false);
+    setActionCommitmentError(false);
+    setEngagementLevelError(false);
+
     if (!selectedSession) {
       setForm(defaultFormState());
       setLastSavedAt(null);
@@ -172,12 +217,31 @@ export default function CoachEngagementDetailPage() {
       status: selectedSession.status,
       occurredAt: toDateInput(selectedSession.occurredAt),
       topic: selectedSession.topic || "",
-      outcome: selectedSession.outcome || "",
-      durationMinutes: selectedSession.durationMinutes,
-      privateNotes: selectedSession.privateNotes || "",
+      outcomes: selectedSession.outcomes ? [...selectedSession.outcomes] : [],
+      nextSteps: selectedSession.nextSteps || "",
+      engagementLevel: selectedSession.engagementLevel,
+      actionCommitment: selectedSession.actionCommitment || "",
+      notes: selectedSession.notes || "",
     });
     setLastSavedAt(selectedSession.updatedAt);
   }, [selectedSession]);
+
+  const showRequiredValidation = isEditingExisting || hasAttemptedSubmit;
+
+  useEffect(() => {
+    if (!showRequiredValidation || isForfeited) {
+      setOutcomesError(false);
+      setNextStepsError(false);
+      setActionCommitmentError(false);
+      setEngagementLevelError(false);
+      return;
+    }
+
+    setOutcomesError(form.outcomes.length === 0);
+    setNextStepsError(form.nextSteps.length === 0);
+    setActionCommitmentError(form.actionCommitment.length === 0);
+    setEngagementLevelError(form.engagementLevel === null);
+  }, [form, isForfeited, showRequiredValidation]);
 
   const autoSavePayload = useMemo(() => toPatchPayload(form), [form]);
 
@@ -201,9 +265,11 @@ export default function CoachEngagementDetailPage() {
     !isEditingExisting &&
     (form.occurredAt.length > 0 ||
       form.topic.length > 0 ||
-      form.outcome.length > 0 ||
-      form.durationMinutes !== null ||
-      form.privateNotes.trim().length > 0 ||
+      form.outcomes.length > 0 ||
+      form.nextSteps.length > 0 ||
+      form.actionCommitment.length > 0 ||
+      form.engagementLevel !== null ||
+      form.notes.trim().length > 0 ||
       form.status !== SessionStatus.COMPLETED);
 
   const unsaved = useUnsavedChangesWarning({
@@ -221,32 +287,51 @@ export default function CoachEngagementDetailPage() {
     [autoSave, isEditingExisting, unsaved]
   );
 
-  const canSubmit = useMemo(() => {
-    if (isEditingExisting || !engagement) return false;
-    if (sessions.length >= engagement.totalSessions) return false;
-    if (isForfeited) return true;
-    return (
-      form.occurredAt.length > 0 &&
-      form.topic.length > 0 &&
-      form.outcome.length > 0 &&
-      form.durationMinutes !== null
-    );
-  }, [engagement, form, isEditingExisting, isForfeited, sessions.length]);
-
   async function handleSubmitNewSession() {
-    if (!engagement || !canSubmit || submitLoading) return;
+    if (!engagement || isEditingExisting || submitLoading) return;
+    if (sessions.length >= engagement.totalSessions) return;
+
+    setHasAttemptedSubmit(true);
+
+    if (!isForfeited) {
+      const nextOutcomesError = form.outcomes.length === 0;
+      const nextNextStepsError = form.nextSteps.length === 0;
+      const nextActionCommitmentError = form.actionCommitment.length === 0;
+      const nextEngagementLevelError = form.engagementLevel === null;
+
+      setOutcomesError(nextOutcomesError);
+      setNextStepsError(nextNextStepsError);
+      setActionCommitmentError(nextActionCommitmentError);
+      setEngagementLevelError(nextEngagementLevelError);
+
+      if (
+        nextOutcomesError ||
+        nextNextStepsError ||
+        nextActionCommitmentError ||
+        nextEngagementLevelError
+      ) {
+        if (nextOutcomesError) {
+          firstOutcomeRef.current?.focus();
+        }
+        return;
+      }
+    }
+
     setSubmitLoading(true);
     setSubmitError(null);
 
     try {
+      const payload = toPatchPayload(form);
       const response = await createCoachSession({
         engagementId: engagement.engagementId,
         status: form.status,
-        occurredAt: form.occurredAt ? new Date(form.occurredAt).toISOString() : null,
-        topic: form.topic.trim() || null,
-        outcome: form.outcome.trim() || null,
-        durationMinutes: form.durationMinutes,
-        privateNotes: form.privateNotes.trim() || null,
+        occurredAt: payload.occurredAt ?? null,
+        topic: payload.topic ?? null,
+        outcomes: payload.outcomes ?? null,
+        nextSteps: payload.nextSteps ?? null,
+        engagementLevel: payload.engagementLevel ?? null,
+        actionCommitment: payload.actionCommitment ?? null,
+        notes: payload.notes ?? null,
       });
 
       setSessions((previous) => {
@@ -282,7 +367,9 @@ export default function CoachEngagementDetailPage() {
         activeItem="/coach/engagements"
       >
         <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">Loading engagement...</CardContent>
+          <CardContent className="py-12 text-center text-sm text-muted-foreground">
+            Loading engagement...
+          </CardContent>
         </Card>
       </PortalShell>
     );
@@ -299,7 +386,9 @@ export default function CoachEngagementDetailPage() {
         activeItem="/coach/engagements"
       >
         <Card>
-          <CardContent className="py-12 text-center text-sm text-red-700">{loadError || "Engagement not found"}</CardContent>
+          <CardContent className="py-12 text-center text-sm text-red-700">
+            {loadError || "Engagement not found"}
+          </CardContent>
         </Card>
       </PortalShell>
     );
@@ -326,14 +415,18 @@ export default function CoachEngagementDetailPage() {
             </a>
           </Button>
         ) : (
-          <p className="text-xs text-muted-foreground">Contact your program administrator for scheduling.</p>
+          <p className="text-xs text-muted-foreground">
+            Contact your program administrator for scheduling.
+          </p>
         )}
       </div>
 
       <Card className="mb-6">
         <CardContent className="py-5">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="font-display text-2xl font-semibold text-fc-900">{engagement.participantEmail}</h1>
+            <h1 className="font-display text-2xl font-semibold text-fc-900">
+              {engagement.participantEmail}
+            </h1>
             <Badge className={cn("text-[10px]", getStatusColor(engagement.status))}>
               {getStatusLabel(engagement.status)}
             </Badge>
@@ -386,14 +479,28 @@ export default function CoachEngagementDetailPage() {
                       ...previous,
                       status,
                       ...(hasForfeitStatus(status)
-                        ? { topic: "", outcome: "", durationMinutes: null }
+                        ? {
+                            topic: "",
+                            outcomes: [],
+                            nextSteps: "",
+                            actionCommitment: "",
+                            engagementLevel: null,
+                          }
                         : {}),
                     }));
+                    if (hasForfeitStatus(status)) {
+                      setOutcomesError(false);
+                      setNextStepsError(false);
+                      setActionCommitmentError(false);
+                      setEngagementLevelError(false);
+                    }
                   }}
                   className="w-full rounded-md border border-border px-3 py-2 text-sm"
                 >
                   <option value={SessionStatus.COMPLETED}>Completed</option>
-                  <option value={SessionStatus.FORFEITED_CANCELLED}>Forfeited - Cancelled &lt;24h</option>
+                  <option value={SessionStatus.FORFEITED_CANCELLED}>
+                    Forfeited - Cancelled &lt;24h
+                  </option>
                   <option value={SessionStatus.FORFEITED_NOT_USED}>Forfeited - Not Used</option>
                 </select>
               </div>
@@ -406,7 +513,9 @@ export default function CoachEngagementDetailPage() {
                   id="occurred-at"
                   type="date"
                   value={form.occurredAt}
-                  onChange={(event) => setForm((previous) => ({ ...previous, occurredAt: event.target.value }))}
+                  onChange={(event) =>
+                    setForm((previous) => ({ ...previous, occurredAt: event.target.value }))
+                  }
                   className="w-full rounded-md border border-border px-3 py-2 text-sm"
                 />
               </div>
@@ -420,7 +529,9 @@ export default function CoachEngagementDetailPage() {
                     <select
                       id="topic"
                       value={form.topic}
-                      onChange={(event) => setForm((previous) => ({ ...previous, topic: event.target.value }))}
+                      onChange={(event) =>
+                        setForm((previous) => ({ ...previous, topic: event.target.value }))
+                      }
                       className="w-full rounded-md border border-border px-3 py-2 text-sm"
                     >
                       <option value="">Select topic</option>
@@ -432,60 +543,188 @@ export default function CoachEngagementDetailPage() {
                     </select>
                   </div>
 
-                  <div>
-                    <label htmlFor="outcome" className="mb-1 block text-xs font-medium text-fc-800">
-                      Outcome
-                    </label>
-                    <select
-                      id="outcome"
-                      value={form.outcome}
-                      onChange={(event) => setForm((previous) => ({ ...previous, outcome: event.target.value }))}
-                      className="w-full rounded-md border border-border px-3 py-2 text-sm"
-                    >
-                      <option value="">Select outcome</option>
-                      {SESSION_OUTCOMES.map((outcome) => (
-                        <option key={outcome} value={outcome}>
-                          {outcome}
-                        </option>
+                  <fieldset style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+                    <legend className="text-sm font-medium text-fc-950">
+                      Session Outcomes{" "}
+                      <span className="font-normal text-muted-foreground">
+                        (required, select at least 1)
+                      </span>
+                    </legend>
+                    <div className="mt-2 space-y-2">
+                      {SESSION_OUTCOMES.map((value, index) => (
+                        <label key={value} className="flex cursor-pointer items-center gap-2 text-sm">
+                          <input
+                            ref={index === 0 ? firstOutcomeRef : undefined}
+                            type="checkbox"
+                            checked={form.outcomes.includes(value)}
+                            onChange={(event) => {
+                              setForm((previous) => {
+                                const nextOutcomes = event.target.checked
+                                  ? [...previous.outcomes, value]
+                                  : previous.outcomes.filter((entry) => entry !== value);
+                                return {
+                                  ...previous,
+                                  outcomes: SESSION_OUTCOMES.filter((entry) =>
+                                    nextOutcomes.includes(entry)
+                                  ),
+                                };
+                              });
+                              if (outcomesError) {
+                                setOutcomesError(false);
+                              }
+                            }}
+                            aria-invalid={outcomesError || undefined}
+                            aria-describedby={outcomesError ? "outcomes-error" : undefined}
+                          />
+                          {value}
+                        </label>
                       ))}
-                    </select>
-                  </div>
+                    </div>
+                    {outcomesError ? (
+                      <p id="outcomes-error" role="alert" className="mt-2 text-sm text-red-600">
+                        At least one outcome is required.
+                      </p>
+                    ) : null}
+                  </fieldset>
+
+                  {showEarlyFinalOutcomeWarning ? (
+                    <p className="text-xs text-amber-700">
+                      This is session {activeSessionNumber} of {engagement.totalSessions}. Selecting
+                      this outcome does not automatically close the engagement. Contact your program
+                      administrator if this engagement should end early.
+                    </p>
+                  ) : null}
 
                   <div>
-                    <label htmlFor="duration" className="mb-1 block text-xs font-medium text-fc-800">
-                      Duration
+                    <label htmlFor="next-steps" className="mb-1 block text-xs font-medium text-fc-800">
+                      Next Steps
                     </label>
                     <select
-                      id="duration"
-                      value={form.durationMinutes === null ? "" : String(form.durationMinutes)}
+                      id="next-steps"
+                      value={form.nextSteps}
                       onChange={(event) => {
                         const value = event.target.value;
-                        setForm((previous) => ({
-                          ...previous,
-                          durationMinutes: value ? Number.parseInt(value, 10) : null,
-                        }));
+                        setForm((previous) => ({ ...previous, nextSteps: value }));
+                        if (nextStepsError && value.length > 0) {
+                          setNextStepsError(false);
+                        }
                       }}
                       className="w-full rounded-md border border-border px-3 py-2 text-sm"
                     >
-                      <option value="">Select duration</option>
-                      {DURATION_OPTIONS.map((duration) => (
-                        <option key={duration} value={duration}>
-                          {duration} minutes
+                      <option value="">Select next steps...</option>
+                      {NEXT_STEPS_OPTIONS.map((value) => (
+                        <option key={value} value={value}>
+                          {value}
                         </option>
                       ))}
                     </select>
+                    {nextStepsError ? (
+                      <p className="mt-2 text-sm text-red-600">Next steps is required.</p>
+                    ) : null}
                   </div>
+
+                  {showEarlyProgramConcludedWarning ? (
+                    <p className="text-xs text-amber-700">
+                      This is session {activeSessionNumber} of {engagement.totalSessions}. Selecting
+                      this option does not automatically close the engagement. Contact your program
+                      administrator if this engagement should end early.
+                    </p>
+                  ) : null}
+
+                  <div>
+                    <label
+                      htmlFor="action-commitment"
+                      className="mb-1 block text-xs font-medium text-fc-800"
+                    >
+                      Action-Commitment Tracking
+                    </label>
+                    <select
+                      id="action-commitment"
+                      value={form.actionCommitment}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setForm((previous) => ({ ...previous, actionCommitment: value }));
+                        if (actionCommitmentError && value.length > 0) {
+                          setActionCommitmentError(false);
+                        }
+                      }}
+                      className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                    >
+                      <option value="">Select action-commitment status...</option>
+                      {ACTION_COMMITMENT_OPTIONS.map((value) => (
+                        <option key={value} value={value}>
+                          {value}
+                        </option>
+                      ))}
+                    </select>
+                    {actionCommitmentError ? (
+                      <p className="mt-2 text-sm text-red-600">
+                        Action-commitment tracking is required.
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <fieldset style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+                    <legend className="text-sm font-medium text-fc-950">
+                      Participant Engagement Level
+                    </legend>
+                    <div className="mt-2 space-y-2">
+                      {ENGAGEMENT_LEVEL_OPTIONS.map(({ value, label, description }) => (
+                        <label
+                          key={value}
+                          className={cn(
+                            "flex items-start gap-3 rounded-md border border-fc-200 p-3",
+                            form.engagementLevel === value ? "bg-fc-50" : ""
+                          )}
+                        >
+                          <input
+                            type="radio"
+                            name="engagementLevel"
+                            value={value}
+                            checked={form.engagementLevel === value}
+                            onChange={() => {
+                              setForm((previous) => ({ ...previous, engagementLevel: value }));
+                              if (engagementLevelError) {
+                                setEngagementLevelError(false);
+                              }
+                            }}
+                            className="mt-1"
+                            aria-invalid={engagementLevelError || undefined}
+                            aria-describedby={engagementLevelError ? "engagement-level-error" : undefined}
+                          />
+                          <span className="block">
+                            <span className="block text-sm font-medium text-fc-900">{label}</span>
+                            {description ? (
+                              <span className="mt-1 block text-xs text-muted-foreground">
+                                {description}
+                              </span>
+                            ) : null}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                    {engagementLevelError ? (
+                      <p id="engagement-level-error" role="alert" className="mt-2 text-sm text-red-600">
+                        Participant engagement level is required.
+                      </p>
+                    ) : null}
+                  </fieldset>
                 </>
               ) : null}
 
               <div>
-                <label htmlFor="private-notes" className="mb-1 block text-xs font-medium text-fc-800">
-                  Private Notes
+                <label htmlFor="notes" className="mb-1 block text-xs font-medium text-fc-800">
+                  Notes
                 </label>
+                <p className="mb-2 text-xs text-muted-foreground">
+                  Visible to program administrators
+                </p>
                 <textarea
-                  id="private-notes"
-                  value={form.privateNotes}
-                  onChange={(event) => setForm((previous) => ({ ...previous, privateNotes: event.target.value }))}
+                  id="notes"
+                  value={form.notes}
+                  onChange={(event) =>
+                    setForm((previous) => ({ ...previous, notes: event.target.value }))
+                  }
                   rows={5}
                   className="w-full rounded-md border border-border px-3 py-2 text-sm"
                 />
@@ -497,7 +736,10 @@ export default function CoachEngagementDetailPage() {
 
               <div className="flex flex-wrap items-center gap-2">
                 {!isEditingExisting ? (
-                  <Button onClick={() => void handleSubmitNewSession()} disabled={!canSubmit || submitLoading}>
+                  <Button
+                    onClick={() => void handleSubmitNewSession()}
+                    disabled={submitLoading || sessions.length >= engagement.totalSessions}
+                  >
                     {submitLoading ? "Logging Session..." : "Log Session"}
                   </Button>
                 ) : null}
@@ -533,7 +775,9 @@ export default function CoachEngagementDetailPage() {
                       key={session.id}
                       className={cn(
                         "rounded-md border px-4 py-3",
-                        selectedSessionId === session.id ? "border-fc-400 bg-fc-50" : "border-border/60"
+                        selectedSessionId === session.id
+                          ? "border-fc-400 bg-fc-50"
+                          : "border-border/60"
                       )}
                     >
                       <div className="flex items-center justify-between gap-3">
@@ -542,9 +786,7 @@ export default function CoachEngagementDetailPage() {
                             Session {session.sessionNumber} · {getStatusLabel(session.status)}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {session.occurredAt
-                              ? formatDate(session.occurredAt)
-                              : "No date"}
+                            {session.occurredAt ? formatDate(session.occurredAt) : "No date"}
                           </p>
                         </div>
                         <Button

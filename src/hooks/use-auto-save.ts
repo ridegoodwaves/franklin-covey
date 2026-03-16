@@ -51,8 +51,9 @@ export function useAutoSave<T>({
   const executeSave = useCallback(async () => {
     if (!enabled) return;
     if (isSavingRef.current) return;
-    const currentSerialized = JSON.stringify(dataRef.current);
-    if (currentSerialized === lastSavedSerializedRef.current) {
+    const snapshot = dataRef.current;
+    const snapshotSerialized = JSON.stringify(snapshot);
+    if (snapshotSerialized === lastSavedSerializedRef.current) {
       hasPendingChangesRef.current = false;
       setHasPendingChanges(false);
       if (!hasErrorRef.current) setSaveStatus("idle");
@@ -66,16 +67,26 @@ export function useAutoSave<T>({
     setSaveStatus("saving");
 
     try {
-      await onSave(dataRef.current);
-      lastSavedSerializedRef.current = JSON.stringify(dataRef.current);
-      hasPendingChangesRef.current = false;
-      setHasPendingChanges(false);
-      setSaveStatus("saved");
-      window.setTimeout(() => {
-        if (!isSavingRef.current && !hasErrorRef.current && mountedRef.current) {
-          setSaveStatus("idle");
-        }
-      }, 1200);
+      await onSave(snapshot);
+      lastSavedSerializedRef.current = snapshotSerialized;
+
+      if (JSON.stringify(dataRef.current) !== snapshotSerialized) {
+        hasPendingChangesRef.current = true;
+        setHasPendingChanges(true);
+        clearTimer();
+        timerRef.current = window.setTimeout(() => {
+          void executeSave();
+        }, debounceMs);
+      } else {
+        hasPendingChangesRef.current = false;
+        setHasPendingChanges(false);
+        setSaveStatus("saved");
+        window.setTimeout(() => {
+          if (!isSavingRef.current && !hasErrorRef.current && mountedRef.current) {
+            setSaveStatus("idle");
+          }
+        }, 1200);
+      }
     } catch {
       hasErrorRef.current = true;
       setHasError(true);
@@ -84,7 +95,7 @@ export function useAutoSave<T>({
       isSavingRef.current = false;
       setIsSaving(false);
     }
-  }, [enabled, onSave]);
+  }, [clearTimer, debounceMs, enabled, onSave]);
 
   const flush = useCallback(async () => {
     clearTimer();

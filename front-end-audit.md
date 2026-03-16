@@ -140,20 +140,15 @@ However, there are **8 critical issues** that will break the real user experienc
 
 ### `/coach/engagements/[id]` — Session Logging (Slice 2)
 
-**What's built:** Participant header card with avatar, name, title, org, program track, status, date range, progress bar with session dots. Log Session form (topic dropdown, outcome dropdown, duration pill selector, private notes with auto-save). Session History tab. Success state.
+**What's built:** Participant header card with avatar, name, title, org, program track, status, date range, progress bar with session dots. Log Session form (topic dropdown, outcomes checkbox group, next steps select, action-commitment select, engagement-level radios, notes with auto-save). Session History tab. Success state.
 
 **Issues:**
 
 | Priority | Issue | Location | Fix |
 |----------|-------|----------|-----|
-| 🔴 Critical | **Topic dropdown uses `MLP_SESSION_TOPICS` only for all coaches.** The import at line 30: `import { MLP_SESSION_TOPICS, SESSION_OUTCOMES, DURATION_OPTIONS } from "@/lib/config"`. Coaches working with ALP/EF/EL participants need `EXECUTIVE_SESSION_TOPICS`. This is a functional bug — coaches will log the wrong topic competencies for executive participants. | `coach/engagements/[id]/page.tsx:30` | Import `SESSION_TOPICS_BY_PROGRAM` and select the correct list based on the participant's program type: `SESSION_TOPICS_BY_PROGRAM[programType]` |
-| 🔴 Critical | **No date picker for `occurredAt`** (when the session happened). The backend spec explicitly requires: *"Date picker for `occurredAt` (default: today)"*. Without this, all sessions will be implicitly "today" and coaches can't log sessions from previous days. | `coach/engagements/[id]/page.tsx` | Add a date input field to the session logging form, defaulting to today |
-| 🟡 High | **"Schedule Next Session" button in success state is not wired to any URL.** Per spec, it should open the participant's `meetingBookingUrl` in a new tab. Currently it renders as a Button with no `href` or `onClick`. | `coach/engagements/[id]/page.tsx` | Wire to `engagement.participant.coach.meetingBookingUrl` when API is live |
-| 🟡 High | **Session status dropdown (`COMPLETED` vs `FORFEITED_CANCELLED` vs `FORFEITED_NOT_USED`) is absent.** The form only shows topic/outcome/duration. The spec defines three session statuses that coaches must enter. A forfeited session is a significantly different outcome from a completed one. | `coach/engagements/[id]/page.tsx` | Add session status selection (radio or select) with the 3 options and their full labels: "Completed", "Session forfeited – canceled within 24 hours", "Session forfeited – not taken advantage of" |
-| 🟡 Medium | **Progress bar session dots don't reflect current session number.** The visual shows dots for each session, but the "current" session dot isn't clearly marked or animated. | `coach/engagements/[id]/page.tsx` | Highlight the current session dot (filled vs outline, or a pulsing animation) |
-| 🟢 Low | Auto-save indicator shows "idle / saving / saved / draft" but the draft indicator is hard to distinguish from saved. | `coach/engagements/[id]/page.tsx` | Use distinct colors: saved = emerald, draft = amber, saving = fc-600 spinning |
+| 🟢 Context | Historical note: the critical issues originally listed here (program-aware topics, occurredAt input, session status control, and API wiring) were resolved by the March 2026 coach session logging implementation and the March 13 field restructure rollout. | `coach/engagements/[id]/page.tsx` | Keep this section as implementation history; use current plans/handoffs for active issue tracking. |
 
-**What's working correctly:** Portal shell, tab structure (Log Session / Session History), duration pill selector, "Other" topic shows static note, private notes textarea, basic form validation before submit, session history timeline.
+**What's working correctly:** Portal shell, tab structure (Log Session / Session History), program-aware topic dropdown, outcomes checkbox group with inline validation, next steps/action-commitment/engagement-level controls, notes textarea, status-aware forfeited field behavior, and session history timeline.
 
 ---
 

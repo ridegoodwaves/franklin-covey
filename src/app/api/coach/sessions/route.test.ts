@@ -37,6 +37,22 @@ function buildRequest(body: object) {
   });
 }
 
+function mockBaseCreateDeps() {
+  prismaMock.$executeRaw.mockResolvedValue(1 as never);
+  prismaMock.engagement.findFirst.mockResolvedValue({
+    id: "eng-1",
+    status: "COACH_SELECTED",
+    statusVersion: 2,
+    totalSessions: 2,
+    program: { code: "ALP" },
+  } as never);
+  prismaMock.session.aggregate.mockResolvedValue({
+    _max: {
+      sessionNumber: null,
+    },
+  } as never);
+}
+
 describe("POST /api/coach/sessions", () => {
   beforeEach(() => {
     mockReadPortalSession.mockReturnValue({
@@ -65,19 +81,7 @@ describe("POST /api/coach/sessions", () => {
   });
 
   it("creates a first session and returns 201", async () => {
-    prismaMock.$executeRaw.mockResolvedValue(1 as never);
-    prismaMock.engagement.findFirst.mockResolvedValue({
-      id: "eng-1",
-      status: "COACH_SELECTED",
-      statusVersion: 2,
-      totalSessions: 2,
-      program: { code: "ALP" },
-    } as never);
-    prismaMock.session.aggregate.mockResolvedValue({
-      _max: {
-        sessionNumber: null,
-      },
-    } as never);
+    mockBaseCreateDeps();
     prismaMock.session.create.mockResolvedValue({
       id: "s-1",
       engagementId: "eng-1",
@@ -85,9 +89,11 @@ describe("POST /api/coach/sessions", () => {
       status: "COMPLETED",
       occurredAt: new Date("2026-03-01T12:00:00.000Z"),
       topic: "Developing People",
-      outcome: "In Progress",
-      durationMinutes: 60,
-      privateNotes: "note",
+      outcomes: JSON.stringify(["Action plan created", "Resources provided"]),
+      nextSteps: "Next session scheduled",
+      engagementLevel: 4,
+      actionCommitment: "Last session's action(s) completed",
+      notes: "note",
       createdAt: new Date("2026-03-01T12:00:00.000Z"),
       updatedAt: new Date("2026-03-01T12:00:00.000Z"),
       createdBy: null,
@@ -102,9 +108,11 @@ describe("POST /api/coach/sessions", () => {
         status: "COMPLETED",
         occurredAt: "2026-03-01T12:00:00.000Z",
         topic: "Developing People",
-        outcome: "In Progress",
-        durationMinutes: 60,
-        privateNotes: "note",
+        outcomes: ["Action plan created", "Resources provided"],
+        nextSteps: "Next session scheduled",
+        engagementLevel: 4,
+        actionCommitment: "Last session's action(s) completed",
+        notes: "note",
       })
     );
     const body = await response.json();
@@ -112,6 +120,101 @@ describe("POST /api/coach/sessions", () => {
     expect(response.status).toBe(201);
     expect(body.item.id).toBe("s-1");
     expect(body.item.sessionNumber).toBe(1);
+    expect(body.item.outcomes).toEqual(["Action plan created", "Resources provided"]);
+  });
+
+  it("returns 422 for empty outcomes array", async () => {
+    mockBaseCreateDeps();
+
+    const response = await POST(
+      buildRequest({
+        engagementId: "eng-1",
+        status: "COMPLETED",
+        occurredAt: "2026-03-01T12:00:00.000Z",
+        topic: "Developing People",
+        outcomes: [],
+        nextSteps: "Next session scheduled",
+        engagementLevel: 3,
+        actionCommitment: "Last session's action(s) completed",
+      })
+    );
+
+    expect(response.status).toBe(422);
+  });
+
+  it("returns 422 for duplicate outcomes", async () => {
+    mockBaseCreateDeps();
+
+    const response = await POST(
+      buildRequest({
+        engagementId: "eng-1",
+        status: "COMPLETED",
+        occurredAt: "2026-03-01T12:00:00.000Z",
+        topic: "Developing People",
+        outcomes: ["Action plan created", "Action plan created"],
+        nextSteps: "Next session scheduled",
+        engagementLevel: 3,
+        actionCommitment: "Last session's action(s) completed",
+      })
+    );
+
+    expect(response.status).toBe(422);
+  });
+
+  it("returns 422 for invalid outcome value", async () => {
+    mockBaseCreateDeps();
+
+    const response = await POST(
+      buildRequest({
+        engagementId: "eng-1",
+        status: "COMPLETED",
+        occurredAt: "2026-03-01T12:00:00.000Z",
+        topic: "Developing People",
+        outcomes: ["In Progress"],
+        nextSteps: "Next session scheduled",
+        engagementLevel: 3,
+        actionCommitment: "Last session's action(s) completed",
+      })
+    );
+
+    expect(response.status).toBe(422);
+  });
+
+  it("returns 422 when action commitment is missing on completed session", async () => {
+    mockBaseCreateDeps();
+
+    const response = await POST(
+      buildRequest({
+        engagementId: "eng-1",
+        status: "COMPLETED",
+        occurredAt: "2026-03-01T12:00:00.000Z",
+        topic: "Developing People",
+        outcomes: ["Action plan created"],
+        nextSteps: "Next session scheduled",
+        engagementLevel: 3,
+      })
+    );
+
+    expect(response.status).toBe(422);
+  });
+
+  it("returns 422 for invalid action commitment value", async () => {
+    mockBaseCreateDeps();
+
+    const response = await POST(
+      buildRequest({
+        engagementId: "eng-1",
+        status: "COMPLETED",
+        occurredAt: "2026-03-01T12:00:00.000Z",
+        topic: "Developing People",
+        outcomes: ["Action plan created"],
+        nextSteps: "Next session scheduled",
+        engagementLevel: 3,
+        actionCommitment: "Completed",
+      })
+    );
+
+    expect(response.status).toBe(422);
   });
 
   it("returns 409 when all sessions are already logged", async () => {
@@ -135,8 +238,10 @@ describe("POST /api/coach/sessions", () => {
         status: "COMPLETED",
         occurredAt: "2026-03-01T12:00:00.000Z",
         topic: "Developing People",
-        outcome: "In Progress",
-        durationMinutes: 60,
+        outcomes: ["Action plan created"],
+        nextSteps: "Next session scheduled",
+        engagementLevel: 3,
+        actionCommitment: "Last session's action(s) completed",
       })
     );
 

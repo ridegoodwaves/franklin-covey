@@ -3,37 +3,47 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { validateSessionPatchInput } from "@/lib/validation/session-validation";
 import {
+  deserializeOutcomes,
   isConflictPrismaError,
   isTimeoutPrismaError,
   jsonNoStore,
   mapSessionRow,
   parseIsoDateOrNull,
   requireCoachScope,
+  serializeOutcomes,
   toNullableTrimmed,
 } from "@/app/api/coach/_shared";
 
-type JsonScalar = string | number | boolean | null | undefined;
+const ALLOWED_PATCH_KEYS = new Set([
+  "occurredAt",
+  "topic",
+  "outcomes",
+  "nextSteps",
+  "engagementLevel",
+  "actionCommitment",
+  "notes",
+]);
 
-function hasOwnKey(record: Record<string, JsonScalar>, key: string): boolean {
-  return Object.prototype.hasOwnProperty.call(record, key);
-}
-
-function parsePatchBody(body: Record<string, JsonScalar>): {
+function parsePatchBody(body: Record<string, unknown>): {
   errors: string[];
   occurredAt?: Date | null;
   topic?: string | null;
-  outcome?: string | null;
-  durationMinutes?: number | null;
-  privateNotes?: string | null;
+  outcomes?: string[] | null;
+  nextSteps?: string | null;
+  engagementLevel?: number | null;
+  actionCommitment?: string | null;
+  notes?: string | null;
 } {
   const errors: string[] = [];
   const parsed: {
     errors: string[];
     occurredAt?: Date | null;
     topic?: string | null;
-    outcome?: string | null;
-    durationMinutes?: number | null;
-    privateNotes?: string | null;
+    outcomes?: string[] | null;
+    nextSteps?: string | null;
+    engagementLevel?: number | null;
+    actionCommitment?: string | null;
+    notes?: string | null;
   } = { errors };
 
   if (body.occurredAt !== undefined) {
@@ -57,60 +67,120 @@ function parsePatchBody(body: Record<string, JsonScalar>): {
     }
   }
 
-  if (body.outcome !== undefined) {
-    if (typeof body.outcome !== "string" && body.outcome !== null) {
-      errors.push("outcome must be a string or null");
-    } else {
-      parsed.outcome =
-        typeof body.outcome === "string" ? toNullableTrimmed(body.outcome) : null;
-    }
-  }
-
-  if (body.durationMinutes !== undefined) {
-    if (
-      body.durationMinutes !== null &&
-      (!Number.isInteger(body.durationMinutes) || typeof body.durationMinutes !== "number")
+  if (body.outcomes !== undefined) {
+    if (body.outcomes === null) {
+      parsed.outcomes = null;
+    } else if (
+      Array.isArray(body.outcomes) &&
+      body.outcomes.every((value): value is string => typeof value === "string")
     ) {
-      errors.push("durationMinutes must be an integer or null");
+      parsed.outcomes = body.outcomes.map((value) => value.trim());
     } else {
-      parsed.durationMinutes = body.durationMinutes;
+      errors.push("outcomes must be a string array or null");
     }
   }
 
-  if (body.privateNotes !== undefined) {
-    if (typeof body.privateNotes !== "string" && body.privateNotes !== null) {
-      errors.push("privateNotes must be a string or null");
+  if (body.nextSteps !== undefined) {
+    if (typeof body.nextSteps !== "string" && body.nextSteps !== null) {
+      errors.push("nextSteps must be a string or null");
     } else {
-      parsed.privateNotes = body.privateNotes;
+      parsed.nextSteps =
+        typeof body.nextSteps === "string" ? toNullableTrimmed(body.nextSteps) : null;
+    }
+  }
+
+  if (body.engagementLevel !== undefined) {
+    if (
+      body.engagementLevel !== null &&
+      (typeof body.engagementLevel !== "number" || !Number.isInteger(body.engagementLevel))
+    ) {
+      errors.push("engagementLevel must be an integer or null");
+    } else {
+      parsed.engagementLevel = body.engagementLevel as number | null;
+    }
+  }
+
+  if (body.actionCommitment !== undefined) {
+    if (typeof body.actionCommitment !== "string" && body.actionCommitment !== null) {
+      errors.push("actionCommitment must be a string or null");
+    } else {
+      parsed.actionCommitment =
+        typeof body.actionCommitment === "string"
+          ? toNullableTrimmed(body.actionCommitment)
+          : null;
+    }
+  }
+
+  if (body.notes !== undefined) {
+    if (typeof body.notes !== "string" && body.notes !== null) {
+      errors.push("notes must be a string or null");
+    } else {
+      parsed.notes = body.notes;
     }
   }
 
   return parsed;
 }
 
+function areDatesEqual(left: Date | null, right: Date | null): boolean {
+  if (left === null || right === null) {
+    return left === right;
+  }
+  return left.getTime() === right.getTime();
+}
+
+function areOutcomesEqual(left: string[] | null, right: string[] | null): boolean {
+  if (left === null || right === null) {
+    return left === right;
+  }
+  return serializeOutcomes(left) === serializeOutcomes(right);
+}
+
 function ensureCompletedInvariant(input: {
   status: SessionStatus;
   existingOccurredAt: Date | null;
   existingTopic: string | null;
-  existingOutcome: string | null;
-  existingDurationMinutes: number | null;
+  existingOutcomes: string | null;
+  existingNextSteps: string | null;
+  existingEngagementLevel: number | null;
+  existingActionCommitment: string | null;
   patchOccurredAt?: Date | null;
   patchTopic?: string | null;
-  patchOutcome?: string | null;
-  patchDurationMinutes?: number | null;
+  patchOutcomes?: string[] | null;
+  patchNextSteps?: string | null;
+  patchEngagementLevel?: number | null;
+  patchActionCommitment?: string | null;
 }): string | null {
   if (input.status !== SessionStatus.COMPLETED) return null;
 
-  const occurredAt = input.patchOccurredAt !== undefined ? input.patchOccurredAt : input.existingOccurredAt;
+  const occurredAt =
+    input.patchOccurredAt !== undefined ? input.patchOccurredAt : input.existingOccurredAt;
   const topic = input.patchTopic !== undefined ? input.patchTopic : input.existingTopic;
-  const outcome = input.patchOutcome !== undefined ? input.patchOutcome : input.existingOutcome;
-  const durationMinutes =
-    input.patchDurationMinutes !== undefined
-      ? input.patchDurationMinutes
-      : input.existingDurationMinutes;
+  const outcomes =
+    input.patchOutcomes !== undefined
+      ? input.patchOutcomes
+      : deserializeOutcomes(input.existingOutcomes);
+  const nextSteps =
+    input.patchNextSteps !== undefined ? input.patchNextSteps : input.existingNextSteps;
+  const engagementLevel =
+    input.patchEngagementLevel !== undefined
+      ? input.patchEngagementLevel
+      : input.existingEngagementLevel;
+  const actionCommitment =
+    input.patchActionCommitment !== undefined
+      ? input.patchActionCommitment
+      : input.existingActionCommitment;
 
-  if (!occurredAt || !topic || !outcome || durationMinutes === null) {
-    return "completed sessions must keep occurredAt, topic, outcome, and durationMinutes";
+  if (
+    !occurredAt ||
+    !topic ||
+    !outcomes ||
+    outcomes.length === 0 ||
+    !nextSteps ||
+    engagementLevel === null ||
+    !actionCommitment
+  ) {
+    return "completed sessions must keep occurredAt, topic, outcomes, nextSteps, engagementLevel, and actionCommitment";
   }
 
   return null;
@@ -130,24 +200,34 @@ export async function PATCH(
     return jsonNoStore({ error: "Invalid session id" }, { status: 422 });
   }
 
-  let bodyRecord: Record<string, JsonScalar>;
+  let bodyRecord: Record<string, unknown>;
   try {
     const body = await request.json();
     if (body === null || typeof body !== "object" || Array.isArray(body)) {
       return jsonNoStore({ error: "Invalid JSON body" }, { status: 422 });
     }
-    bodyRecord = body as Record<string, JsonScalar>;
+    bodyRecord = body as Record<string, unknown>;
   } catch {
     return jsonNoStore({ error: "Invalid JSON body" }, { status: 422 });
   }
 
-  if (hasOwnKey(bodyRecord, "status")) {
+  if (Object.prototype.hasOwnProperty.call(bodyRecord, "status")) {
     return jsonNoStore({ error: "status is not allowed on PATCH" }, { status: 422 });
   }
 
+  const unknownKeys = Object.keys(bodyRecord).filter((key) => !ALLOWED_PATCH_KEYS.has(key));
+  const providedAllowedKeys = Object.keys(bodyRecord).filter((key) => ALLOWED_PATCH_KEYS.has(key));
+  const parseErrors: string[] = [];
+  if (unknownKeys.length > 0) {
+    parseErrors.push(`Unknown fields: ${unknownKeys.join(", ")}`);
+  }
+  if (providedAllowedKeys.length === 0) {
+    parseErrors.push("At least one mutable field is required");
+  }
+
   const parsedBody = parsePatchBody(bodyRecord);
-  if (parsedBody.errors.length > 0) {
-    return jsonNoStore({ error: parsedBody.errors.join("; ") }, { status: 422 });
+  if (parseErrors.length > 0 || parsedBody.errors.length > 0) {
+    return jsonNoStore({ error: [...parseErrors, ...parsedBody.errors].join("; ") }, { status: 422 });
   }
 
   try {
@@ -167,9 +247,11 @@ export async function PATCH(
         status: true,
         occurredAt: true,
         topic: true,
-        outcome: true,
-        durationMinutes: true,
-        privateNotes: true,
+        outcomes: true,
+        nextSteps: true,
+        engagementLevel: true,
+        actionCommitment: true,
+        notes: true,
         createdAt: true,
         updatedAt: true,
         engagement: {
@@ -193,9 +275,11 @@ export async function PATCH(
       programCode: existing.engagement.program.code as ProgramCode,
       occurredAt: parsedBody.occurredAt,
       topic: parsedBody.topic,
-      outcome: parsedBody.outcome,
-      durationMinutes: parsedBody.durationMinutes,
-      privateNotes: parsedBody.privateNotes,
+      outcomes: parsedBody.outcomes,
+      nextSteps: parsedBody.nextSteps,
+      engagementLevel: parsedBody.engagementLevel,
+      actionCommitment: parsedBody.actionCommitment,
+      notes: parsedBody.notes,
     });
 
     if (validated.errors.length > 0) {
@@ -206,26 +290,69 @@ export async function PATCH(
       status: existing.status,
       existingOccurredAt: existing.occurredAt,
       existingTopic: existing.topic,
-      existingOutcome: existing.outcome,
-      existingDurationMinutes: existing.durationMinutes,
+      existingOutcomes: existing.outcomes,
+      existingNextSteps: existing.nextSteps,
+      existingEngagementLevel: existing.engagementLevel,
+      existingActionCommitment: existing.actionCommitment,
       patchOccurredAt: validated.values.occurredAt,
       patchTopic: validated.values.topic,
-      patchOutcome: validated.values.outcome,
-      patchDurationMinutes: validated.values.durationMinutes,
+      patchOutcomes: validated.values.outcomes,
+      patchNextSteps: validated.values.nextSteps,
+      patchEngagementLevel: validated.values.engagementLevel,
+      patchActionCommitment: validated.values.actionCommitment,
     });
     if (invariantError) {
       return jsonNoStore({ error: invariantError }, { status: 422 });
     }
 
-    const data: Prisma.SessionUpdateInput = {};
-    if (validated.values.occurredAt !== undefined) data.occurredAt = validated.values.occurredAt;
-    if (validated.values.topic !== undefined) data.topic = validated.values.topic;
-    if (validated.values.outcome !== undefined) data.outcome = validated.values.outcome;
-    if (validated.values.durationMinutes !== undefined) {
-      data.durationMinutes = validated.values.durationMinutes;
+    const data: Prisma.SessionUpdateManyMutationInput = {};
+    const existingOutcomes = deserializeOutcomes(existing.outcomes);
+
+    if (
+      validated.values.occurredAt !== undefined &&
+      !areDatesEqual(validated.values.occurredAt, existing.occurredAt)
+    ) {
+      data.occurredAt = validated.values.occurredAt;
     }
-    if (validated.values.privateNotes !== undefined) {
-      data.privateNotes = validated.values.privateNotes;
+
+    if (validated.values.topic !== undefined && validated.values.topic !== existing.topic) {
+      data.topic = validated.values.topic;
+    }
+
+    if (
+      validated.values.outcomes !== undefined &&
+      !areOutcomesEqual(validated.values.outcomes, existingOutcomes)
+    ) {
+      data.outcomes = validated.values.outcomes ? serializeOutcomes(validated.values.outcomes) : null;
+    }
+
+    if (validated.values.nextSteps !== undefined && validated.values.nextSteps !== existing.nextSteps) {
+      data.nextSteps = validated.values.nextSteps;
+    }
+
+    if (
+      validated.values.engagementLevel !== undefined &&
+      validated.values.engagementLevel !== existing.engagementLevel
+    ) {
+      data.engagementLevel = validated.values.engagementLevel;
+    }
+
+    if (
+      validated.values.actionCommitment !== undefined &&
+      validated.values.actionCommitment !== existing.actionCommitment
+    ) {
+      data.actionCommitment = validated.values.actionCommitment;
+    }
+
+    if (validated.values.notes !== undefined && validated.values.notes !== existing.notes) {
+      data.notes = validated.values.notes;
+    }
+
+    if (Object.keys(data).length === 0) {
+      return jsonNoStore(
+        { error: "At least one mutable field with a changed value is required" },
+        { status: 422 }
+      );
     }
 
     const updateResult = await prisma.session.updateMany({

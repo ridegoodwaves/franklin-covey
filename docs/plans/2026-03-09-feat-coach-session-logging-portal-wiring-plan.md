@@ -12,6 +12,8 @@ slice: 3
 
 Build the coach-facing API layer and wire the existing coach portal pages to real data. Coaches will be able to log sessions against their engagements, with auto-save, engagement status auto-transitions, and a real-time dashboard. This is Slice 3 of the MVP — scoped to coach session logging and portal wiring only. Bulk import, NeedsAttentionFlag cron, flag resolution UI, and admin engagement detail are deferred.
 
+Historical update (2026-03-16): session field semantics were restructured in implementation. Use `outcomes` (array), `nextSteps`, `engagementLevel`, `actionCommitment`, and `notes` terminology in this plan where legacy terms appeared.
+
 **Users**: Coaches (starting with ~15 MLP/ALP panel, scaling to all coaches)
 **Deadline**: March 16, 2026
 
@@ -88,14 +90,16 @@ export interface CoachSessionRow {
   status: SessionStatus
   occurredAt: string | null
   topic: string | null
-  outcome: string | null
-  durationMinutes: number | null
-  privateNotes: string | null  // coach-only — never include in admin types
+  outcomes: string[] | null
+  nextSteps: string | null
+  engagementLevel: number | null
+  actionCommitment: string | null
+  notes: string | null  // visible to coaches + admins/ops; never participant-facing
   createdAt: string
 }
 ```
 
-When the admin engagement detail panel is built (deferred), create a separate `AdminSessionRow` type that deliberately excludes `privateNotes` as a compile-time boundary.
+When the admin engagement detail panel is built (deferred), use a dedicated admin mapper/type boundary and keep participant APIs excluded from session notes fields.
 
 #### 1.3 Extract `transitionEngagement` Helper
 
@@ -130,7 +134,7 @@ export async function transitionEngagement(
 ```typescript
 // src/lib/validation/session-validation.ts
 // Rules-map keyed by session status — no Zod dependency
-// COMPLETED requires: occurredAt, topic, outcome, durationMinutes
+// COMPLETED requires: occurredAt, topic, outcomes, nextSteps, engagementLevel, actionCommitment
 // FORFEITED_* requires: only status
 // Topic validation: (SESSION_TOPICS_BY_PROGRAM[code] as readonly string[]).includes(topic)
 ```
@@ -150,7 +154,7 @@ Note: `as const` arrays need an explicit cast for `.includes()`. Extract `isVali
 
 #### 2.1 Create Session — `POST /api/coach/sessions/route.ts`
 
-**Request**: `{ engagementId, occurredAt?, topic?, outcome?, durationMinutes?, privateNotes?, status }`
+**Request**: `{ engagementId, occurredAt?, topic?, outcomes?, nextSteps?, engagementLevel?, actionCommitment?, notes?, status }`
 
 **Success Response**: `{ item: CoachSessionRow }` with status 201
 
@@ -188,7 +192,7 @@ await prisma.$transaction(async (tx) => {
 
   // 3. Validate fields based on status (via session-validation.ts)
 
-  // 4. Create session — null out topic/outcome/duration for FORFEITED
+  // 4. Create session — null out topic/outcomes/nextSteps/engagementLevel/actionCommitment for FORFEITED
   const isForfeited = ['FORFEITED_CANCELLED', 'FORFEITED_NOT_USED'].includes(status)
   const session = await tx.session.create({
     data: {
@@ -197,9 +201,11 @@ await prisma.$transaction(async (tx) => {
       status,
       occurredAt: isForfeited ? (occurredAt ?? null) : occurredAt,
       topic: isForfeited ? null : topic,
-      outcome: isForfeited ? null : outcome,
-      durationMinutes: isForfeited ? null : durationMinutes,
-      privateNotes: privateNotes?.slice(0, 5000) ?? null,
+      outcomes: isForfeited ? null : serializeOutcomes(outcomes),
+      nextSteps: isForfeited ? null : nextSteps,
+      engagementLevel: isForfeited ? null : engagementLevel,
+      actionCommitment: isForfeited ? null : actionCommitment,
+      notes: notes?.slice(0, 5000) ?? null,
     },
   })
 
@@ -228,9 +234,9 @@ await prisma.$transaction(async (tx) => {
 })
 ```
 
-FORFEITED sessions have `topic`, `outcome`, and `durationMinutes` nulled server-side regardless of what the client sends. This prevents orphaned data in aggregate queries.
+FORFEITED sessions have `topic`, `outcomes`, `nextSteps`, `engagementLevel`, and `actionCommitment` nulled server-side regardless of what the client sends. This prevents orphaned data in aggregate queries.
 
-Strip control characters (`\u0000-\u001f` except `\n`, `\t`) from `privateNotes` on input. Validate `occurredAt` as valid ISO 8601 — `new Date("not-a-date")` yields `Invalid Date` silently.
+Strip control characters (`\u0000-\u001f` except `\n`, `\t`) from `notes` on input. Validate `occurredAt` as valid ISO 8601 — `new Date("not-a-date")` yields `Invalid Date` silently.
 
 **Validation rules by session status:**
 
@@ -238,16 +244,18 @@ Strip control characters (`\u0000-\u001f` except `\n`, `\t`) from `privateNotes`
 |-------|-----------|--------------------|--------------------|
 | `occurredAt` | Required (no future dates, ≥ 2026-01-01) | Optional | Optional |
 | `topic` | Required (validated against program) | Ignored (nulled) | Ignored (nulled) |
-| `outcome` | Required (validated against `SESSION_OUTCOMES`) | Ignored (nulled) | Ignored (nulled) |
-| `durationMinutes` | Required (validated against `DURATION_OPTIONS`) | Ignored (nulled) | Ignored (nulled) |
-| `privateNotes` | Optional (max 5000 chars, strip control chars) | Optional (max 5000 chars) | Optional (max 5000 chars) |
+| `outcomes` | Required non-empty array (validated against `SESSION_OUTCOMES`, duplicates rejected) | Must be `null` | Must be `null` |
+| `nextSteps` | Required (validated against `NEXT_STEPS_OPTIONS`) | Must be `null` | Must be `null` |
+| `engagementLevel` | Required integer 1-5 | Must be `null` | Must be `null` |
+| `actionCommitment` | Required (validated against `ACTION_COMMITMENT_OPTIONS`) | Must be `null` | Must be `null` |
+| `notes` | Optional (max 5000 chars, strip control chars) | Optional (max 5000 chars) | Optional (max 5000 chars) |
 
 **Error responses:**
 - 401 — not authenticated
 - 403 — authenticated COACH user is deactivated/archived (scope disabled)
 - 404 — engagement not found (also for ownership failures)
 - 409 — all sessions already logged, engagement in invalid status, or concurrent status change
-- 422 — validation error (invalid topic/outcome/duration, future date, malformed date)
+- 422 — validation error (invalid topic/outcomes/nextSteps/engagementLevel/actionCommitment, future date, malformed date)
 - 500 — unexpected error
 
 **Conflict/timeout mapping**:
@@ -271,20 +279,20 @@ for (let attempt = 0; attempt < 2; attempt++) {
 
 #### 2.2 Update Session — `PATCH /api/coach/sessions/[id]/route.ts`
 
-**Request**: `{ topic?, outcome?, durationMinutes?, privateNotes?, occurredAt? }`
+**Request**: `{ topic?, outcomes?, nextSteps?, engagementLevel?, actionCommitment?, notes?, occurredAt? }`
 
 **`status` is deliberately excluded from PATCH.** If PATCH accepted `status`, a coach could change FORFEITED_CANCELLED back to COMPLETED without going through the POST transaction logic. Use a whitelist pattern.
 
 **Success Response**: `{ item: CoachSessionRow }` with status 200
 
 - Verify coach owns engagement (via session → engagement → organizationCoachId)
-- Whitelist fields: only `topic`, `outcome`, `durationMinutes`, `privateNotes`, `occurredAt`
+- Whitelist fields: only `topic`, `outcomes`, `nextSteps`, `engagementLevel`, `actionCommitment`, `notes`, `occurredAt`
 - **No status transitions on PATCH** — PATCH is always a safe, idempotent field update
 - Apply validation against the **stored** `session.status`:
-  - `COMPLETED`: `occurredAt/topic/outcome/durationMinutes` must remain non-null and valid
-  - `FORFEITED_*`: `topic/outcome/durationMinutes` must stay null (reject non-null payload values)
+  - `COMPLETED`: `occurredAt/topic/outcomes/nextSteps/engagementLevel/actionCommitment` must remain non-null and valid
+  - `FORFEITED_*`: `outcomes/nextSteps/engagementLevel/actionCommitment` must stay null (reject non-null payload values)
 - `occurredAt` date validation: reject future dates, reject dates before 2026-01-01
-- `privateNotes`: max 5000 chars, strip control characters
+- `notes`: max 5000 chars, strip control characters
 - No optimistic locking needed — last-write-wins is acceptable for single-coach auto-save
 
 #### 2.3 Engagement Detail — `GET /api/coach/engagements/[id]/route.ts`
@@ -299,7 +307,7 @@ for (let attempt = 0; attempt < 2; attempt++) {
 
 - Verify coach owns engagement
 - Return all sessions ordered by `sessionNumber ASC`
-- Include all fields (topic, outcome, duration, privateNotes, status, occurredAt)
+- Include all fields (topic, outcomes, nextSteps, engagementLevel, actionCommitment, notes, status, occurredAt)
 - Filter: `archivedAt: null`
 - Response: `{ items: CoachSessionRow[], engagementId, totalSessions }`
 
@@ -399,7 +407,7 @@ This eliminates the "PATCH to undefined" bug and the "double-POST" race.
 - Wire auto-save → `PATCH /api/coach/sessions/${id}` with **5s** debounce + dirty-checking
 - Wire session timeline from API data
 - **"Book Next Session" button**: Show when `meetingBookingUrl` is non-null. Hide with message "Contact your program administrator" when null.
-- **Conditional form fields**: When status is FORFEITED_*, hide topic, outcome, duration fields
+- **Conditional form fields**: When status is FORFEITED_*, hide topic, outcomes, next steps, action-commitment, and engagement-level fields
 - Show last-saved timestamp for auto-save feedback
 - Toast notification on save failure with retry
 - Reduce animation stagger on form cards (current 50-450ms is excessive for a page coaches visit dozens of times per week — reduce to 0-30ms or remove)
@@ -454,7 +462,7 @@ function useAutoSave<T>({
 | 10 | **"Local-until-submit" auto-save** | No server calls until POST. Eliminates PATCH-to-undefined and double-POST races. |
 | 11 | **Advisory lock on session creation** | `pg_advisory_xact_lock(hashtext(engagementId))` serializes per-engagement. PgBouncer-safe. |
 | 12 | **404 for ownership failures** | Does not leak resource existence. |
-| 13 | **FORFEITED: null out topic/outcome/duration server-side** | Prevents orphaned data in aggregate queries. |
+| 13 | **FORFEITED: null out topic/outcomes/nextSteps/actionCommitment/engagementLevel server-side** | Prevents orphaned data in aggregate queries. |
 | 14 | **`meetingBookingUrl` is response-only naming** | Persisted DB field remains `bookingLinkPrimary`; API maps to stable frontend naming. |
 | 15 | **No "Upcoming Sessions"/"Next Session" in Slice 3 MVP** | Scheduling provider is external; no canonical "scheduled next" source in current schema. |
 
@@ -468,7 +476,7 @@ function useAutoSave<T>({
 - [x] statusVersion threaded correctly; failed transition rolls back entire transaction
 - [x] Coach ownership verified on every endpoint (not just role check)
 - [x] Topic validated against program-specific list (server-side)
-- [x] FORFEITED sessions: topic/outcome/duration nulled server-side
+- [x] FORFEITED sessions: topic/outcomes/nextSteps/actionCommitment/engagementLevel nulled server-side
 - [x] 409 returned when all sessions logged or engagement in invalid status
 - [x] `PATCH /api/coach/sessions/:id` accepts only whitelisted fields (no `status`)
 - [x] `PATCH /api/coach/sessions/:id` enforces status-aware invariants (COMPLETED required fields remain non-null; FORFEITED fields remain null)
@@ -489,14 +497,14 @@ function useAutoSave<T>({
 - [x] Topic dropdown is program-aware (MLP vs ALP/EF/EL topics)
 - [x] Dashboard and engagements list no longer show hardcoded scheduled-session UI (`Upcoming Sessions` / `Next session`) in Slice 3
 - [x] "Book Next Session" hidden when meetingBookingUrl is null
-- [x] Forfeited session form hides topic/outcome/duration fields
+- [x] Forfeited session form hides topic/outcomes/next steps/action-commitment/engagement-level fields
 - [x] `beforeunload` + `guardedPush` for unsaved changes warning
 - [x] Coach identity in `PortalShell` is API-driven (not static constants)
 
 ### Security
 - [x] Every coach API route checks ownership (not just COACH role)
-- [x] Private notes never exposed outside coach's own requests
-- [x] Private notes capped at 5000 characters with control char stripping
+- [x] Notes are visible only to authorized coach/admin scopes and never participant-facing
+- [x] Notes capped at 5000 characters with control char stripping
 - [x] Future dates rejected for occurredAt
 - [x] `status` field not accepted on PATCH
 - [x] resolveCoachScope verifies coach active + not archived
@@ -569,7 +577,7 @@ function useAutoSave<T>({
 - [ ] `onDelete: Restrict` on Session→Engagement (prevent cascade delete)
 - [ ] `CHECK ("sessionNumber" >= 1)` database constraint
 - [ ] `@@index([engagementId, occurredAt])` on Session for reporting
-- [ ] `AdminSessionRow` type (when admin engagement detail is built)
+- [ ] Dedicated admin session mapper/type boundary (when admin engagement detail is built)
 
 ## Files to Create
 

@@ -49,12 +49,37 @@ export function mapSessionRow(session: Session): CoachSessionRow {
     status: session.status,
     occurredAt: session.occurredAt ? session.occurredAt.toISOString() : null,
     topic: session.topic,
-    outcome: session.outcome,
-    durationMinutes: session.durationMinutes,
-    privateNotes: session.privateNotes,
+    outcomes: deserializeOutcomes(session.outcomes),
+    nextSteps: session.nextSteps,
+    engagementLevel: session.engagementLevel,
+    actionCommitment: session.actionCommitment,
+    notes: session.notes,
     createdAt: session.createdAt.toISOString(),
     updatedAt: session.updatedAt.toISOString(),
   };
+}
+
+export function serializeOutcomes(outcomes: string[]): string {
+  if (outcomes.length === 0) {
+    throw new Error("serializeOutcomes called with empty array — use null instead");
+  }
+  return JSON.stringify([...outcomes].sort());
+}
+
+export function deserializeOutcomes(raw: string | null): string[] | null {
+  if (raw === null) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    if (!parsed.every((item): item is string => typeof item === "string")) {
+      console.error("[deserializeOutcomes] non-string element in array", raw);
+      return null;
+    }
+    return parsed;
+  } catch (error) {
+    console.error("[deserializeOutcomes] failed to parse", raw, error);
+    return null;
+  }
 }
 
 export function isPrismaKnownError(
