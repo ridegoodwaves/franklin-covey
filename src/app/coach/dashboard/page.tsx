@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PortalShell } from "@/components/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -194,7 +195,7 @@ export default function CoachDashboardPage() {
           <Card>
             <CardContent className="divide-y divide-border/50 p-2">
               {dashboard.needsAttention.map((item) => (
-                <a
+                <Link
                   key={item.engagementId}
                   href={`/coach/engagements/${item.engagementId}`}
                   className="flex items-center justify-between rounded-md px-3 py-3 transition-colors hover:bg-amber-50"
@@ -204,7 +205,7 @@ export default function CoachDashboardPage() {
                     <p className="text-xs text-muted-foreground">{item.cohortCode}</p>
                   </div>
                   <span className="text-xs font-semibold text-amber-700">{item.daysOverdue}d overdue</span>
-                </a>
+                </Link>
               ))}
             </CardContent>
           </Card>
@@ -215,7 +216,7 @@ export default function CoachDashboardPage() {
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-display text-xl font-semibold text-fc-900">My Engagements</h2>
           <Button asChild variant="outline" size="sm">
-            <a href="/coach/engagements">View All</a>
+            <Link href="/coach/engagements">View All</Link>
           </Button>
         </div>
 
@@ -254,7 +255,7 @@ export default function CoachDashboardPage() {
           <Card>
             <CardContent className="divide-y divide-border/50 p-2">
               {currentRows.slice(0, 6).map((row) => (
-                <a
+                <Link
                   key={row.engagementId}
                   href={`/coach/engagements/${row.engagementId}`}
                   className="flex items-center justify-between gap-4 rounded-md px-3 py-3 transition-colors hover:bg-fc-50"
@@ -273,7 +274,7 @@ export default function CoachDashboardPage() {
                       {getStatusLabel(row.status)}
                     </Badge>
                   </div>
-                </a>
+                </Link>
               ))}
             </CardContent>
           </Card>

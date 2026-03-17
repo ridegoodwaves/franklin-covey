@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { PortalShell } from "@/components/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -255,7 +256,7 @@ export default function CoachEngagementsPage() {
           ) : current.data && current.data.items.length > 0 ? (
             <div className="space-y-2">
               {current.data.items.map((item) => (
-                <a
+                <Link
                   key={item.engagementId}
                   href={`/coach/engagements/${item.engagementId}`}
                   className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-4 py-3 transition-colors hover:bg-fc-50"
@@ -274,7 +275,7 @@ export default function CoachEngagementsPage() {
                       {getStatusLabel(item.status)}
                     </Badge>
                   </div>
-                </a>
+                </Link>
               ))}
             </div>
           ) : (
