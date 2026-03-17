@@ -47,7 +47,7 @@ The MVP runs on enterprise-grade managed services, purpose-selected for launch s
 
 - All data encrypted in transit (TLS) and at rest (Supabase-managed encryption).
 - **Row Level Security (RLS)** is enforced at the PostgreSQL layer — not just at the application layer — for all user-facing tables.
-- **Coach private notes** are restricted at the RLS level: only the assigned coach can read them.
+- **Session notes** are restricted at the RLS/API boundary: assigned coaches and scoped admins/ops can read them; participants cannot.
 
 ### Environment Isolation
 

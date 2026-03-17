@@ -405,6 +405,9 @@ Top action bar should stack on mobile:
 - [x] "Log Session" tab is hidden when all sessions are logged
 - [x] Session History is the default tab for completed engagements
 - [x] Coach can still edit past sessions via "Edit" buttons in Session History
+- [x] Forfeited statuses show "Forfeited - Cancelled" and "Forfeited - Not Used" (not raw enum)
+- [x] No dead zone at bottom of page when scrolling the session form
+- [x] All coach portal pages audited for scroll dead zone
 
 ### Design polish
 - [x] All field labels use `text-fc-950 text-sm font-medium` (dark, readable — not blue links)
@@ -426,6 +429,41 @@ Top action bar should stack on mobile:
 
 ---
 
+## Bug 7: Forfeited Status Labels Show Raw Enum Values (NEW — Smoke Test Round 2)
+
+**File:** `src/lib/utils.ts:43-57`
+
+**Problem:** Session timeline shows `FORFEITED_CANCELLED` and `FORFEITED_NOT_USED` with underscores instead of human-readable labels. The `getStatusLabel()` function has no entries for these session statuses — only engagement statuses. The fallback at line 56 returns the raw enum string.
+
+**Fix:** Add two entries to the `labels` map in `getStatusLabel()`:
+
+```typescript
+FORFEITED_CANCELLED: "Forfeited - Cancelled",
+FORFEITED_NOT_USED: "Forfeited - Not Used",
+```
+
+**Effort:** 1 minute.
+
+---
+
+## Bug 8: Page Scrolling Dead Zone at Bottom (NEW — Smoke Test Round 2)
+
+**File:** `src/components/navigation.tsx:86` + `src/app/coach/engagements/[id]/page.tsx`
+
+**Problem:** When scrolling the session logging form, a static/dead zone appears at the bottom of the page. The form is long (8+ fields) and the last fields or submit area may be cut off or require extra scrolling past empty space.
+
+**Root cause:** The `PortalShell` uses `h-screen overflow-hidden` on the root container (navigation.tsx:86) with `flex-1 overflow-auto` on the main content area (line 216). If any child element adds extra height below the scrollable content (padding, margin, or a fixed-height element), a dead zone appears.
+
+**Fix approach:**
+
+1. Add bottom padding to the engagement detail page content to ensure the form's last fields are fully accessible: `pb-12` or `pb-16` on the main content wrapper.
+2. Audit other coach portal pages (dashboard, engagements list) for the same issue.
+3. If the dead zone is caused by the mobile header's `sticky top-0` (line 218) miscalculating available height, adjust the main scroll container's height calculation.
+
+**Effort:** 15 min (including audit of other pages).
+
+---
+
 ## Files Changed
 
 | # | File | Changes |
@@ -434,6 +472,8 @@ Top action bar should stack on mobile:
 | 2 | `src/hooks/use-auto-save.ts` | Fix save loop: stable serialization comparison, skip no-op saves |
 | 3 | `src/app/coach/engagements/[id]/page.tsx` | Derive progress from sessions array, hide Log tab when complete, form spacing, label colors, section grouping, auto-save status text |
 | 4 | `src/app/coach/engagements/page.tsx` | Force refetch on mount when returning from detail page |
+| 5 | `src/lib/utils.ts` | Add FORFEITED_CANCELLED and FORFEITED_NOT_USED to getStatusLabel() |
+| 6 | `src/components/navigation.tsx` | Audit scroll container; may need height adjustment |
 
 ---
 
