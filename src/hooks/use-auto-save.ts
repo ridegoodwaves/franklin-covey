@@ -14,7 +14,7 @@ interface UseAutoSaveParams<T> {
 
 interface UseAutoSaveResult {
   saveStatus: SaveStatus;
-  flush: () => Promise<void>;
+  flush: () => Promise<boolean>;
   hasPendingChanges: boolean;
   isSaving: boolean;
   hasError: boolean;
@@ -61,15 +61,16 @@ export function useAutoSave<T>({
     enabledRef.current = enabled;
   }, [enabled]);
 
-  const executeSave = useCallback(async () => {
-    if (!enabledRef.current || isSavingRef.current) return;
+  const executeSave = useCallback(async (): Promise<boolean> => {
+    if (!enabledRef.current) return true;
+    if (isSavingRef.current) return !hasErrorRef.current;
 
     const snapshot = dataRef.current;
     const snapshotSerialized = JSON.stringify(snapshot);
 
     if (snapshotSerialized === lastSavedSerializedRef.current) {
       if (!hasErrorRef.current) setSaveStatus("idle");
-      return;
+      return true;
     }
 
     isSavingRef.current = true;
@@ -90,19 +91,21 @@ export function useAutoSave<T>({
           }
         }
       }, 1200);
+      return true;
     } catch {
       hasErrorRef.current = true;
       setHasError(true);
       setSaveStatus("error");
+      return false;
     } finally {
       isSavingRef.current = false;
       setIsSaving(false);
     }
   }, []);
 
-  const flush = useCallback(async () => {
+  const flush = useCallback(async (): Promise<boolean> => {
     clearTimer();
-    await executeSave();
+    return executeSave();
   }, [clearTimer, executeSave]);
 
   useEffect(() => {

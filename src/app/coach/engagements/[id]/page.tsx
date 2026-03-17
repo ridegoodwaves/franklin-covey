@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import { EngagementStatus, SessionStatus } from "@prisma/client";
 import { PortalShell } from "@/components/navigation";
@@ -81,6 +81,71 @@ function toPatchPayload(form: SessionFormState): UpdateCoachSessionInput {
 
 const ENGAGEMENT_LIST_STALE_KEY = "engagement-list-stale";
 
+function normalizeTextValue(value: string | null): string | null {
+  const normalized = value?.trim() || "";
+  return normalized.length > 0 ? normalized : null;
+}
+
+function normalizeOutcomeValue(value: string[] | null): string[] | null {
+  if (!value) return null;
+  const trimmed = value.map((entry) => entry.trim()).filter((entry) => entry.length > 0);
+  if (trimmed.length === 0) return null;
+  return [...trimmed].sort((left, right) => left.localeCompare(right));
+}
+
+function areOutcomesEqual(left: string[] | null, right: string[] | null): boolean {
+  const normalizedLeft = normalizeOutcomeValue(left);
+  const normalizedRight = normalizeOutcomeValue(right);
+  if (normalizedLeft === null || normalizedRight === null) {
+    return normalizedLeft === normalizedRight;
+  }
+  if (normalizedLeft.length !== normalizedRight.length) return false;
+  return normalizedLeft.every((value, index) => value === normalizedRight[index]);
+}
+
+function buildAutoSavePayload(
+  form: SessionFormState,
+  selectedSession: CoachSessionRow | null
+): UpdateCoachSessionInput {
+  if (!selectedSession) return {};
+
+  const payload: UpdateCoachSessionInput = {};
+  const next = toPatchPayload(form);
+
+  if (form.occurredAt !== toDateInput(selectedSession.occurredAt)) {
+    payload.occurredAt = next.occurredAt ?? null;
+  }
+
+  if (normalizeTextValue(next.topic ?? null) !== normalizeTextValue(selectedSession.topic)) {
+    payload.topic = next.topic ?? null;
+  }
+
+  if (!areOutcomesEqual(next.outcomes ?? null, selectedSession.outcomes ?? null)) {
+    payload.outcomes = next.outcomes ?? null;
+  }
+
+  if (normalizeTextValue(next.nextSteps ?? null) !== normalizeTextValue(selectedSession.nextSteps)) {
+    payload.nextSteps = next.nextSteps ?? null;
+  }
+
+  if (next.engagementLevel !== selectedSession.engagementLevel) {
+    payload.engagementLevel = next.engagementLevel ?? null;
+  }
+
+  if (
+    normalizeTextValue(next.actionCommitment ?? null) !==
+    normalizeTextValue(selectedSession.actionCommitment)
+  ) {
+    payload.actionCommitment = next.actionCommitment ?? null;
+  }
+
+  if (normalizeTextValue(next.notes ?? null) !== normalizeTextValue(selectedSession.notes)) {
+    payload.notes = next.notes ?? null;
+  }
+
+  return payload;
+}
+
 function AutoSaveText({
   status,
   savedAt,
@@ -126,6 +191,7 @@ function AutoSaveText({
 
 export default function CoachEngagementDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const engagementId = params.id;
 
   const portalUser = usePortalUser({
@@ -271,10 +337,14 @@ export default function CoachEngagementDetailPage() {
     setEngagementLevelError(form.engagementLevel === null);
   }, [form, isForfeited, showRequiredValidation]);
 
-  const autoSavePayload = useMemo(() => toPatchPayload(form), [form]);
+  const autoSavePayload = useMemo(
+    () => buildAutoSavePayload(form, selectedSession),
+    [form, selectedSession]
+  );
   const handleAutoSave = useCallback(
     async (payload: UpdateCoachSessionInput) => {
       if (!selectedSessionId) return;
+      if (Object.keys(payload).length === 0) return;
       const response = await updateCoachSession(selectedSessionId, payload);
       setSessions((previous) =>
         previous.map((row) => (row.id === response.item.id ? response.item : row))
@@ -310,18 +380,22 @@ export default function CoachEngagementDetailPage() {
       form.status !== SessionStatus.COMPLETED);
 
   const unsaved = useUnsavedChangesWarning({
-    hasUnsavedChanges:
-      hasComposeChanges || autoSave.hasPendingChanges || autoSave.isSaving || autoSave.hasError,
+    hasUnsavedChanges: hasComposeChanges || autoSave.hasPendingChanges || autoSave.hasError,
   });
 
-  const handleShellNavigate = useCallback(
-    async (_href: string) => {
-      if (isEditingExisting && autoSave.hasPendingChanges) {
-        await autoSave.flush();
+  const confirmSafeNavigation = useCallback(async (): Promise<boolean> => {
+    if (isEditingExisting && autoSave.hasPendingChanges) {
+      const flushed = await autoSave.flush();
+      if (flushed) {
+        return true;
       }
-      return unsaved.confirmNavigation();
-    },
-    [autoSave, isEditingExisting, unsaved]
+    }
+    return unsaved.confirmNavigation();
+  }, [autoSave, isEditingExisting, unsaved]);
+
+  const handleShellNavigate = useCallback(
+    async () => confirmSafeNavigation(),
+    [confirmSafeNavigation]
   );
 
   async function handleSubmitNewSession() {
@@ -388,10 +462,9 @@ export default function CoachEngagementDetailPage() {
   }
 
   async function handleBack() {
-    if (isEditingExisting && autoSave.hasPendingChanges) {
-      await autoSave.flush();
-    }
-    await unsaved.guardedPush("/coach/engagements");
+    const canNavigate = await confirmSafeNavigation();
+    if (!canNavigate) return;
+    router.push("/coach/engagements");
   }
 
   if (loading) {
@@ -708,13 +781,10 @@ export default function CoachEngagementDetailPage() {
                         </p>
                       ) : null}
 
-                      <fieldset style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+                      <fieldset className="mt-6" style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
                         <legend className="text-sm font-medium text-fc-950">
                           Participant Engagement Level
                         </legend>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          1 = Disengaged, 3 = Moderately engaged, 5 = Exceptionally engaged
-                        </p>
                         <div className="mt-3 flex items-center gap-2">
                           {ENGAGEMENT_LEVEL_OPTIONS.map(({ value }) => (
                             <label
@@ -745,6 +815,24 @@ export default function CoachEngagementDetailPage() {
                               {value}
                             </label>
                           ))}
+                        </div>
+                        <div className="mt-4 grid gap-2 md:grid-cols-3">
+                          {ENGAGEMENT_LEVEL_OPTIONS.filter((option) => option.description).map(
+                            ({ value, label, description }) => (
+                              <div
+                                key={value}
+                                className={cn(
+                                  "rounded-md border px-3 py-2 text-xs leading-relaxed",
+                                  form.engagementLevel === value
+                                    ? "border-fc-300 bg-fc-50/80 text-fc-900"
+                                    : "border-border/60 bg-muted/20 text-muted-foreground"
+                                )}
+                              >
+                                <p className="font-semibold text-fc-900">{label}</p>
+                                <p className="mt-1">{description}</p>
+                              </div>
+                            )
+                          )}
                         </div>
                         {engagementLevelError ? (
                           <p
