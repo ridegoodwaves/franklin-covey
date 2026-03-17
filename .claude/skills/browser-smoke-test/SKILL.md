@@ -42,6 +42,21 @@ If no URL is provided, prompt the user for the target environment URL (e.g., `ht
 - If a tool returns an error indicating the tab doesn't exist, call `tabs_context_mcp` for fresh IDs.
 - Do NOT close the user's other tabs. Only interact with your test tab.
 
+## Extension Resilience
+
+The Chrome extension communicates via WebSocket and can intermittently disconnect. Handle this gracefully:
+
+- **Detection:** If any MCP tool call returns a connection error, timeout, or "extension not connected" message, do NOT retry the same call immediately in a loop.
+- **Recovery sequence:**
+  1. Inform the user: "Chrome extension disconnected. Please verify the extension is active in Chrome (look for the icon in the toolbar)."
+  2. Wait for user confirmation that the extension is responsive.
+  3. Call `tabs_context_mcp` to re-establish connection and get fresh tab state.
+  4. Re-create the test tab if the previous one is no longer valid.
+  5. Resume from the last successfully completed scenario step (not from the beginning).
+- **Prevention:** Avoid rapid-fire sequential tool calls with no pause between them. Allow the page to settle after navigation before issuing the next command.
+- **Progress tracking:** After each scenario completes, note the result immediately. If a disconnect occurs, you can resume from the next incomplete scenario rather than replaying the entire flow.
+- **Max retries:** If the extension disconnects more than 3 times in a single test run, stop and ask the user to restart Chrome or reload the extension before continuing.
+
 ## Dialog Safety
 
 CRITICAL: Do NOT trigger JavaScript `alert()`, `confirm()`, or `prompt()` dialogs through your actions. Browser dialogs block the Chrome extension from receiving further commands.
@@ -393,5 +408,7 @@ After all flows complete, write results to `docs/checklists/smoke-test-results-{
 - **Console flooded with noise:** Use the `pattern` parameter on `read_console_messages` to filter (e.g., `"error|Error|ERR|fail|Fail"`). Ignore React hydration warnings in development.
 - **Auto-save not triggering:** The debounce is 5 seconds. Wait at least 6 seconds after the last input before checking for the "Saved" indicator.
 - **Extension unresponsive after dialog:** A native browser dialog (`alert`/`confirm`/`prompt`) was triggered. Ask the user to manually dismiss it in Chrome, then retry.
+- **Extension disconnected mid-test:** WebSocket connection dropped. Follow the Extension Resilience recovery sequence above. Do NOT retry in a loop — wait for user confirmation that the extension is back.
+- **Timeout on tool call:** The extension may be connected but the page is slow. Try `tabs_context_mcp` first — if that succeeds, the extension is fine; retry the original action. If it also fails, follow the disconnect recovery sequence.
 - **Form dropdowns not working:** Some dropdowns may be custom components (not native `<select>`). Use `computer` to click the dropdown trigger, wait for the menu to appear, then click the option.
 - **Mobile viewport issues:** After using `resize_window`, some pages may need a reload to re-render correctly. Navigate to the page again after resizing.
