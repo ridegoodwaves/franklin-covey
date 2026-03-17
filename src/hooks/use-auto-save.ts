@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -38,9 +38,10 @@ export function useAutoSave<T>({
   const onSaveRef = useRef(onSave);
   const enabledRef = useRef(enabled);
 
-  const serialized = JSON.stringify(data);
+  const serialized = useMemo(() => JSON.stringify(data), [data]);
+  const [lastSavedSerialized, setLastSavedSerialized] = useState(serialized);
   const lastSavedSerializedRef = useRef<string>(serialized);
-  const hasPendingChanges = enabled && serialized !== lastSavedSerializedRef.current;
+  const hasPendingChanges = enabled && serialized !== lastSavedSerialized;
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -82,6 +83,7 @@ export function useAutoSave<T>({
     try {
       await onSaveRef.current(snapshot);
       lastSavedSerializedRef.current = snapshotSerialized;
+      setLastSavedSerialized(snapshotSerialized);
 
       setSaveStatus("saved");
       window.setTimeout(() => {
@@ -122,6 +124,7 @@ export function useAutoSave<T>({
       setHasError(false);
       setSaveStatus("idle");
       lastSavedSerializedRef.current = serialized;
+      setLastSavedSerialized(serialized);
       return;
     }
 
@@ -142,7 +145,9 @@ export function useAutoSave<T>({
     isSavingRef.current = false;
     setIsSaving(false);
     setSaveStatus("idle");
-    lastSavedSerializedRef.current = JSON.stringify(dataRef.current);
+    const nextSerialized = JSON.stringify(dataRef.current);
+    lastSavedSerializedRef.current = nextSerialized;
+    setLastSavedSerialized(nextSerialized);
   }, [clearTimer, identity]);
 
   useEffect(() => {
