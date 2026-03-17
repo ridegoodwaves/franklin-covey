@@ -212,10 +212,6 @@ export default function CoachEngagementDetailPage() {
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
 
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
-  const [outcomesError, setOutcomesError] = useState(false);
-  const [nextStepsError, setNextStepsError] = useState(false);
-  const [actionCommitmentError, setActionCommitmentError] = useState(false);
-  const [engagementLevelError, setEngagementLevelError] = useState(false);
 
   const firstOutcomeRef = useRef<HTMLInputElement | null>(null);
 
@@ -296,10 +292,6 @@ export default function CoachEngagementDetailPage() {
 
   useEffect(() => {
     setHasAttemptedSubmit(false);
-    setOutcomesError(false);
-    setNextStepsError(false);
-    setActionCommitmentError(false);
-    setEngagementLevelError(false);
 
     if (!selectedSession) {
       setForm(defaultFormState());
@@ -321,21 +313,14 @@ export default function CoachEngagementDetailPage() {
   }, [selectedSession]);
 
   const showRequiredValidation = isEditingExisting || hasAttemptedSubmit;
-
-  useEffect(() => {
-    if (!showRequiredValidation || isForfeited) {
-      setOutcomesError(false);
-      setNextStepsError(false);
-      setActionCommitmentError(false);
-      setEngagementLevelError(false);
-      return;
-    }
-
-    setOutcomesError(form.outcomes.length === 0);
-    setNextStepsError(form.nextSteps.length === 0);
-    setActionCommitmentError(form.actionCommitment.length === 0);
-    setEngagementLevelError(form.engagementLevel === null);
-  }, [form, isForfeited, showRequiredValidation]);
+  const outcomesError =
+    showRequiredValidation && !isForfeited && form.outcomes.length === 0;
+  const nextStepsError =
+    showRequiredValidation && !isForfeited && form.nextSteps.length === 0;
+  const actionCommitmentError =
+    showRequiredValidation && !isForfeited && form.actionCommitment.length === 0;
+  const engagementLevelError =
+    showRequiredValidation && !isForfeited && form.engagementLevel === null;
 
   const autoSavePayload = useMemo(
     () => buildAutoSavePayload(form, selectedSession),
@@ -409,11 +394,6 @@ export default function CoachEngagementDetailPage() {
       const nextNextStepsError = form.nextSteps.length === 0;
       const nextActionCommitmentError = form.actionCommitment.length === 0;
       const nextEngagementLevelError = form.engagementLevel === null;
-
-      setOutcomesError(nextOutcomesError);
-      setNextStepsError(nextNextStepsError);
-      setActionCommitmentError(nextActionCommitmentError);
-      setEngagementLevelError(nextEngagementLevelError);
 
       if (
         nextOutcomesError ||
@@ -610,14 +590,8 @@ export default function CoachEngagementDetailPage() {
                                 actionCommitment: "",
                                 engagementLevel: null,
                               }
-                            : {}),
-                        }));
-                        if (hasForfeitStatus(status)) {
-                          setOutcomesError(false);
-                          setNextStepsError(false);
-                          setActionCommitmentError(false);
-                          setEngagementLevelError(false);
-                        }
+                        : {}),
+                    }));
                       }}
                       className="w-full rounded-md border border-border px-3 py-2 text-sm"
                     >
@@ -709,9 +683,6 @@ export default function CoachEngagementDetailPage() {
                                       ),
                                     };
                                   });
-                                  if (outcomesError) {
-                                    setOutcomesError(false);
-                                  }
                                 }}
                                 className="h-4 w-4 rounded border-gray-300 text-fc-600 focus:ring-fc-500"
                                 aria-required="true"
@@ -750,9 +721,6 @@ export default function CoachEngagementDetailPage() {
                           onChange={(event) => {
                             const value = event.target.value;
                             setForm((previous) => ({ ...previous, nextSteps: value }));
-                            if (nextStepsError && value.length > 0) {
-                              setNextStepsError(false);
-                            }
                           }}
                           className="w-full rounded-md border border-border px-3 py-2 text-sm"
                           aria-required="true"
@@ -803,9 +771,6 @@ export default function CoachEngagementDetailPage() {
                                 checked={form.engagementLevel === value}
                                 onChange={() => {
                                   setForm((previous) => ({ ...previous, engagementLevel: value }));
-                                  if (engagementLevelError) {
-                                    setEngagementLevelError(false);
-                                  }
                                 }}
                                 className="sr-only"
                                 aria-required="true"
@@ -858,9 +823,6 @@ export default function CoachEngagementDetailPage() {
                           onChange={(event) => {
                             const value = event.target.value;
                             setForm((previous) => ({ ...previous, actionCommitment: value }));
-                            if (actionCommitmentError && value.length > 0) {
-                              setActionCommitmentError(false);
-                            }
                           }}
                           className="w-full rounded-md border border-border px-3 py-2 text-sm"
                           aria-required="true"

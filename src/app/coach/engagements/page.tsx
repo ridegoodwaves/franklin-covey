@@ -56,142 +56,124 @@ export default function CoachEngagementsPage() {
   }, []);
 
   useEffect(() => {
-    if (!refreshAllTabs) return;
-
     const controller = new AbortController();
 
-    async function reloadAllTabs() {
+    async function loadEngagements() {
+      if (refreshAllTabs) {
+        setTabs((previous) => ({
+          active: { ...previous.active, page: 1, loading: true, error: null },
+          completed: { ...previous.completed, page: 1, loading: true, error: null },
+        }));
+
+        const [activeResult, completedResult] = await Promise.allSettled([
+          fetchCoachEngagements("active", 1, controller.signal),
+          fetchCoachEngagements("completed", 1, controller.signal),
+        ]);
+
+        if (controller.signal.aborted) return;
+
+        setTabs((previous) => ({
+          active:
+            activeResult.status === "fulfilled"
+              ? {
+                  ...previous.active,
+                  page: 1,
+                  data: activeResult.value,
+                  loading: false,
+                  error: null,
+                }
+              : {
+                  ...previous.active,
+                  page: 1,
+                  loading: false,
+                  error: getErrorMessage(activeResult.reason),
+                },
+          completed:
+            completedResult.status === "fulfilled"
+              ? {
+                  ...previous.completed,
+                  page: 1,
+                  data: completedResult.value,
+                  loading: false,
+                  error: null,
+                }
+              : {
+                  ...previous.completed,
+                  page: 1,
+                  loading: false,
+                  error: getErrorMessage(completedResult.reason),
+                },
+        }));
+
+        setRefreshAllTabs(false);
+        return;
+      }
+
+      const currentPage = tabs[tab].page;
+      const shouldPrefetchCompleted = tab === "active" && tabs.completed.data === null;
+
       setTabs((previous) => ({
-        active: { ...previous.active, page: 1, loading: true, error: null },
-        completed: { ...previous.completed, page: 1, loading: true, error: null },
+        ...previous,
+        [tab]: { ...previous[tab], loading: true, error: null },
+        ...(shouldPrefetchCompleted
+          ? {
+              completed: { ...previous.completed, loading: true, error: null },
+            }
+          : {}),
       }));
 
-      const [activeResult, completedResult] = await Promise.allSettled([
-        fetchCoachEngagements("active", 1, controller.signal),
-        fetchCoachEngagements("completed", 1, controller.signal),
+      const results = await Promise.allSettled([
+        fetchCoachEngagements(tab, currentPage, controller.signal),
+        ...(shouldPrefetchCompleted
+          ? [fetchCoachEngagements("completed", 1, controller.signal)]
+          : []),
       ]);
 
       if (controller.signal.aborted) return;
 
-      setTabs((previous) => ({
-        active:
-          activeResult.status === "fulfilled"
+      setTabs((previous) => {
+        const next = { ...previous };
+        const primaryResult = results[0];
+
+        next[tab] =
+          primaryResult.status === "fulfilled"
             ? {
-                ...previous.active,
-                page: 1,
-                data: activeResult.value,
+                ...previous[tab],
+                data: primaryResult.value,
                 loading: false,
                 error: null,
               }
             : {
-                ...previous.active,
-                page: 1,
+                ...previous[tab],
                 loading: false,
-                error: getErrorMessage(activeResult.reason),
-              },
-        completed:
-          completedResult.status === "fulfilled"
-            ? {
-                ...previous.completed,
-                page: 1,
-                data: completedResult.value,
-                loading: false,
-                error: null,
-              }
-            : {
-                ...previous.completed,
-                page: 1,
-                loading: false,
-                error: getErrorMessage(completedResult.reason),
-              },
-      }));
+                error: getErrorMessage(primaryResult.reason),
+              };
 
-      setRefreshAllTabs(false);
-    }
-
-    void reloadAllTabs();
-    return () => controller.abort();
-  }, [refreshAllTabs]);
-
-  useEffect(() => {
-    if (refreshAllTabs) return;
-
-    const controller = new AbortController();
-    const current = tabs[tab];
-
-    async function loadPage() {
-      setTabs((previous) => ({
-        ...previous,
-        [tab]: { ...previous[tab], loading: true, error: null },
-      }));
-
-      try {
-        const data = await fetchCoachEngagements(tab, current.page, controller.signal);
-        setTabs((previous) => ({
-          ...previous,
-          [tab]: {
-            ...previous[tab],
-            data,
-            loading: false,
-            error: null,
-          },
-        }));
-      } catch (error) {
-        if (controller.signal.aborted) return;
-        const message = getErrorMessage(error);
-        setTabs((previous) => ({
-          ...previous,
-          [tab]: {
-            ...previous[tab],
-            loading: false,
-            error: message,
-          },
-        }));
-      }
-    }
-
-    void loadPage();
-    return () => controller.abort();
-  }, [refreshAllTabs, tab, tabs[tab].page]);
-
-  useEffect(() => {
-    if (refreshAllTabs) return;
-    if (tab === "completed") return;
-    if (tabs.completed.data || tabs.completed.loading) return;
-
-    const controller = new AbortController();
-
-    async function prefetchCompletedCount() {
-      setTabs((previous) => ({
-        ...previous,
-        completed: { ...previous.completed, loading: true, error: null },
-      }));
-
-      try {
-        const data = await fetchCoachEngagements("completed", 1, controller.signal);
-        setTabs((previous) => ({
-          ...previous,
-          completed: {
-            ...previous.completed,
-            page: 1,
-            data,
-            loading: false,
-            error: null,
-          },
-        }));
-      } catch {
-        if (!controller.signal.aborted) {
-          setTabs((previous) => ({
-            ...previous,
-            completed: { ...previous.completed, loading: false },
-          }));
+        if (shouldPrefetchCompleted) {
+          const completedResult = results[1];
+          if (completedResult?.status === "fulfilled") {
+            next.completed = {
+              ...previous.completed,
+              page: 1,
+              data: completedResult.value,
+              loading: false,
+              error: null,
+            };
+          } else if (completedResult?.status === "rejected") {
+            next.completed = {
+              ...previous.completed,
+              loading: false,
+            };
+          }
         }
-      }
+
+        return next;
+      });
     }
 
-    void prefetchCompletedCount();
+    void loadEngagements();
     return () => controller.abort();
-  }, [refreshAllTabs, tab, tabs.completed.data, tabs.completed.loading]);
+  }, [refreshAllTabs, tab, tabs.active.page, tabs.completed.page]);
 
   const activeCount =
     tabs.active.data?.totalItems !== undefined
