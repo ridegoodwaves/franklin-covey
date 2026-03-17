@@ -153,8 +153,57 @@ export default function CoachEngagementsPage() {
     return () => controller.abort();
   }, [refreshAllTabs, tab, tabs[tab].page]);
 
-  const activeCount = tabs.active.data?.totalItems || 0;
-  const completedCount = tabs.completed.data?.totalItems || 0;
+  useEffect(() => {
+    if (refreshAllTabs) return;
+    if (tab === "completed") return;
+    if (tabs.completed.data || tabs.completed.loading) return;
+
+    const controller = new AbortController();
+
+    async function prefetchCompletedCount() {
+      setTabs((previous) => ({
+        ...previous,
+        completed: { ...previous.completed, loading: true, error: null },
+      }));
+
+      try {
+        const data = await fetchCoachEngagements("completed", 1, controller.signal);
+        setTabs((previous) => ({
+          ...previous,
+          completed: {
+            ...previous.completed,
+            page: 1,
+            data,
+            loading: false,
+            error: null,
+          },
+        }));
+      } catch {
+        if (!controller.signal.aborted) {
+          setTabs((previous) => ({
+            ...previous,
+            completed: { ...previous.completed, loading: false },
+          }));
+        }
+      }
+    }
+
+    void prefetchCompletedCount();
+    return () => controller.abort();
+  }, [refreshAllTabs, tab, tabs.completed.data, tabs.completed.loading]);
+
+  const activeCount =
+    tabs.active.data?.totalItems !== undefined
+      ? String(tabs.active.data.totalItems)
+      : tabs.active.loading
+        ? "..."
+        : "0";
+  const completedCount =
+    tabs.completed.data?.totalItems !== undefined
+      ? String(tabs.completed.data.totalItems)
+      : tabs.completed.loading
+        ? "..."
+        : "0";
   const current = tabs[tab];
 
   function changePage(nextPage: number) {

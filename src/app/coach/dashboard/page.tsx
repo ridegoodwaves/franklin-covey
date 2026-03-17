@@ -132,6 +132,8 @@ export default function CoachDashboardPage() {
   const activeRows = engagementPages.active?.items || [];
   const completedRows = engagementPages.completed?.items || [];
   const currentRows = tab === "active" ? activeRows : completedRows;
+  const activeTabCount = engagementPages.active?.totalItems ?? dashboard?.activeCount ?? 0;
+  const completedTabCount = engagementPages.completed?.totalItems ?? dashboard?.completedCount ?? 0;
 
   const coachName = useMemo(() => {
     if (dashboard?.coachName) return dashboard.coachName;
@@ -225,11 +227,11 @@ export default function CoachDashboardPage() {
           <TabsList>
             <TabsTrigger value="active">
               Active
-              <span className="ml-1.5 text-[10px] font-semibold">{activeRows.length}</span>
+              <span className="ml-1.5 text-[10px] font-semibold">{activeTabCount}</span>
             </TabsTrigger>
             <TabsTrigger value="completed">
               Completed
-              <span className="ml-1.5 text-[10px] font-semibold">{completedRows.length}</span>
+              <span className="ml-1.5 text-[10px] font-semibold">{completedTabCount}</span>
             </TabsTrigger>
           </TabsList>
         </Tabs>
