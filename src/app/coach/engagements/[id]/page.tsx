@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { SessionStatus } from "@prisma/client";
+import { Check } from "lucide-react";
+import { EngagementStatus, SessionStatus } from "@prisma/client";
 import { PortalShell } from "@/components/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -78,6 +79,8 @@ function toPatchPayload(form: SessionFormState): UpdateCoachSessionInput {
   };
 }
 
+const ENGAGEMENT_LIST_STALE_KEY = "engagement-list-stale";
+
 function AutoSaveText({
   status,
   savedAt,
@@ -85,16 +88,30 @@ function AutoSaveText({
   status: "idle" | "saving" | "saved" | "error";
   savedAt: string | null;
 }) {
-  if (status === "saving") return <p className="text-xs text-fc-600">Saving...</p>;
+  if (status === "saving") {
+    return (
+      <p className="flex items-center gap-1.5 text-xs text-muted-foreground animate-pulse-subtle">
+        <span className="h-1.5 w-1.5 rounded-full bg-fc-400" />
+        Saving...
+      </p>
+    );
+  }
   if (status === "error") {
     return <p className="text-xs text-red-700">Auto-save failed. Changes remain in the form.</p>;
   }
-  if (status === "saved") return <p className="text-xs text-emerald-700">Saved</p>;
+  if (status === "saved") {
+    return (
+      <p className="flex items-center gap-1.5 text-xs text-emerald-700">
+        <Check className="h-3.5 w-3.5" aria-hidden="true" />
+        All changes saved
+      </p>
+    );
+  }
   if (savedAt) {
     const date = new Date(savedAt);
     return (
       <p className="text-xs text-muted-foreground">
-        Last saved{" "}
+        All changes saved · Last updated{" "}
         {date.toLocaleString("en-US", {
           month: "short",
           day: "numeric",
@@ -143,6 +160,11 @@ export default function CoachEngagementDetailPage() {
 
   const isEditingExisting = Boolean(selectedSession);
   const isForfeited = hasForfeitStatus(form.status);
+  const sessionsCompleted = sessions.length;
+  const totalSessions = engagement?.totalSessions ?? 0;
+  const allSessionsLogged = engagement !== null && sessionsCompleted >= totalSessions;
+  const showLogTab = !allSessionsLogged || isEditingExisting;
+  const visibleActiveTab: "log" | "history" = showLogTab ? activeTab : "history";
 
   const topics = useMemo(() => {
     if (!engagement) return [] as readonly string[];
@@ -167,6 +189,12 @@ export default function CoachEngagementDetailPage() {
     engagement !== null &&
     activeSessionNumber < engagement.totalSessions &&
     form.nextSteps === "Program concluded, no next session";
+
+  useEffect(() => {
+    if (allSessionsLogged && activeTab === "log" && !isEditingExisting) {
+      setActiveTab("history");
+    }
+  }, [activeTab, allSessionsLogged, isEditingExisting]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -244,13 +272,8 @@ export default function CoachEngagementDetailPage() {
   }, [form, isForfeited, showRequiredValidation]);
 
   const autoSavePayload = useMemo(() => toPatchPayload(form), [form]);
-
-  const autoSave = useAutoSave({
-    data: autoSavePayload,
-    identity: selectedSessionId || "new",
-    enabled: isEditingExisting,
-    debounceMs: 5000,
-    onSave: async (payload) => {
+  const handleAutoSave = useCallback(
+    async (payload: UpdateCoachSessionInput) => {
       if (!selectedSessionId) return;
       const response = await updateCoachSession(selectedSessionId, payload);
       setSessions((previous) =>
@@ -259,7 +282,21 @@ export default function CoachEngagementDetailPage() {
       setLastSavedAt(response.item.updatedAt);
       setSubmitError(null);
     },
+    [selectedSessionId]
+  );
+
+  const autoSave = useAutoSave({
+    data: autoSavePayload,
+    identity: selectedSessionId || "new",
+    enabled: isEditingExisting,
+    debounceMs: 5000,
+    onSave: handleAutoSave,
   });
+
+  const markEngagementListStale = useCallback(() => {
+    if (typeof window === "undefined") return;
+    window.sessionStorage.setItem(ENGAGEMENT_LIST_STALE_KEY, "true");
+  }, []);
 
   const hasComposeChanges =
     !isEditingExisting &&
@@ -339,6 +376,7 @@ export default function CoachEngagementDetailPage() {
         next.sort((a, b) => a.sessionNumber - b.sessionNumber);
         return next;
       });
+      markEngagementListStale();
       setSelectedSessionId(response.item.id);
       setLastSavedAt(response.item.updatedAt);
     } catch (error) {
@@ -394,6 +432,8 @@ export default function CoachEngagementDetailPage() {
     );
   }
 
+  const engagementStatus = allSessionsLogged ? EngagementStatus.COMPLETED : engagement.status;
+
   return (
     <PortalShell
       portalName={COACH_PORTAL.portalName}
@@ -404,7 +444,7 @@ export default function CoachEngagementDetailPage() {
       activeItem="/coach/engagements"
       onNavigate={handleShellNavigate}
     >
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <Button variant="ghost" size="sm" onClick={() => void handleBack()}>
           Back to Engagements
         </Button>
@@ -427,8 +467,8 @@ export default function CoachEngagementDetailPage() {
             <h1 className="font-display text-2xl font-semibold text-fc-900">
               {engagement.participantEmail}
             </h1>
-            <Badge className={cn("text-[10px]", getStatusColor(engagement.status))}>
-              {getStatusLabel(engagement.status)}
+            <Badge className={cn("text-[10px]", getStatusColor(engagementStatus))}>
+              {getStatusLabel(engagementStatus)}
             </Badge>
             <Badge variant="outline" className="text-[10px]">
               {getStatusLabel(engagement.programCode)}
@@ -438,7 +478,7 @@ export default function CoachEngagementDetailPage() {
             {engagement.organizationName} · {engagement.cohortCode}
           </p>
           <p className="mt-2 text-xs text-fc-700">
-            Progress: {engagement.sessionsCompleted}/{engagement.totalSessions}
+            Progress: {sessionsCompleted}/{totalSessions}
           </p>
         </CardContent>
       </Card>
@@ -449,316 +489,365 @@ export default function CoachEngagementDetailPage() {
         </Card>
       ) : null}
 
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "log" | "history")}>
+      <Tabs value={visibleActiveTab} onValueChange={(value) => setActiveTab(value as "log" | "history")}>
         <TabsList className="mb-5">
-          <TabsTrigger value="log">Log Session {nextSessionNumber}</TabsTrigger>
+          {showLogTab ? (
+            <TabsTrigger value="log">
+              {isEditingExisting
+                ? `Edit Session ${selectedSession?.sessionNumber ?? nextSessionNumber}`
+                : `Log Session ${nextSessionNumber}`}
+            </TabsTrigger>
+          ) : null}
           <TabsTrigger value="history">Session History ({sessions.length})</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="log" className="space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">
-                {isEditingExisting
-                  ? `Editing Session ${selectedSession?.sessionNumber}`
-                  : `Session ${nextSessionNumber} Details`}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label htmlFor="session-status" className="mb-1 block text-xs font-medium text-fc-800">
-                  Session Status
-                </label>
-                <select
-                  id="session-status"
-                  value={form.status}
-                  disabled={isEditingExisting}
-                  onChange={(event) => {
-                    const status = event.target.value as SessionStatus;
-                    setForm((previous) => ({
-                      ...previous,
-                      status,
-                      ...(hasForfeitStatus(status)
-                        ? {
-                            topic: "",
-                            outcomes: [],
-                            nextSteps: "",
-                            actionCommitment: "",
-                            engagementLevel: null,
-                          }
-                        : {}),
-                    }));
-                    if (hasForfeitStatus(status)) {
-                      setOutcomesError(false);
-                      setNextStepsError(false);
-                      setActionCommitmentError(false);
-                      setEngagementLevelError(false);
-                    }
-                  }}
-                  className="w-full rounded-md border border-border px-3 py-2 text-sm"
-                >
-                  <option value={SessionStatus.COMPLETED}>Completed</option>
-                  <option value={SessionStatus.FORFEITED_CANCELLED}>
-                    Forfeited - Cancelled &lt;24h
-                  </option>
-                  <option value={SessionStatus.FORFEITED_NOT_USED}>Forfeited - Not Used</option>
-                </select>
-              </div>
-
-              <div>
-                <label htmlFor="occurred-at" className="mb-1 block text-xs font-medium text-fc-800">
-                  Session Date
-                </label>
-                <input
-                  id="occurred-at"
-                  type="date"
-                  value={form.occurredAt}
-                  onChange={(event) =>
-                    setForm((previous) => ({ ...previous, occurredAt: event.target.value }))
-                  }
-                  className="w-full rounded-md border border-border px-3 py-2 text-sm"
-                />
-              </div>
-
-              {!isForfeited ? (
-                <>
+        {showLogTab ? (
+          <TabsContent value="log" className="space-y-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">
+                  {isEditingExisting
+                    ? `Editing Session ${selectedSession?.sessionNumber}`
+                    : `Session ${nextSessionNumber} Details`}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
                   <div>
-                    <label htmlFor="topic" className="mb-1 block text-xs font-medium text-fc-800">
-                      Topic
-                    </label>
-                    <select
-                      id="topic"
-                      value={form.topic}
-                      onChange={(event) =>
-                        setForm((previous) => ({ ...previous, topic: event.target.value }))
-                      }
-                      className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                    <label
+                      htmlFor="session-status"
+                      className="mb-1.5 block text-sm font-medium text-fc-950"
                     >
-                      <option value="">Select topic</option>
-                      {topics.map((topic) => (
-                        <option key={topic} value={topic}>
-                          {topic}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <fieldset style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
-                    <legend className="text-sm font-medium text-fc-950">
-                      Session Outcomes{" "}
-                      <span className="font-normal text-muted-foreground">
-                        (required, select at least 1)
-                      </span>
-                    </legend>
-                    <div className="mt-2 space-y-2">
-                      {SESSION_OUTCOMES.map((value, index) => (
-                        <label key={value} className="flex cursor-pointer items-center gap-2 text-sm">
-                          <input
-                            ref={index === 0 ? firstOutcomeRef : undefined}
-                            type="checkbox"
-                            checked={form.outcomes.includes(value)}
-                            onChange={(event) => {
-                              setForm((previous) => {
-                                const nextOutcomes = event.target.checked
-                                  ? [...previous.outcomes, value]
-                                  : previous.outcomes.filter((entry) => entry !== value);
-                                return {
-                                  ...previous,
-                                  outcomes: SESSION_OUTCOMES.filter((entry) =>
-                                    nextOutcomes.includes(entry)
-                                  ),
-                                };
-                              });
-                              if (outcomesError) {
-                                setOutcomesError(false);
-                              }
-                            }}
-                            aria-invalid={outcomesError || undefined}
-                            aria-describedby={outcomesError ? "outcomes-error" : undefined}
-                          />
-                          {value}
-                        </label>
-                      ))}
-                    </div>
-                    {outcomesError ? (
-                      <p id="outcomes-error" role="alert" className="mt-2 text-sm text-red-600">
-                        At least one outcome is required.
-                      </p>
-                    ) : null}
-                  </fieldset>
-
-                  {showEarlyFinalOutcomeWarning ? (
-                    <p className="text-xs text-amber-700">
-                      This is session {activeSessionNumber} of {engagement.totalSessions}. Selecting
-                      this outcome does not automatically close the engagement. Contact your program
-                      administrator if this engagement should end early.
-                    </p>
-                  ) : null}
-
-                  <div>
-                    <label htmlFor="next-steps" className="mb-1 block text-xs font-medium text-fc-800">
-                      Next Steps
+                      Session Status
                     </label>
                     <select
-                      id="next-steps"
-                      value={form.nextSteps}
+                      id="session-status"
+                      value={form.status}
+                      disabled={isEditingExisting}
                       onChange={(event) => {
-                        const value = event.target.value;
-                        setForm((previous) => ({ ...previous, nextSteps: value }));
-                        if (nextStepsError && value.length > 0) {
+                        const status = event.target.value as SessionStatus;
+                        setForm((previous) => ({
+                          ...previous,
+                          status,
+                          ...(hasForfeitStatus(status)
+                            ? {
+                                topic: "",
+                                outcomes: [],
+                                nextSteps: "",
+                                actionCommitment: "",
+                                engagementLevel: null,
+                              }
+                            : {}),
+                        }));
+                        if (hasForfeitStatus(status)) {
+                          setOutcomesError(false);
                           setNextStepsError(false);
+                          setActionCommitmentError(false);
+                          setEngagementLevelError(false);
                         }
                       }}
                       className="w-full rounded-md border border-border px-3 py-2 text-sm"
                     >
-                      <option value="">Select next steps...</option>
-                      {NEXT_STEPS_OPTIONS.map((value) => (
-                        <option key={value} value={value}>
-                          {value}
-                        </option>
-                      ))}
+                      <option value={SessionStatus.COMPLETED}>Completed</option>
+                      <option value={SessionStatus.FORFEITED_CANCELLED}>
+                        Forfeited - Cancelled &lt;24h
+                      </option>
+                      <option value={SessionStatus.FORFEITED_NOT_USED}>Forfeited - Not Used</option>
                     </select>
-                    {nextStepsError ? (
-                      <p className="mt-2 text-sm text-red-600">Next steps is required.</p>
-                    ) : null}
                   </div>
-
-                  {showEarlyProgramConcludedWarning ? (
-                    <p className="text-xs text-amber-700">
-                      This is session {activeSessionNumber} of {engagement.totalSessions}. Selecting
-                      this option does not automatically close the engagement. Contact your program
-                      administrator if this engagement should end early.
-                    </p>
-                  ) : null}
 
                   <div>
                     <label
-                      htmlFor="action-commitment"
-                      className="mb-1 block text-xs font-medium text-fc-800"
+                      htmlFor="occurred-at"
+                      className="mb-1.5 block text-sm font-medium text-fc-950"
                     >
-                      Action-Commitment Tracking
+                      Session Date
                     </label>
-                    <select
-                      id="action-commitment"
-                      value={form.actionCommitment}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setForm((previous) => ({ ...previous, actionCommitment: value }));
-                        if (actionCommitmentError && value.length > 0) {
-                          setActionCommitmentError(false);
-                        }
-                      }}
+                    <input
+                      id="occurred-at"
+                      type="date"
+                      value={form.occurredAt}
+                      onChange={(event) =>
+                        setForm((previous) => ({ ...previous, occurredAt: event.target.value }))
+                      }
                       className="w-full rounded-md border border-border px-3 py-2 text-sm"
-                    >
-                      <option value="">Select action-commitment status...</option>
-                      {ACTION_COMMITMENT_OPTIONS.map((value) => (
-                        <option key={value} value={value}>
-                          {value}
-                        </option>
-                      ))}
-                    </select>
-                    {actionCommitmentError ? (
-                      <p className="mt-2 text-sm text-red-600">
-                        Action-commitment tracking is required.
-                      </p>
-                    ) : null}
+                    />
                   </div>
 
-                  <fieldset style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
-                    <legend className="text-sm font-medium text-fc-950">
-                      Participant Engagement Level
-                    </legend>
-                    <div className="mt-2 space-y-2">
-                      {ENGAGEMENT_LEVEL_OPTIONS.map(({ value, label, description }) => (
-                        <label
-                          key={value}
-                          className={cn(
-                            "flex items-start gap-3 rounded-md border border-fc-200 p-3",
-                            form.engagementLevel === value ? "bg-fc-50" : ""
-                          )}
-                        >
-                          <input
-                            type="radio"
-                            name="engagementLevel"
-                            value={value}
-                            checked={form.engagementLevel === value}
-                            onChange={() => {
-                              setForm((previous) => ({ ...previous, engagementLevel: value }));
-                              if (engagementLevelError) {
-                                setEngagementLevelError(false);
-                              }
-                            }}
-                            className="mt-1"
-                            aria-invalid={engagementLevelError || undefined}
-                            aria-describedby={engagementLevelError ? "engagement-level-error" : undefined}
-                          />
-                          <span className="block">
-                            <span className="block text-sm font-medium text-fc-900">{label}</span>
-                            {description ? (
-                              <span className="mt-1 block text-xs text-muted-foreground">
-                                {description}
-                              </span>
-                            ) : null}
-                          </span>
-                        </label>
-                      ))}
+                  {!isForfeited ? (
+                    <div>
+                      <label htmlFor="topic" className="mb-1.5 block text-sm font-medium text-fc-950">
+                        Topic
+                      </label>
+                      <select
+                        id="topic"
+                        value={form.topic}
+                        onChange={(event) =>
+                          setForm((previous) => ({ ...previous, topic: event.target.value }))
+                        }
+                        className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                      >
+                        <option value="">Select topic</option>
+                        {topics.map((topic) => (
+                          <option key={topic} value={topic}>
+                            {topic}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                    {engagementLevelError ? (
-                      <p id="engagement-level-error" role="alert" className="mt-2 text-sm text-red-600">
-                        Participant engagement level is required.
-                      </p>
+                  ) : null}
+                </div>
+
+                {!isForfeited ? (
+                  <>
+                    <hr className="border-border/60" />
+
+                    <div className="space-y-5">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-fc-800">
+                        Session Assessment
+                      </h4>
+
+                      <fieldset style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+                        <legend className="text-sm font-medium text-fc-950">
+                          Session Outcomes{" "}
+                          <span className="font-normal text-muted-foreground">
+                            (required, select at least 1)
+                          </span>
+                        </legend>
+                        <div className="mt-2 space-y-2 rounded-md border border-border/60 bg-muted/30 p-3">
+                          {SESSION_OUTCOMES.map((value, index) => (
+                            <label
+                              key={value}
+                              className="flex cursor-pointer items-center gap-2.5 text-sm text-fc-900"
+                            >
+                              <input
+                                ref={index === 0 ? firstOutcomeRef : undefined}
+                                type="checkbox"
+                                checked={form.outcomes.includes(value)}
+                                onChange={(event) => {
+                                  setForm((previous) => {
+                                    const nextOutcomes = event.target.checked
+                                      ? [...previous.outcomes, value]
+                                      : previous.outcomes.filter((entry) => entry !== value);
+                                    return {
+                                      ...previous,
+                                      outcomes: SESSION_OUTCOMES.filter((entry) =>
+                                        nextOutcomes.includes(entry)
+                                      ),
+                                    };
+                                  });
+                                  if (outcomesError) {
+                                    setOutcomesError(false);
+                                  }
+                                }}
+                                className="h-4 w-4 rounded border-gray-300 text-fc-600 focus:ring-fc-500"
+                                aria-required="true"
+                                aria-invalid={outcomesError || undefined}
+                                aria-describedby={outcomesError ? "outcomes-error" : undefined}
+                              />
+                              {value}
+                            </label>
+                          ))}
+                        </div>
+                        {outcomesError ? (
+                          <p id="outcomes-error" role="alert" className="mt-2 text-sm text-red-600">
+                            At least one outcome is required.
+                          </p>
+                        ) : null}
+                      </fieldset>
+
+                      {showEarlyFinalOutcomeWarning ? (
+                        <p className="text-xs text-amber-700">
+                          This is session {activeSessionNumber} of {engagement.totalSessions}.
+                          Selecting this outcome does not automatically close the engagement. Contact
+                          your program administrator if this engagement should end early.
+                        </p>
+                      ) : null}
+
+                      <div>
+                        <label
+                          htmlFor="next-steps"
+                          className="mb-1.5 block text-sm font-medium text-fc-950"
+                        >
+                          Next Steps
+                        </label>
+                        <select
+                          id="next-steps"
+                          value={form.nextSteps}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setForm((previous) => ({ ...previous, nextSteps: value }));
+                            if (nextStepsError && value.length > 0) {
+                              setNextStepsError(false);
+                            }
+                          }}
+                          className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                          aria-required="true"
+                          aria-invalid={nextStepsError || undefined}
+                          aria-describedby={nextStepsError ? "next-steps-error" : undefined}
+                        >
+                          <option value="">Select next steps...</option>
+                          {NEXT_STEPS_OPTIONS.map((value) => (
+                            <option key={value} value={value}>
+                              {value}
+                            </option>
+                          ))}
+                        </select>
+                        {nextStepsError ? (
+                          <p id="next-steps-error" className="mt-2 text-sm text-red-600">
+                            Next steps is required.
+                          </p>
+                        ) : null}
+                      </div>
+
+                      {showEarlyProgramConcludedWarning ? (
+                        <p className="text-xs text-amber-700">
+                          This is session {activeSessionNumber} of {engagement.totalSessions}.
+                          Selecting this option does not automatically close the engagement. Contact
+                          your program administrator if this engagement should end early.
+                        </p>
+                      ) : null}
+
+                      <fieldset style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+                        <legend className="text-sm font-medium text-fc-950">
+                          Participant Engagement Level
+                        </legend>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          1 = Disengaged, 3 = Moderately engaged, 5 = Exceptionally engaged
+                        </p>
+                        <div className="mt-3 flex items-center gap-2">
+                          {ENGAGEMENT_LEVEL_OPTIONS.map(({ value }) => (
+                            <label
+                              key={value}
+                              className={cn(
+                                "flex h-10 w-full cursor-pointer items-center justify-center rounded-md border text-sm font-medium transition-colors",
+                                form.engagementLevel === value
+                                  ? "border-fc-600 bg-fc-50 text-fc-700"
+                                  : "border-border text-muted-foreground hover:border-fc-300 hover:bg-fc-50/50"
+                              )}
+                            >
+                              <input
+                                type="radio"
+                                name="engagementLevel"
+                                value={value}
+                                checked={form.engagementLevel === value}
+                                onChange={() => {
+                                  setForm((previous) => ({ ...previous, engagementLevel: value }));
+                                  if (engagementLevelError) {
+                                    setEngagementLevelError(false);
+                                  }
+                                }}
+                                className="sr-only"
+                                aria-required="true"
+                                aria-invalid={engagementLevelError || undefined}
+                                aria-describedby={engagementLevelError ? "engagement-level-error" : undefined}
+                              />
+                              {value}
+                            </label>
+                          ))}
+                        </div>
+                        {engagementLevelError ? (
+                          <p
+                            id="engagement-level-error"
+                            role="alert"
+                            className="mt-2 text-sm text-red-600"
+                          >
+                            Participant engagement level is required.
+                          </p>
+                        ) : null}
+                      </fieldset>
+
+                      <div>
+                        <label
+                          htmlFor="action-commitment"
+                          className="mb-1.5 block text-sm font-medium text-fc-950"
+                        >
+                          Action-Commitment Tracking
+                        </label>
+                        <select
+                          id="action-commitment"
+                          value={form.actionCommitment}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setForm((previous) => ({ ...previous, actionCommitment: value }));
+                            if (actionCommitmentError && value.length > 0) {
+                              setActionCommitmentError(false);
+                            }
+                          }}
+                          className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                          aria-required="true"
+                          aria-invalid={actionCommitmentError || undefined}
+                          aria-describedby={actionCommitmentError ? "action-commitment-error" : undefined}
+                        >
+                          <option value="">Select action-commitment status...</option>
+                          {ACTION_COMMITMENT_OPTIONS.map((value) => (
+                            <option key={value} value={value}>
+                              {value}
+                            </option>
+                          ))}
+                        </select>
+                        {actionCommitmentError ? (
+                          <p id="action-commitment-error" className="mt-2 text-sm text-red-600">
+                            Action-commitment tracking is required.
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                  </>
+                ) : null}
+
+                <hr className="border-border/60" />
+
+                <div className="space-y-3">
+                  <div>
+                    <label htmlFor="notes" className="mb-1.5 block text-sm font-medium text-fc-950">
+                      Notes
+                    </label>
+                    <p className="mb-2 text-xs text-muted-foreground">
+                      Visible to program administrators
+                    </p>
+                    <textarea
+                      id="notes"
+                      value={form.notes}
+                      onChange={(event) =>
+                        setForm((previous) => ({ ...previous, notes: event.target.value }))
+                      }
+                      rows={5}
+                      className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                    />
+                  </div>
+
+                  <AutoSaveText status={autoSave.saveStatus} savedAt={lastSavedAt} />
+
+                  {submitError ? <p className="text-sm text-red-700">{submitError}</p> : null}
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {!isEditingExisting ? (
+                      <Button
+                        onClick={() => void handleSubmitNewSession()}
+                        disabled={submitLoading || sessions.length >= engagement.totalSessions}
+                      >
+                        {submitLoading ? "Logging Session..." : "Log Session"}
+                      </Button>
                     ) : null}
-                  </fieldset>
-                </>
-              ) : null}
 
-              <div>
-                <label htmlFor="notes" className="mb-1 block text-xs font-medium text-fc-800">
-                  Notes
-                </label>
-                <p className="mb-2 text-xs text-muted-foreground">
-                  Visible to program administrators
-                </p>
-                <textarea
-                  id="notes"
-                  value={form.notes}
-                  onChange={(event) =>
-                    setForm((previous) => ({ ...previous, notes: event.target.value }))
-                  }
-                  rows={5}
-                  className="w-full rounded-md border border-border px-3 py-2 text-sm"
-                />
-              </div>
-
-              <AutoSaveText status={autoSave.saveStatus} savedAt={lastSavedAt} />
-
-              {submitError ? <p className="text-sm text-red-700">{submitError}</p> : null}
-
-              <div className="flex flex-wrap items-center gap-2">
-                {!isEditingExisting ? (
-                  <Button
-                    onClick={() => void handleSubmitNewSession()}
-                    disabled={submitLoading || sessions.length >= engagement.totalSessions}
-                  >
-                    {submitLoading ? "Logging Session..." : "Log Session"}
-                  </Button>
-                ) : null}
-
-                {isEditingExisting && sessions.length < engagement.totalSessions ? (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setSelectedSessionId(null);
-                      setSubmitError(null);
-                    }}
-                  >
-                    Log Next Session
-                  </Button>
-                ) : null}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    {isEditingExisting && sessions.length < engagement.totalSessions ? (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedSessionId(null);
+                          setSubmitError(null);
+                        }}
+                      >
+                        Log Next Session
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ) : null}
 
         <TabsContent value="history">
           <Card>
@@ -766,6 +855,14 @@ export default function CoachEngagementDetailPage() {
               <CardTitle className="text-base">Session Timeline</CardTitle>
             </CardHeader>
             <CardContent>
+              {allSessionsLogged ? (
+                <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3">
+                  <p className="text-sm font-medium text-emerald-800">
+                    All {engagement.totalSessions} sessions have been logged for this engagement.
+                  </p>
+                </div>
+              ) : null}
+
               {sessions.length === 0 ? (
                 <p className="py-8 text-center text-sm text-muted-foreground">No sessions logged yet.</p>
               ) : (
