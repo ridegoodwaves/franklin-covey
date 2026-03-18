@@ -893,6 +893,87 @@ Column renamed in this migration (free on empty table). All code references to `
 
 ---
 
+## Deployment Checklist
+
+### Pre-Merge
+
+- [ ] Confirm Session table is empty on **staging**: `SELECT COUNT(*) FROM "Session";` (must be 0)
+- [ ] Confirm Session table is empty on **production**: `SELECT COUNT(*) FROM "Session";` (must be 0)
+- [ ] Squash-merge PR #22 into main: `gh pr merge 22 --squash --delete-branch`
+
+### Post-Merge: Staging (Vercel auto-deploys main)
+
+**1. SQL verification (Supabase SQL editor, staging project):**
+
+```sql
+-- Confirm new columns exist
+SELECT column_name, data_type
+FROM information_schema.columns
+WHERE table_name = 'Session'
+  AND column_name IN ('outcomes', 'nextSteps', 'engagementLevel', 'actionCommitment', 'notes')
+ORDER BY column_name;
+-- Expected: 5 rows
+
+-- Confirm old columns are gone
+SELECT column_name FROM information_schema.columns
+WHERE table_name = 'Session'
+  AND column_name IN ('outcome', 'durationMinutes', 'privateNotes');
+-- Expected: 0 rows
+
+-- Confirm CHECK constraints exist
+SELECT conname FROM pg_constraint
+WHERE conrelid = '"Session"'::regclass AND contype = 'c';
+-- Expected: Session_engagementLevel_check, Session_nextSteps_check,
+--           Session_actionCommitment_check, Session_outcomes_json_check
+```
+
+**2. Staging functional smoke test:**
+
+- [ ] Coach sign-in via magic link works
+- [ ] Dashboard loads with engagement counts
+- [ ] Engagements list: Active and Completed tabs render with correct counts
+- [ ] Engagement detail: session form shows new fields (outcomes, next steps, engagement level, action commitment, notes)
+- [ ] Create a COMPLETED session: fill all fields, submit, verify it appears in session history
+- [ ] Create a FORFEITED session: verify form fields hide, submit succeeds
+- [ ] Auto-save: change a field on an existing session, confirm save indicator
+- [ ] Participant flow unaffected (email verify, coach select, confirmation)
+
+### Post-Merge: Production (after staging passes)
+
+**Production uses SQL + API checks only — no interactive coach portal testing.**
+
+**1. SQL verification (Supabase SQL editor, production project):**
+
+Same 3 queries as staging above. Confirm new columns exist, old columns gone, CHECK constraints in place.
+
+**2. API checks (curl or browser — no login needed):**
+
+- [ ] App loads without 500 error (visit production URL)
+- [ ] `POST /api/auth/magic-link/request` with a test email returns 200 (confirms API routes are running with new code)
+- [ ] `GET /api/coach/dashboard` without a session cookie returns 401 (confirms auth middleware is enforcing)
+
+**These checks confirm:** the app is alive, the database schema is correct, and the API layer is responding — without touching any real coach account or creating any data.
+
+### Rollback (if needed)
+
+**Can roll back?** YES — only while Session table is empty.
+
+1. Verify: `SELECT COUNT(*) FROM "Session";` (must be 0)
+2. Run `backward.sql` against the database via Supabase SQL editor
+3. Delete from migrations table: `DELETE FROM _prisma_migrations WHERE migration_name = '20260316_session_field_restructure';`
+4. Revert the merge commit on main and deploy
+5. If sessions exist: do NOT run backward.sql — fix forward instead
+
+### Monitoring (first 24 hours)
+
+| Check | When | What to look for |
+|-------|------|-------------------|
+| Vercel function errors | +1h, +4h, +24h | Any 500s on `/api/coach/sessions` or `/api/coach/engagements` |
+| Check constraint violations | +4h | Any `23514` errors in Supabase logs |
+| Coach portal usability | +24h | No reports of form issues from Kari/coaches |
+
+---
+
 ## References
 
 - **Brainstorm:** `docs/brainstorms/2026-03-13-coach-session-form-field-changes-brainstorm.md`
