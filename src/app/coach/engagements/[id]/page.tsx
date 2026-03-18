@@ -1,15 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
-import { SessionStatus } from "@prisma/client";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { Check } from "lucide-react";
+import { EngagementStatus, SessionStatus } from "@prisma/client";
 import { PortalShell } from "@/components/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  ACTION_COMMITMENT_OPTIONS,
+  ENGAGEMENT_LEVEL_OPTIONS,
+  NEXT_STEPS_OPTIONS,
+  SESSION_OUTCOMES,
+  SESSION_TOPICS_BY_PROGRAM,
+} from "@/lib/config";
 import { COACH_NAV_ITEMS, COACH_PORTAL, CoachPortalIcon } from "@/lib/nav-config";
-import { DURATION_OPTIONS, SESSION_OUTCOMES, SESSION_TOPICS_BY_PROGRAM } from "@/lib/config";
 import { cn, formatDate, getStatusColor, getStatusLabel } from "@/lib/utils";
 import { usePortalUser } from "@/lib/use-portal-user";
 import {
@@ -18,6 +25,7 @@ import {
   fetchCoachEngagementDetail,
   fetchCoachSessions,
   updateCoachSession,
+  type UpdateCoachSessionInput,
 } from "@/lib/coach-api-client";
 import type { CoachEngagementDetail, CoachSessionRow } from "@/lib/types/coach";
 import { useAutoSave } from "@/hooks/use-auto-save";
@@ -27,9 +35,11 @@ interface SessionFormState {
   status: SessionStatus;
   occurredAt: string;
   topic: string;
-  outcome: string;
-  durationMinutes: number | null;
-  privateNotes: string;
+  outcomes: string[];
+  nextSteps: string;
+  engagementLevel: number | null;
+  actionCommitment: string;
+  notes: string;
 }
 
 function toDateInput(iso: string | null): string {
@@ -44,30 +54,96 @@ function defaultFormState(): SessionFormState {
     status: SessionStatus.COMPLETED,
     occurredAt: "",
     topic: "",
-    outcome: "",
-    durationMinutes: null,
-    privateNotes: "",
-  };
-}
-
-function toPatchPayload(form: SessionFormState): {
-  occurredAt: string | null;
-  topic: string | null;
-  outcome: string | null;
-  durationMinutes: number | null;
-  privateNotes: string | null;
-} {
-  return {
-    occurredAt: form.occurredAt ? new Date(form.occurredAt).toISOString() : null,
-    topic: form.topic.trim() || null,
-    outcome: form.outcome.trim() || null,
-    durationMinutes: form.durationMinutes,
-    privateNotes: form.privateNotes.trim() || null,
+    outcomes: [],
+    nextSteps: "",
+    engagementLevel: null,
+    actionCommitment: "",
+    notes: "",
   };
 }
 
 function hasForfeitStatus(status: SessionStatus): boolean {
   return status === SessionStatus.FORFEITED_CANCELLED || status === SessionStatus.FORFEITED_NOT_USED;
+}
+
+function toPatchPayload(form: SessionFormState): UpdateCoachSessionInput {
+  const isForfeited = hasForfeitStatus(form.status);
+  return {
+    occurredAt: form.occurredAt ? new Date(form.occurredAt).toISOString() : null,
+    topic: form.topic.trim() || null,
+    outcomes: isForfeited ? null : form.outcomes,
+    nextSteps: isForfeited ? null : (form.nextSteps || null),
+    actionCommitment: isForfeited ? null : (form.actionCommitment || null),
+    engagementLevel: isForfeited ? null : form.engagementLevel,
+    notes: form.notes.trim() || null,
+  };
+}
+
+const ENGAGEMENT_LIST_STALE_KEY = "engagement-list-stale";
+
+function normalizeTextValue(value: string | null): string | null {
+  const normalized = value?.trim() || "";
+  return normalized.length > 0 ? normalized : null;
+}
+
+function normalizeOutcomeValue(value: string[] | null): string[] | null {
+  if (!value) return null;
+  const trimmed = value.map((entry) => entry.trim()).filter((entry) => entry.length > 0);
+  if (trimmed.length === 0) return null;
+  return [...trimmed].sort((left, right) => left.localeCompare(right));
+}
+
+function areOutcomesEqual(left: string[] | null, right: string[] | null): boolean {
+  const normalizedLeft = normalizeOutcomeValue(left);
+  const normalizedRight = normalizeOutcomeValue(right);
+  if (normalizedLeft === null || normalizedRight === null) {
+    return normalizedLeft === normalizedRight;
+  }
+  if (normalizedLeft.length !== normalizedRight.length) return false;
+  return normalizedLeft.every((value, index) => value === normalizedRight[index]);
+}
+
+function buildAutoSavePayload(
+  form: SessionFormState,
+  selectedSession: CoachSessionRow | null
+): UpdateCoachSessionInput {
+  if (!selectedSession) return {};
+
+  const payload: UpdateCoachSessionInput = {};
+  const next = toPatchPayload(form);
+
+  if (form.occurredAt !== toDateInput(selectedSession.occurredAt)) {
+    payload.occurredAt = next.occurredAt ?? null;
+  }
+
+  if (normalizeTextValue(next.topic ?? null) !== normalizeTextValue(selectedSession.topic)) {
+    payload.topic = next.topic ?? null;
+  }
+
+  if (!areOutcomesEqual(next.outcomes ?? null, selectedSession.outcomes ?? null)) {
+    payload.outcomes = next.outcomes ?? null;
+  }
+
+  if (normalizeTextValue(next.nextSteps ?? null) !== normalizeTextValue(selectedSession.nextSteps)) {
+    payload.nextSteps = next.nextSteps ?? null;
+  }
+
+  if (next.engagementLevel !== selectedSession.engagementLevel) {
+    payload.engagementLevel = next.engagementLevel ?? null;
+  }
+
+  if (
+    normalizeTextValue(next.actionCommitment ?? null) !==
+    normalizeTextValue(selectedSession.actionCommitment)
+  ) {
+    payload.actionCommitment = next.actionCommitment ?? null;
+  }
+
+  if (normalizeTextValue(next.notes ?? null) !== normalizeTextValue(selectedSession.notes)) {
+    payload.notes = next.notes ?? null;
+  }
+
+  return payload;
 }
 
 function AutoSaveText({
@@ -77,14 +153,36 @@ function AutoSaveText({
   status: "idle" | "saving" | "saved" | "error";
   savedAt: string | null;
 }) {
-  if (status === "saving") return <p className="text-xs text-fc-600">Saving...</p>;
-  if (status === "error") return <p className="text-xs text-red-700">Auto-save failed. Changes remain in the form.</p>;
-  if (status === "saved") return <p className="text-xs text-emerald-700">Saved</p>;
+  if (status === "saving") {
+    return (
+      <p className="flex items-center gap-1.5 text-xs text-muted-foreground animate-pulse-subtle">
+        <span className="h-1.5 w-1.5 rounded-full bg-fc-400" />
+        Saving...
+      </p>
+    );
+  }
+  if (status === "error") {
+    return <p className="text-xs text-red-700">Auto-save failed. Changes remain in the form.</p>;
+  }
+  if (status === "saved") {
+    return (
+      <p className="flex items-center gap-1.5 text-xs text-emerald-700">
+        <Check className="h-3.5 w-3.5" aria-hidden="true" />
+        All changes saved
+      </p>
+    );
+  }
   if (savedAt) {
     const date = new Date(savedAt);
     return (
       <p className="text-xs text-muted-foreground">
-        Last saved {date.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+        All changes saved · Last updated{" "}
+        {date.toLocaleString("en-US", {
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        })}
       </p>
     );
   }
@@ -93,6 +191,7 @@ function AutoSaveText({
 
 export default function CoachEngagementDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const engagementId = params.id;
 
   const portalUser = usePortalUser({
@@ -112,6 +211,10 @@ export default function CoachEngagementDetailPage() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
 
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+
+  const firstOutcomeRef = useRef<HTMLInputElement | null>(null);
+
   const selectedSession = useMemo(
     () => (selectedSessionId ? sessions.find((row) => row.id === selectedSessionId) || null : null),
     [selectedSessionId, sessions]
@@ -119,6 +222,11 @@ export default function CoachEngagementDetailPage() {
 
   const isEditingExisting = Boolean(selectedSession);
   const isForfeited = hasForfeitStatus(form.status);
+  const sessionsCompleted = sessions.length;
+  const totalSessions = engagement?.totalSessions ?? 0;
+  const allSessionsLogged = engagement !== null && sessionsCompleted >= totalSessions;
+  const showLogTab = !allSessionsLogged || isEditingExisting;
+  const visibleActiveTab: "log" | "history" = showLogTab ? activeTab : "history";
 
   const topics = useMemo(() => {
     if (!engagement) return [] as readonly string[];
@@ -129,6 +237,26 @@ export default function CoachEngagementDetailPage() {
     if (!engagement) return 1;
     return Math.min(sessions.length + 1, engagement.totalSessions);
   }, [engagement, sessions.length]);
+
+  const activeSessionNumber = selectedSession?.sessionNumber ?? nextSessionNumber;
+
+  const showEarlyFinalOutcomeWarning =
+    !isForfeited &&
+    engagement !== null &&
+    activeSessionNumber < engagement.totalSessions &&
+    form.outcomes.includes("Engagement concluded / final session");
+
+  const showEarlyProgramConcludedWarning =
+    !isForfeited &&
+    engagement !== null &&
+    activeSessionNumber < engagement.totalSessions &&
+    form.nextSteps === "Program concluded, no next session";
+
+  useEffect(() => {
+    if (allSessionsLogged && activeTab === "log" && !isEditingExisting) {
+      setActiveTab("history");
+    }
+  }, [activeTab, allSessionsLogged, isEditingExisting]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -145,7 +273,8 @@ export default function CoachEngagementDetailPage() {
         setSessions(sessionList.items);
       } catch (error) {
         if (controller.signal.aborted) return;
-        const message = error instanceof CoachApiError ? error.message : "Failed to load engagement";
+        const message =
+          error instanceof CoachApiError ? error.message : "Failed to load engagement";
         setLoadError(message);
       } finally {
         if (!controller.signal.aborted) {
@@ -162,6 +291,8 @@ export default function CoachEngagementDetailPage() {
   }, [engagementId]);
 
   useEffect(() => {
+    setHasAttemptedSubmit(false);
+
     if (!selectedSession) {
       setForm(defaultFormState());
       setLastSavedAt(null);
@@ -172,22 +303,33 @@ export default function CoachEngagementDetailPage() {
       status: selectedSession.status,
       occurredAt: toDateInput(selectedSession.occurredAt),
       topic: selectedSession.topic || "",
-      outcome: selectedSession.outcome || "",
-      durationMinutes: selectedSession.durationMinutes,
-      privateNotes: selectedSession.privateNotes || "",
+      outcomes: selectedSession.outcomes ? [...selectedSession.outcomes] : [],
+      nextSteps: selectedSession.nextSteps || "",
+      engagementLevel: selectedSession.engagementLevel,
+      actionCommitment: selectedSession.actionCommitment || "",
+      notes: selectedSession.notes || "",
     });
     setLastSavedAt(selectedSession.updatedAt);
   }, [selectedSession]);
 
-  const autoSavePayload = useMemo(() => toPatchPayload(form), [form]);
+  const showRequiredValidation = isEditingExisting || hasAttemptedSubmit;
+  const outcomesError =
+    showRequiredValidation && !isForfeited && form.outcomes.length === 0;
+  const nextStepsError =
+    showRequiredValidation && !isForfeited && form.nextSteps.length === 0;
+  const actionCommitmentError =
+    showRequiredValidation && !isForfeited && form.actionCommitment.length === 0;
+  const engagementLevelError =
+    showRequiredValidation && !isForfeited && form.engagementLevel === null;
 
-  const autoSave = useAutoSave({
-    data: autoSavePayload,
-    identity: selectedSessionId || "new",
-    enabled: isEditingExisting,
-    debounceMs: 5000,
-    onSave: async (payload) => {
+  const autoSavePayload = useMemo(
+    () => buildAutoSavePayload(form, selectedSession),
+    [form, selectedSession]
+  );
+  const handleAutoSave = useCallback(
+    async (payload: UpdateCoachSessionInput) => {
       if (!selectedSessionId) return;
+      if (Object.keys(payload).length === 0) return;
       const response = await updateCoachSession(selectedSessionId, payload);
       setSessions((previous) =>
         previous.map((row) => (row.id === response.item.id ? response.item : row))
@@ -195,58 +337,92 @@ export default function CoachEngagementDetailPage() {
       setLastSavedAt(response.item.updatedAt);
       setSubmitError(null);
     },
+    [selectedSessionId]
+  );
+
+  const autoSave = useAutoSave({
+    data: autoSavePayload,
+    identity: selectedSessionId || "new",
+    enabled: isEditingExisting,
+    debounceMs: 5000,
+    onSave: handleAutoSave,
   });
+
+  const markEngagementListStale = useCallback(() => {
+    if (typeof window === "undefined") return;
+    window.sessionStorage.setItem(ENGAGEMENT_LIST_STALE_KEY, "true");
+  }, []);
 
   const hasComposeChanges =
     !isEditingExisting &&
     (form.occurredAt.length > 0 ||
       form.topic.length > 0 ||
-      form.outcome.length > 0 ||
-      form.durationMinutes !== null ||
-      form.privateNotes.trim().length > 0 ||
+      form.outcomes.length > 0 ||
+      form.nextSteps.length > 0 ||
+      form.actionCommitment.length > 0 ||
+      form.engagementLevel !== null ||
+      form.notes.trim().length > 0 ||
       form.status !== SessionStatus.COMPLETED);
 
   const unsaved = useUnsavedChangesWarning({
-    hasUnsavedChanges:
-      hasComposeChanges || autoSave.hasPendingChanges || autoSave.isSaving || autoSave.hasError,
+    hasUnsavedChanges: hasComposeChanges || autoSave.hasPendingChanges || autoSave.hasError,
   });
 
-  const handleShellNavigate = useCallback(
-    async (_href: string) => {
-      if (isEditingExisting && autoSave.hasPendingChanges) {
-        await autoSave.flush();
+  const confirmSafeNavigation = useCallback(async (): Promise<boolean> => {
+    if (isEditingExisting && autoSave.hasPendingChanges) {
+      const flushed = await autoSave.flush();
+      if (flushed) {
+        return true;
       }
-      return unsaved.confirmNavigation();
-    },
-    [autoSave, isEditingExisting, unsaved]
+    }
+    return unsaved.confirmNavigation();
+  }, [autoSave, isEditingExisting, unsaved]);
+
+  const handleShellNavigate = useCallback(
+    async () => confirmSafeNavigation(),
+    [confirmSafeNavigation]
   );
 
-  const canSubmit = useMemo(() => {
-    if (isEditingExisting || !engagement) return false;
-    if (sessions.length >= engagement.totalSessions) return false;
-    if (isForfeited) return true;
-    return (
-      form.occurredAt.length > 0 &&
-      form.topic.length > 0 &&
-      form.outcome.length > 0 &&
-      form.durationMinutes !== null
-    );
-  }, [engagement, form, isEditingExisting, isForfeited, sessions.length]);
-
   async function handleSubmitNewSession() {
-    if (!engagement || !canSubmit || submitLoading) return;
+    if (!engagement || isEditingExisting || submitLoading) return;
+    if (sessions.length >= engagement.totalSessions) return;
+
+    setHasAttemptedSubmit(true);
+
+    if (!isForfeited) {
+      const nextOutcomesError = form.outcomes.length === 0;
+      const nextNextStepsError = form.nextSteps.length === 0;
+      const nextActionCommitmentError = form.actionCommitment.length === 0;
+      const nextEngagementLevelError = form.engagementLevel === null;
+
+      if (
+        nextOutcomesError ||
+        nextNextStepsError ||
+        nextActionCommitmentError ||
+        nextEngagementLevelError
+      ) {
+        if (nextOutcomesError) {
+          firstOutcomeRef.current?.focus();
+        }
+        return;
+      }
+    }
+
     setSubmitLoading(true);
     setSubmitError(null);
 
     try {
+      const payload = toPatchPayload(form);
       const response = await createCoachSession({
         engagementId: engagement.engagementId,
         status: form.status,
-        occurredAt: form.occurredAt ? new Date(form.occurredAt).toISOString() : null,
-        topic: form.topic.trim() || null,
-        outcome: form.outcome.trim() || null,
-        durationMinutes: form.durationMinutes,
-        privateNotes: form.privateNotes.trim() || null,
+        occurredAt: payload.occurredAt ?? null,
+        topic: payload.topic ?? null,
+        outcomes: payload.outcomes ?? null,
+        nextSteps: payload.nextSteps ?? null,
+        engagementLevel: payload.engagementLevel ?? null,
+        actionCommitment: payload.actionCommitment ?? null,
+        notes: payload.notes ?? null,
       });
 
       setSessions((previous) => {
@@ -254,6 +430,7 @@ export default function CoachEngagementDetailPage() {
         next.sort((a, b) => a.sessionNumber - b.sessionNumber);
         return next;
       });
+      markEngagementListStale();
       setSelectedSessionId(response.item.id);
       setLastSavedAt(response.item.updatedAt);
     } catch (error) {
@@ -265,10 +442,9 @@ export default function CoachEngagementDetailPage() {
   }
 
   async function handleBack() {
-    if (isEditingExisting && autoSave.hasPendingChanges) {
-      await autoSave.flush();
-    }
-    await unsaved.guardedPush("/coach/engagements");
+    const canNavigate = await confirmSafeNavigation();
+    if (!canNavigate) return;
+    router.push("/coach/engagements");
   }
 
   if (loading) {
@@ -282,7 +458,9 @@ export default function CoachEngagementDetailPage() {
         activeItem="/coach/engagements"
       >
         <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">Loading engagement...</CardContent>
+          <CardContent className="py-12 text-center text-sm text-muted-foreground">
+            Loading engagement...
+          </CardContent>
         </Card>
       </PortalShell>
     );
@@ -299,11 +477,15 @@ export default function CoachEngagementDetailPage() {
         activeItem="/coach/engagements"
       >
         <Card>
-          <CardContent className="py-12 text-center text-sm text-red-700">{loadError || "Engagement not found"}</CardContent>
+          <CardContent className="py-12 text-center text-sm text-red-700">
+            {loadError || "Engagement not found"}
+          </CardContent>
         </Card>
       </PortalShell>
     );
   }
+
+  const engagementStatus = allSessionsLogged ? EngagementStatus.COMPLETED : engagement.status;
 
   return (
     <PortalShell
@@ -315,7 +497,7 @@ export default function CoachEngagementDetailPage() {
       activeItem="/coach/engagements"
       onNavigate={handleShellNavigate}
     >
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <Button variant="ghost" size="sm" onClick={() => void handleBack()}>
           Back to Engagements
         </Button>
@@ -326,16 +508,20 @@ export default function CoachEngagementDetailPage() {
             </a>
           </Button>
         ) : (
-          <p className="text-xs text-muted-foreground">Contact your program administrator for scheduling.</p>
+          <p className="text-xs text-muted-foreground">
+            Contact your program administrator for scheduling.
+          </p>
         )}
       </div>
 
       <Card className="mb-6">
         <CardContent className="py-5">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="font-display text-2xl font-semibold text-fc-900">{engagement.participantEmail}</h1>
-            <Badge className={cn("text-[10px]", getStatusColor(engagement.status))}>
-              {getStatusLabel(engagement.status)}
+            <h1 className="font-display text-2xl font-semibold text-fc-900">
+              {engagement.participantEmail}
+            </h1>
+            <Badge className={cn("text-[10px]", getStatusColor(engagementStatus))}>
+              {getStatusLabel(engagementStatus)}
             </Badge>
             <Badge variant="outline" className="text-[10px]">
               {getStatusLabel(engagement.programCode)}
@@ -345,7 +531,7 @@ export default function CoachEngagementDetailPage() {
             {engagement.organizationName} · {engagement.cohortCode}
           </p>
           <p className="mt-2 text-xs text-fc-700">
-            Progress: {engagement.sessionsCompleted}/{engagement.totalSessions}
+            Progress: {sessionsCompleted}/{totalSessions}
           </p>
         </CardContent>
       </Card>
@@ -356,167 +542,362 @@ export default function CoachEngagementDetailPage() {
         </Card>
       ) : null}
 
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "log" | "history")}>
+      <Tabs value={visibleActiveTab} onValueChange={(value) => setActiveTab(value as "log" | "history")}>
         <TabsList className="mb-5">
-          <TabsTrigger value="log">Log Session {nextSessionNumber}</TabsTrigger>
+          {showLogTab ? (
+            <TabsTrigger value="log">
+              {isEditingExisting
+                ? `Edit Session ${selectedSession?.sessionNumber ?? nextSessionNumber}`
+                : `Log Session ${nextSessionNumber}`}
+            </TabsTrigger>
+          ) : null}
           <TabsTrigger value="history">Session History ({sessions.length})</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="log" className="space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">
-                {isEditingExisting
-                  ? `Editing Session ${selectedSession?.sessionNumber}`
-                  : `Session ${nextSessionNumber} Details`}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label htmlFor="session-status" className="mb-1 block text-xs font-medium text-fc-800">
-                  Session Status
-                </label>
-                <select
-                  id="session-status"
-                  value={form.status}
-                  disabled={isEditingExisting}
-                  onChange={(event) => {
-                    const status = event.target.value as SessionStatus;
-                    setForm((previous) => ({
-                      ...previous,
-                      status,
-                      ...(hasForfeitStatus(status)
-                        ? { topic: "", outcome: "", durationMinutes: null }
-                        : {}),
-                    }));
-                  }}
-                  className="w-full rounded-md border border-border px-3 py-2 text-sm"
-                >
-                  <option value={SessionStatus.COMPLETED}>Completed</option>
-                  <option value={SessionStatus.FORFEITED_CANCELLED}>Forfeited - Cancelled &lt;24h</option>
-                  <option value={SessionStatus.FORFEITED_NOT_USED}>Forfeited - Not Used</option>
-                </select>
-              </div>
-
-              <div>
-                <label htmlFor="occurred-at" className="mb-1 block text-xs font-medium text-fc-800">
-                  Session Date
-                </label>
-                <input
-                  id="occurred-at"
-                  type="date"
-                  value={form.occurredAt}
-                  onChange={(event) => setForm((previous) => ({ ...previous, occurredAt: event.target.value }))}
-                  className="w-full rounded-md border border-border px-3 py-2 text-sm"
-                />
-              </div>
-
-              {!isForfeited ? (
-                <>
+        {showLogTab ? (
+          <TabsContent value="log" className="space-y-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">
+                  {isEditingExisting
+                    ? `Editing Session ${selectedSession?.sessionNumber}`
+                    : `Session ${nextSessionNumber} Details`}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
                   <div>
-                    <label htmlFor="topic" className="mb-1 block text-xs font-medium text-fc-800">
-                      Topic
-                    </label>
-                    <select
-                      id="topic"
-                      value={form.topic}
-                      onChange={(event) => setForm((previous) => ({ ...previous, topic: event.target.value }))}
-                      className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                    <label
+                      htmlFor="session-status"
+                      className="mb-1.5 block text-sm font-medium text-fc-950"
                     >
-                      <option value="">Select topic</option>
-                      {topics.map((topic) => (
-                        <option key={topic} value={topic}>
-                          {topic}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label htmlFor="outcome" className="mb-1 block text-xs font-medium text-fc-800">
-                      Outcome
+                      Session Status
                     </label>
                     <select
-                      id="outcome"
-                      value={form.outcome}
-                      onChange={(event) => setForm((previous) => ({ ...previous, outcome: event.target.value }))}
-                      className="w-full rounded-md border border-border px-3 py-2 text-sm"
-                    >
-                      <option value="">Select outcome</option>
-                      {SESSION_OUTCOMES.map((outcome) => (
-                        <option key={outcome} value={outcome}>
-                          {outcome}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label htmlFor="duration" className="mb-1 block text-xs font-medium text-fc-800">
-                      Duration
-                    </label>
-                    <select
-                      id="duration"
-                      value={form.durationMinutes === null ? "" : String(form.durationMinutes)}
+                      id="session-status"
+                      value={form.status}
+                      disabled={isEditingExisting}
                       onChange={(event) => {
-                        const value = event.target.value;
+                        const status = event.target.value as SessionStatus;
                         setForm((previous) => ({
                           ...previous,
-                          durationMinutes: value ? Number.parseInt(value, 10) : null,
-                        }));
+                          status,
+                          ...(hasForfeitStatus(status)
+                            ? {
+                                topic: "",
+                                outcomes: [],
+                                nextSteps: "",
+                                actionCommitment: "",
+                                engagementLevel: null,
+                              }
+                        : {}),
+                    }));
                       }}
                       className="w-full rounded-md border border-border px-3 py-2 text-sm"
                     >
-                      <option value="">Select duration</option>
-                      {DURATION_OPTIONS.map((duration) => (
-                        <option key={duration} value={duration}>
-                          {duration} minutes
-                        </option>
-                      ))}
+                      <option value={SessionStatus.COMPLETED}>Completed</option>
+                      <option value={SessionStatus.FORFEITED_CANCELLED}>
+                        Forfeited - Cancelled &lt;24h
+                      </option>
+                      <option value={SessionStatus.FORFEITED_NOT_USED}>Forfeited - Not Used</option>
                     </select>
                   </div>
-                </>
-              ) : null}
 
-              <div>
-                <label htmlFor="private-notes" className="mb-1 block text-xs font-medium text-fc-800">
-                  Private Notes
-                </label>
-                <textarea
-                  id="private-notes"
-                  value={form.privateNotes}
-                  onChange={(event) => setForm((previous) => ({ ...previous, privateNotes: event.target.value }))}
-                  rows={5}
-                  className="w-full rounded-md border border-border px-3 py-2 text-sm"
-                />
-              </div>
+                  <div>
+                    <label
+                      htmlFor="occurred-at"
+                      className="mb-1.5 block text-sm font-medium text-fc-950"
+                    >
+                      Session Date
+                    </label>
+                    <input
+                      id="occurred-at"
+                      type="date"
+                      value={form.occurredAt}
+                      onChange={(event) =>
+                        setForm((previous) => ({ ...previous, occurredAt: event.target.value }))
+                      }
+                      className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                    />
+                  </div>
 
-              <AutoSaveText status={autoSave.saveStatus} savedAt={lastSavedAt} />
+                  {!isForfeited ? (
+                    <div>
+                      <label htmlFor="topic" className="mb-1.5 block text-sm font-medium text-fc-950">
+                        Topic
+                      </label>
+                      <select
+                        id="topic"
+                        value={form.topic}
+                        onChange={(event) =>
+                          setForm((previous) => ({ ...previous, topic: event.target.value }))
+                        }
+                        className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                      >
+                        <option value="">Select topic</option>
+                        {topics.map((topic) => (
+                          <option key={topic} value={topic}>
+                            {topic}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : null}
+                </div>
 
-              {submitError ? <p className="text-sm text-red-700">{submitError}</p> : null}
+                {!isForfeited ? (
+                  <>
+                    <hr className="border-border/60" />
 
-              <div className="flex flex-wrap items-center gap-2">
-                {!isEditingExisting ? (
-                  <Button onClick={() => void handleSubmitNewSession()} disabled={!canSubmit || submitLoading}>
-                    {submitLoading ? "Logging Session..." : "Log Session"}
-                  </Button>
+                    <div className="space-y-5">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-fc-800">
+                        Session Assessment
+                      </h4>
+
+                      <fieldset style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+                        <legend className="text-sm font-medium text-fc-950">
+                          Session Outcomes{" "}
+                          <span className="font-normal text-muted-foreground">
+                            (required, select at least 1)
+                          </span>
+                        </legend>
+                        <div className="mt-2 space-y-2 rounded-md border border-border/60 bg-muted/30 p-3">
+                          {SESSION_OUTCOMES.map((value, index) => (
+                            <label
+                              key={value}
+                              className="flex cursor-pointer items-center gap-2.5 text-sm text-fc-900"
+                            >
+                              <input
+                                ref={index === 0 ? firstOutcomeRef : undefined}
+                                type="checkbox"
+                                checked={form.outcomes.includes(value)}
+                                onChange={(event) => {
+                                  setForm((previous) => {
+                                    const nextOutcomes = event.target.checked
+                                      ? [...previous.outcomes, value]
+                                      : previous.outcomes.filter((entry) => entry !== value);
+                                    return {
+                                      ...previous,
+                                      outcomes: SESSION_OUTCOMES.filter((entry) =>
+                                        nextOutcomes.includes(entry)
+                                      ),
+                                    };
+                                  });
+                                }}
+                                className="h-4 w-4 rounded border-gray-300 text-fc-600 focus:ring-fc-500"
+                                aria-required="true"
+                                aria-invalid={outcomesError || undefined}
+                                aria-describedby={outcomesError ? "outcomes-error" : undefined}
+                              />
+                              {value}
+                            </label>
+                          ))}
+                        </div>
+                        {outcomesError ? (
+                          <p id="outcomes-error" role="alert" className="mt-2 text-sm text-red-600">
+                            At least one outcome is required.
+                          </p>
+                        ) : null}
+                      </fieldset>
+
+                      {showEarlyFinalOutcomeWarning ? (
+                        <p className="text-xs text-amber-700">
+                          This is session {activeSessionNumber} of {engagement.totalSessions}.
+                          Selecting this outcome does not automatically close the engagement. Contact
+                          your program administrator if this engagement should end early.
+                        </p>
+                      ) : null}
+
+                      <div>
+                        <label
+                          htmlFor="next-steps"
+                          className="mb-1.5 block text-sm font-medium text-fc-950"
+                        >
+                          Next Steps
+                        </label>
+                        <select
+                          id="next-steps"
+                          value={form.nextSteps}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setForm((previous) => ({ ...previous, nextSteps: value }));
+                          }}
+                          className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                          aria-required="true"
+                          aria-invalid={nextStepsError || undefined}
+                          aria-describedby={nextStepsError ? "next-steps-error" : undefined}
+                        >
+                          <option value="">Select next steps...</option>
+                          {NEXT_STEPS_OPTIONS.map((value) => (
+                            <option key={value} value={value}>
+                              {value}
+                            </option>
+                          ))}
+                        </select>
+                        {nextStepsError ? (
+                          <p id="next-steps-error" className="mt-2 text-sm text-red-600">
+                            Next steps is required.
+                          </p>
+                        ) : null}
+                      </div>
+
+                      {showEarlyProgramConcludedWarning ? (
+                        <p className="text-xs text-amber-700">
+                          This is session {activeSessionNumber} of {engagement.totalSessions}.
+                          Selecting this option does not automatically close the engagement. Contact
+                          your program administrator if this engagement should end early.
+                        </p>
+                      ) : null}
+
+                      <fieldset className="mt-6" style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+                        <legend className="text-sm font-medium text-fc-950">
+                          Participant Engagement Level
+                        </legend>
+                        <div className="mt-3 flex items-center gap-2">
+                          {ENGAGEMENT_LEVEL_OPTIONS.map(({ value }) => (
+                            <label
+                              key={value}
+                              className={cn(
+                                "flex h-10 w-full cursor-pointer items-center justify-center rounded-md border text-sm font-medium transition-colors",
+                                form.engagementLevel === value
+                                  ? "border-fc-600 bg-fc-50 text-fc-700"
+                                  : "border-border text-muted-foreground hover:border-fc-300 hover:bg-fc-50/50"
+                              )}
+                            >
+                              <input
+                                type="radio"
+                                name="engagementLevel"
+                                value={value}
+                                checked={form.engagementLevel === value}
+                                onChange={() => {
+                                  setForm((previous) => ({ ...previous, engagementLevel: value }));
+                                }}
+                                className="sr-only"
+                                aria-required="true"
+                                aria-invalid={engagementLevelError || undefined}
+                                aria-describedby={engagementLevelError ? "engagement-level-error" : undefined}
+                              />
+                              {value}
+                            </label>
+                          ))}
+                        </div>
+                        <div className="mt-4 grid gap-2 md:grid-cols-3">
+                          {ENGAGEMENT_LEVEL_OPTIONS.filter((option) => option.description).map(
+                            ({ value, label, description }) => (
+                              <div
+                                key={value}
+                                className={cn(
+                                  "rounded-md border px-3 py-2 text-xs leading-relaxed",
+                                  form.engagementLevel === value
+                                    ? "border-fc-300 bg-fc-50/80 text-fc-900"
+                                    : "border-border/60 bg-muted/20 text-muted-foreground"
+                                )}
+                              >
+                                <p className="font-semibold text-fc-900">{label}</p>
+                                <p className="mt-1">{description}</p>
+                              </div>
+                            )
+                          )}
+                        </div>
+                        {engagementLevelError ? (
+                          <p
+                            id="engagement-level-error"
+                            role="alert"
+                            className="mt-2 text-sm text-red-600"
+                          >
+                            Participant engagement level is required.
+                          </p>
+                        ) : null}
+                      </fieldset>
+
+                      <div>
+                        <label
+                          htmlFor="action-commitment"
+                          className="mb-1.5 block text-sm font-medium text-fc-950"
+                        >
+                          Action-Commitment Tracking
+                        </label>
+                        <select
+                          id="action-commitment"
+                          value={form.actionCommitment}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setForm((previous) => ({ ...previous, actionCommitment: value }));
+                          }}
+                          className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                          aria-required="true"
+                          aria-invalid={actionCommitmentError || undefined}
+                          aria-describedby={actionCommitmentError ? "action-commitment-error" : undefined}
+                        >
+                          <option value="">Select action-commitment status...</option>
+                          {ACTION_COMMITMENT_OPTIONS.map((value) => (
+                            <option key={value} value={value}>
+                              {value}
+                            </option>
+                          ))}
+                        </select>
+                        {actionCommitmentError ? (
+                          <p id="action-commitment-error" className="mt-2 text-sm text-red-600">
+                            Action-commitment tracking is required.
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                  </>
                 ) : null}
 
-                {isEditingExisting && sessions.length < engagement.totalSessions ? (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setSelectedSessionId(null);
-                      setSubmitError(null);
-                    }}
-                  >
-                    Log Next Session
-                  </Button>
-                ) : null}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                <hr className="border-border/60" />
+
+                <div className="space-y-3">
+                  <div>
+                    <label htmlFor="notes" className="mb-1.5 block text-sm font-medium text-fc-950">
+                      Notes
+                    </label>
+                    <p className="mb-2 text-xs text-muted-foreground">
+                      Visible to program administrators
+                    </p>
+                    <textarea
+                      id="notes"
+                      value={form.notes}
+                      onChange={(event) =>
+                        setForm((previous) => ({ ...previous, notes: event.target.value }))
+                      }
+                      rows={5}
+                      className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                    />
+                  </div>
+
+                  <AutoSaveText status={autoSave.saveStatus} savedAt={lastSavedAt} />
+
+                  {submitError ? <p className="text-sm text-red-700">{submitError}</p> : null}
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {!isEditingExisting ? (
+                      <Button
+                        onClick={() => void handleSubmitNewSession()}
+                        disabled={submitLoading || sessions.length >= engagement.totalSessions}
+                      >
+                        {submitLoading ? "Logging Session..." : "Log Session"}
+                      </Button>
+                    ) : null}
+
+                    {isEditingExisting && sessions.length < engagement.totalSessions ? (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedSessionId(null);
+                          setSubmitError(null);
+                        }}
+                      >
+                        Log Next Session
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ) : null}
 
         <TabsContent value="history">
           <Card>
@@ -524,6 +905,14 @@ export default function CoachEngagementDetailPage() {
               <CardTitle className="text-base">Session Timeline</CardTitle>
             </CardHeader>
             <CardContent>
+              {allSessionsLogged ? (
+                <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3">
+                  <p className="text-sm font-medium text-emerald-800">
+                    All {engagement.totalSessions} sessions have been logged for this engagement.
+                  </p>
+                </div>
+              ) : null}
+
               {sessions.length === 0 ? (
                 <p className="py-8 text-center text-sm text-muted-foreground">No sessions logged yet.</p>
               ) : (
@@ -533,7 +922,9 @@ export default function CoachEngagementDetailPage() {
                       key={session.id}
                       className={cn(
                         "rounded-md border px-4 py-3",
-                        selectedSessionId === session.id ? "border-fc-400 bg-fc-50" : "border-border/60"
+                        selectedSessionId === session.id
+                          ? "border-fc-400 bg-fc-50"
+                          : "border-border/60"
                       )}
                     >
                       <div className="flex items-center justify-between gap-3">
@@ -542,9 +933,7 @@ export default function CoachEngagementDetailPage() {
                             Session {session.sessionNumber} · {getStatusLabel(session.status)}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {session.occurredAt
-                              ? formatDate(session.occurredAt)
-                              : "No date"}
+                            {session.occurredAt ? formatDate(session.occurredAt) : "No date"}
                           </p>
                         </div>
                         <Button

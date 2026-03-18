@@ -25,7 +25,7 @@
 ### Coach Route Migration
 - **Converted** `src/app/coach/engagement/page.tsx` → Suspense-wrapped redirect to `/coach/engagements/[id]` (compatibility shim for old bookmarks)
 - **Created** `src/app/coach/engagements/page.tsx` — engagement list with Active/Completed tabs, stagger animations
-- **Created** `src/app/coach/engagements/[id]/page.tsx` — session logging with dropdown topic/outcome per spec, "Other" topic → static message, duration pills, private notes, auto-save *(Slice 2 partial — not API-wired)*
+- **Created** `src/app/coach/engagements/[id]/page.tsx` — session logging with topic + outcomes + next steps + engagement level + action-commitment + notes, auto-save *(Slice 2 partial — not API-wired)*
 - **Updated** `src/app/coach/dashboard/page.tsx` — all 3 link sites updated to `/coach/engagements/:id`
 - **Enabled** My Engagements nav item in `src/lib/nav-config.tsx` (removed `disabled: true`)
 - **Fixed** engagement detail page — removed `PreviousSessionPanel` right-sidebar (leftover from earlier design, not in spec; was displaying hardcoded demo data; Session History tab is the correct location for past session context)

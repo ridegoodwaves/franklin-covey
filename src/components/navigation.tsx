@@ -83,7 +83,7 @@ export function PortalShell({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex min-h-screen h-[100dvh] overflow-hidden bg-background">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -213,7 +213,7 @@ export function PortalShell({
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden">
         {/* Top bar (mobile) */}
         <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border/40 bg-white/80 px-6 backdrop-blur-md lg:hidden">
           <Button
@@ -241,7 +241,7 @@ export function PortalShell({
           </span>
         </header>
 
-        <div className="px-6 py-8 lg:px-10 lg:py-10">{children}</div>
+        <div className="px-6 pt-8 pb-16 lg:px-10 lg:pt-10 lg:pb-20">{children}</div>
       </main>
     </div>
   );

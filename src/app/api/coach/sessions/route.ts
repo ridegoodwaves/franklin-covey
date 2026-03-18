@@ -1,8 +1,8 @@
 import {
   EngagementStatus,
   SessionStatus,
-  type Session,
   type ProgramCode,
+  type Session,
 } from "@prisma/client";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
@@ -15,6 +15,7 @@ import {
   mapSessionRow,
   parseIsoDateOrNull,
   requireCoachScope,
+  serializeOutcomes,
   toNullableTrimmed,
 } from "@/app/api/coach/_shared";
 
@@ -22,9 +23,11 @@ interface CreateSessionBody {
   engagementId?: string;
   occurredAt?: string | null;
   topic?: string | null;
-  outcome?: string | null;
-  durationMinutes?: number | null;
-  privateNotes?: string | null;
+  outcomes?: string[] | null;
+  nextSteps?: string | null;
+  engagementLevel?: number | null;
+  actionCommitment?: string | null;
+  notes?: string | null;
   status?: SessionStatus;
 }
 
@@ -43,9 +46,11 @@ function parseCreateSessionBody(body: CreateSessionBody): {
   engagementId: string | null;
   occurredAt: Date | null | "invalid";
   topic: string | null;
-  outcome: string | null;
-  durationMinutes: number | null;
-  privateNotes: string | null;
+  outcomes: string[] | null;
+  nextSteps: string | null;
+  engagementLevel: number | null;
+  actionCommitment: string | null;
+  notes: string | null;
   status: SessionStatus | null;
   errors: string[];
 } {
@@ -75,39 +80,65 @@ function parseCreateSessionBody(body: CreateSessionBody): {
     errors.push("topic must be a string or null");
   }
 
-  const outcomeRaw = body.outcome ?? null;
-  const outcome =
-    typeof outcomeRaw === "string" || outcomeRaw === null
-      ? toNullableTrimmed(outcomeRaw)
-      : null;
-  if (outcomeRaw !== null && outcomeRaw !== undefined && typeof outcomeRaw !== "string") {
-    errors.push("outcome must be a string or null");
-  }
-
-  const durationMinutesRaw = body.durationMinutes ?? null;
-  let durationMinutes: number | null = null;
-  if (durationMinutesRaw === null) {
-    durationMinutes = null;
+  const outcomesRaw = body.outcomes ?? null;
+  let outcomes: string[] | null = null;
+  if (outcomesRaw === null) {
+    outcomes = null;
   } else if (
-    typeof durationMinutesRaw === "number" &&
-    Number.isInteger(durationMinutesRaw)
+    Array.isArray(outcomesRaw) &&
+    outcomesRaw.every((value): value is string => typeof value === "string")
   ) {
-    durationMinutes = durationMinutesRaw;
+    outcomes = outcomesRaw.map((value) => value.trim());
   } else {
-    errors.push("durationMinutes must be an integer or null");
+    errors.push("outcomes must be a string array or null");
   }
 
-  const privateNotesRaw = body.privateNotes ?? null;
-  const privateNotes =
-    typeof privateNotesRaw === "string" || privateNotesRaw === null
-      ? privateNotesRaw
+  const nextStepsRaw = body.nextSteps ?? null;
+  const nextSteps =
+    typeof nextStepsRaw === "string" || nextStepsRaw === null
+      ? toNullableTrimmed(nextStepsRaw)
+      : null;
+  if (nextStepsRaw !== null && nextStepsRaw !== undefined && typeof nextStepsRaw !== "string") {
+    errors.push("nextSteps must be a string or null");
+  }
+
+  const engagementLevelRaw = body.engagementLevel ?? null;
+  let engagementLevel: number | null = null;
+  if (engagementLevelRaw === null) {
+    engagementLevel = null;
+  } else if (
+    typeof engagementLevelRaw === "number" &&
+    Number.isInteger(engagementLevelRaw)
+  ) {
+    engagementLevel = engagementLevelRaw;
+  } else {
+    errors.push("engagementLevel must be an integer or null");
+  }
+
+  const actionCommitmentRaw = body.actionCommitment ?? null;
+  const actionCommitment =
+    typeof actionCommitmentRaw === "string" || actionCommitmentRaw === null
+      ? toNullableTrimmed(actionCommitmentRaw)
       : null;
   if (
-    privateNotesRaw !== null &&
-    privateNotesRaw !== undefined &&
-    typeof privateNotesRaw !== "string"
+    actionCommitmentRaw !== null &&
+    actionCommitmentRaw !== undefined &&
+    typeof actionCommitmentRaw !== "string"
   ) {
-    errors.push("privateNotes must be a string or null");
+    errors.push("actionCommitment must be a string or null");
+  }
+
+  const notesRaw = body.notes ?? null;
+  const notes =
+    typeof notesRaw === "string" || notesRaw === null
+      ? notesRaw
+      : null;
+  if (
+    notesRaw !== null &&
+    notesRaw !== undefined &&
+    typeof notesRaw !== "string"
+  ) {
+    errors.push("notes must be a string or null");
   }
 
   const status = Object.values(SessionStatus).includes(body.status as SessionStatus)
@@ -121,9 +152,11 @@ function parseCreateSessionBody(body: CreateSessionBody): {
     engagementId: engagementId || null,
     occurredAt,
     topic,
-    outcome,
-    durationMinutes,
-    privateNotes,
+    outcomes,
+    nextSteps,
+    engagementLevel,
+    actionCommitment,
+    notes,
     status,
     errors,
   };
@@ -133,9 +166,11 @@ async function createSessionWithRetry(input: {
   engagementId: string;
   occurredAt: Date | null;
   topic: string | null;
-  outcome: string | null;
-  durationMinutes: number | null;
-  privateNotes: string | null;
+  outcomes: string[] | null;
+  nextSteps: string | null;
+  engagementLevel: number | null;
+  actionCommitment: string | null;
+  notes: string | null;
   status: SessionStatus;
   organizationCoachId: string;
 }): Promise<Session> {
@@ -194,9 +229,11 @@ async function createSessionWithRetry(input: {
             programCode: engagement.program.code as ProgramCode,
             occurredAt: input.occurredAt,
             topic: input.topic,
-            outcome: input.outcome,
-            durationMinutes: input.durationMinutes,
-            privateNotes: input.privateNotes,
+            outcomes: input.outcomes,
+            nextSteps: input.nextSteps,
+            engagementLevel: input.engagementLevel,
+            actionCommitment: input.actionCommitment,
+            notes: input.notes,
           });
 
           if (validated.errors.length > 0) {
@@ -211,9 +248,13 @@ async function createSessionWithRetry(input: {
               status: input.status,
               occurredAt: validated.values.occurredAt,
               topic: validated.values.topic,
-              outcome: validated.values.outcome,
-              durationMinutes: validated.values.durationMinutes,
-              privateNotes: validated.values.privateNotes,
+              outcomes: validated.values.outcomes
+                ? serializeOutcomes(validated.values.outcomes)
+                : null,
+              nextSteps: validated.values.nextSteps,
+              engagementLevel: validated.values.engagementLevel,
+              actionCommitment: validated.values.actionCommitment,
+              notes: validated.values.notes,
             },
           });
 
@@ -295,9 +336,11 @@ export async function POST(request: NextRequest) {
       engagementId: parsed.engagementId,
       occurredAt: parsed.occurredAt,
       topic: parsed.topic,
-      outcome: parsed.outcome,
-      durationMinutes: parsed.durationMinutes,
-      privateNotes: parsed.privateNotes,
+      outcomes: parsed.outcomes,
+      nextSteps: parsed.nextSteps,
+      engagementLevel: parsed.engagementLevel,
+      actionCommitment: parsed.actionCommitment,
+      notes: parsed.notes,
       status: parsed.status,
       organizationCoachId: auth.scope.organizationCoachId,
     });

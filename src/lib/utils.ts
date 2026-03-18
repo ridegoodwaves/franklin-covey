@@ -50,6 +50,8 @@ export function getStatusLabel(status: string): string {
     ON_HOLD: "On Hold",
     SCHEDULED: "Scheduled",
     NO_SHOW: "No Show",
+    FORFEITED_CANCELLED: "Forfeited - Cancelled",
+    FORFEITED_NOT_USED: "Forfeited - Not Used",
     TWO_SESSION: "2-Session",
     FIVE_SESSION: "5-Session",
   };

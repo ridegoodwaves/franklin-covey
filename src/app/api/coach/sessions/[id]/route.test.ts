@@ -37,6 +37,44 @@ function buildRequest(body: object) {
   });
 }
 
+function completedSession() {
+  return {
+    id: "s-1",
+    engagementId: "eng-1",
+    sessionNumber: 1,
+    status: "COMPLETED",
+    occurredAt: new Date("2026-03-01T12:00:00.000Z"),
+    topic: "Developing People",
+    outcomes: JSON.stringify(["Action plan created"]),
+    nextSteps: "Next session scheduled",
+    engagementLevel: 3,
+    actionCommitment: "Last session's action(s) completed",
+    notes: "old",
+    createdAt: new Date("2026-03-01T12:00:00.000Z"),
+    updatedAt: new Date("2026-03-01T12:00:00.000Z"),
+    engagement: { program: { code: "ALP" } },
+  };
+}
+
+function forfeitedSession() {
+  return {
+    id: "s-1",
+    engagementId: "eng-1",
+    sessionNumber: 1,
+    status: "FORFEITED_CANCELLED",
+    occurredAt: null,
+    topic: null,
+    outcomes: null,
+    nextSteps: null,
+    engagementLevel: null,
+    actionCommitment: null,
+    notes: "old",
+    createdAt: new Date("2026-03-01T12:00:00.000Z"),
+    updatedAt: new Date("2026-03-01T12:00:00.000Z"),
+    engagement: { program: { code: "ALP" } },
+  };
+}
+
 describe("PATCH /api/coach/sessions/[id]", () => {
   beforeEach(() => {
     mockReadPortalSession.mockReturnValue({
@@ -58,33 +96,27 @@ describe("PATCH /api/coach/sessions/[id]", () => {
     expect(response.status).toBe(422);
   });
 
-  it("updates whitelisted fields", async () => {
+  it("rejects empty payload", async () => {
+    const response = await PATCH(buildRequest({}), {
+      params: Promise.resolve({ id: "s-1" }),
+    });
+    expect(response.status).toBe(422);
+  });
+
+  it("rejects unknown fields", async () => {
+    const response = await PATCH(buildRequest({ foo: "bar" }), {
+      params: Promise.resolve({ id: "s-1" }),
+    });
+    expect(response.status).toBe(422);
+  });
+
+  it("updates outcomes array and notes", async () => {
     prismaMock.session.findFirst
+      .mockResolvedValueOnce(completedSession() as never)
       .mockResolvedValueOnce({
-        id: "s-1",
-        engagementId: "eng-1",
-        sessionNumber: 1,
-        status: "COMPLETED",
-        occurredAt: new Date("2026-03-01T12:00:00.000Z"),
-        topic: "Developing People",
-        outcome: "In Progress",
-        durationMinutes: 60,
-        privateNotes: "old",
-        createdAt: new Date("2026-03-01T12:00:00.000Z"),
-        updatedAt: new Date("2026-03-01T12:00:00.000Z"),
-        engagement: { program: { code: "ALP" } },
-      } as never)
-      .mockResolvedValueOnce({
-        id: "s-1",
-        engagementId: "eng-1",
-        sessionNumber: 1,
-        status: "COMPLETED",
-        occurredAt: new Date("2026-03-01T12:00:00.000Z"),
-        topic: "Developing People",
-        outcome: "Goal Achieved",
-        durationMinutes: 60,
-        privateNotes: "new note",
-        createdAt: new Date("2026-03-01T12:00:00.000Z"),
+        ...completedSession(),
+        outcomes: JSON.stringify(["Action plan created", "Resources provided"]),
+        notes: "new note",
         updatedAt: new Date("2026-03-02T12:00:00.000Z"),
         createdBy: null,
         updatedBy: null,
@@ -95,40 +127,97 @@ describe("PATCH /api/coach/sessions/[id]", () => {
 
     const response = await PATCH(
       buildRequest({
-        outcome: "Goal Achieved",
-        privateNotes: "new note",
+        outcomes: ["Resources provided", "Action plan created"],
+        notes: "new note",
       }),
       { params: Promise.resolve({ id: "s-1" }) }
     );
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.item.id).toBe("s-1");
-    expect(body.item.outcome).toBe("Goal Achieved");
+    expect(body.item.outcomes).toEqual(["Action plan created", "Resources provided"]);
     expect(prismaMock.engagement.updateMany).toHaveBeenCalledTimes(1);
   });
 
-  it("returns 409 when update conflict occurs", async () => {
-    prismaMock.session.findFirst.mockResolvedValue({
-      id: "s-1",
-      engagementId: "eng-1",
-      sessionNumber: 1,
-      status: "COMPLETED",
-      occurredAt: new Date("2026-03-01T12:00:00.000Z"),
-      topic: "Developing People",
-      outcome: "In Progress",
-      durationMinutes: 60,
-      privateNotes: "old",
-      createdAt: new Date("2026-03-01T12:00:00.000Z"),
-      updatedAt: new Date("2026-03-01T12:00:00.000Z"),
-      engagement: { program: { code: "ALP" } },
-    } as never);
-    prismaMock.session.updateMany.mockResolvedValue({ count: 0 } as never);
+  it("rejects outcomes for forfeited sessions when non-null", async () => {
+    prismaMock.session.findFirst.mockResolvedValue(forfeitedSession() as never);
+
+    const response = await PATCH(
+      buildRequest({ outcomes: ["Action plan created"] }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(422);
+  });
+
+  it("rejects actionCommitment for forfeited sessions when non-null", async () => {
+    prismaMock.session.findFirst.mockResolvedValue(forfeitedSession() as never);
+
+    const response = await PATCH(
+      buildRequest({ actionCommitment: "Last session's action(s) completed" }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(422);
+  });
+
+  it("rejects forfeited payload with outcomes [] and nextSteps empty string", async () => {
+    prismaMock.session.findFirst.mockResolvedValue(forfeitedSession() as never);
+
+    const response = await PATCH(
+      buildRequest({ outcomes: [], nextSteps: "" }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(422);
+  });
+
+  it("accepts forfeited payload with null fields", async () => {
+    prismaMock.session.findFirst
+      .mockResolvedValueOnce(forfeitedSession() as never)
+      .mockResolvedValueOnce({
+        ...forfeitedSession(),
+        notes: "new note",
+        updatedAt: new Date("2026-03-02T12:00:00.000Z"),
+        createdBy: null,
+        updatedBy: null,
+        archivedAt: null,
+      } as never);
+    prismaMock.session.updateMany.mockResolvedValue({ count: 1 } as never);
+    prismaMock.engagement.updateMany.mockResolvedValue({ count: 1 } as never);
 
     const response = await PATCH(
       buildRequest({
-        outcome: "Goal Achieved",
+        outcomes: null,
+        nextSteps: null,
+        engagementLevel: null,
+        actionCommitment: null,
+        notes: "new note",
       }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+  });
+
+  it("returns 422 for no-op payload with unchanged values", async () => {
+    prismaMock.session.findFirst.mockResolvedValue(completedSession() as never);
+
+    const response = await PATCH(
+      buildRequest({ notes: "old" }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(422);
+    expect(prismaMock.engagement.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("returns 409 when update conflict occurs", async () => {
+    prismaMock.session.findFirst.mockResolvedValue(completedSession() as never);
+    prismaMock.session.updateMany.mockResolvedValue({ count: 0 } as never);
+
+    const response = await PATCH(
+      buildRequest({ notes: "new note" }),
       { params: Promise.resolve({ id: "s-1" }) }
     );
 

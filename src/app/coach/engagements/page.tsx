@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { PortalShell } from "@/components/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,11 +25,17 @@ interface TabState {
   error: string | null;
 }
 
+const ENGAGEMENT_LIST_STALE_KEY = "engagement-list-stale";
+
 function makeInitialTabState(activeLoading: boolean): Record<CoachTab, TabState> {
   return {
     active: { page: 1, data: null, loading: activeLoading, error: null },
     completed: { page: 1, data: null, loading: false, error: null },
   };
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof CoachApiError ? error.message : "Failed to load engagements";
 }
 
 export default function CoachEngagementsPage() {
@@ -39,48 +46,147 @@ export default function CoachEngagementsPage() {
 
   const [tab, setTab] = useState<CoachTab>("active");
   const [tabs, setTabs] = useState<Record<CoachTab, TabState>>(makeInitialTabState(true));
+  const [refreshAllTabs, setRefreshAllTabs] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.sessionStorage.getItem(ENGAGEMENT_LIST_STALE_KEY) !== "true") return;
+    window.sessionStorage.removeItem(ENGAGEMENT_LIST_STALE_KEY);
+    setRefreshAllTabs(true);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
-    const current = tabs[tab];
 
-    async function loadPage() {
+    async function loadEngagements() {
+      if (refreshAllTabs) {
+        setTabs((previous) => ({
+          active: { ...previous.active, page: 1, loading: true, error: null },
+          completed: { ...previous.completed, page: 1, loading: true, error: null },
+        }));
+
+        const [activeResult, completedResult] = await Promise.allSettled([
+          fetchCoachEngagements("active", 1, controller.signal),
+          fetchCoachEngagements("completed", 1, controller.signal),
+        ]);
+
+        if (controller.signal.aborted) return;
+
+        setTabs((previous) => ({
+          active:
+            activeResult.status === "fulfilled"
+              ? {
+                  ...previous.active,
+                  page: 1,
+                  data: activeResult.value,
+                  loading: false,
+                  error: null,
+                }
+              : {
+                  ...previous.active,
+                  page: 1,
+                  loading: false,
+                  error: getErrorMessage(activeResult.reason),
+                },
+          completed:
+            completedResult.status === "fulfilled"
+              ? {
+                  ...previous.completed,
+                  page: 1,
+                  data: completedResult.value,
+                  loading: false,
+                  error: null,
+                }
+              : {
+                  ...previous.completed,
+                  page: 1,
+                  loading: false,
+                  error: getErrorMessage(completedResult.reason),
+                },
+        }));
+
+        setRefreshAllTabs(false);
+        return;
+      }
+
+      const currentPage = tabs[tab].page;
+      const shouldPrefetchCompleted = tab === "active" && tabs.completed.data === null;
+
       setTabs((previous) => ({
         ...previous,
         [tab]: { ...previous[tab], loading: true, error: null },
+        ...(shouldPrefetchCompleted
+          ? {
+              completed: { ...previous.completed, loading: true, error: null },
+            }
+          : {}),
       }));
 
-      try {
-        const data = await fetchCoachEngagements(tab, current.page, controller.signal);
-        setTabs((previous) => ({
-          ...previous,
-          [tab]: {
-            ...previous[tab],
-            data,
-            loading: false,
-            error: null,
-          },
-        }));
-      } catch (error) {
-        if (controller.signal.aborted) return;
-        const message = error instanceof CoachApiError ? error.message : "Failed to load engagements";
-        setTabs((previous) => ({
-          ...previous,
-          [tab]: {
-            ...previous[tab],
-            loading: false,
-            error: message,
-          },
-        }));
-      }
+      const results = await Promise.allSettled([
+        fetchCoachEngagements(tab, currentPage, controller.signal),
+        ...(shouldPrefetchCompleted
+          ? [fetchCoachEngagements("completed", 1, controller.signal)]
+          : []),
+      ]);
+
+      if (controller.signal.aborted) return;
+
+      setTabs((previous) => {
+        const next = { ...previous };
+        const primaryResult = results[0];
+
+        next[tab] =
+          primaryResult.status === "fulfilled"
+            ? {
+                ...previous[tab],
+                data: primaryResult.value,
+                loading: false,
+                error: null,
+              }
+            : {
+                ...previous[tab],
+                loading: false,
+                error: getErrorMessage(primaryResult.reason),
+              };
+
+        if (shouldPrefetchCompleted) {
+          const completedResult = results[1];
+          if (completedResult?.status === "fulfilled") {
+            next.completed = {
+              ...previous.completed,
+              page: 1,
+              data: completedResult.value,
+              loading: false,
+              error: null,
+            };
+          } else if (completedResult?.status === "rejected") {
+            next.completed = {
+              ...previous.completed,
+              loading: false,
+            };
+          }
+        }
+
+        return next;
+      });
     }
 
-    void loadPage();
+    void loadEngagements();
     return () => controller.abort();
-  }, [tab, tabs[tab].page]);
+  }, [refreshAllTabs, tab, tabs.active.page, tabs.completed.page]);
 
-  const activeCount = tabs.active.data?.totalItems || 0;
-  const completedCount = tabs.completed.data?.totalItems || 0;
+  const activeCount =
+    tabs.active.data?.totalItems !== undefined
+      ? String(tabs.active.data.totalItems)
+      : tabs.active.loading
+        ? "..."
+        : "0";
+  const completedCount =
+    tabs.completed.data?.totalItems !== undefined
+      ? String(tabs.completed.data.totalItems)
+      : tabs.completed.loading
+        ? "..."
+        : "0";
   const current = tabs[tab];
 
   function changePage(nextPage: number) {
@@ -132,7 +238,7 @@ export default function CoachEngagementsPage() {
           ) : current.data && current.data.items.length > 0 ? (
             <div className="space-y-2">
               {current.data.items.map((item) => (
-                <a
+                <Link
                   key={item.engagementId}
                   href={`/coach/engagements/${item.engagementId}`}
                   className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-4 py-3 transition-colors hover:bg-fc-50"
@@ -151,7 +257,7 @@ export default function CoachEngagementsPage() {
                       {getStatusLabel(item.status)}
                     </Badge>
                   </div>
-                </a>
+                </Link>
               ))}
             </div>
           ) : (

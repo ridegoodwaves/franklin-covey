@@ -41,7 +41,7 @@ describe("GET /api/coach/engagements/[id]/sessions", () => {
     });
   });
 
-  it("returns ordered sessions", async () => {
+  it("returns ordered sessions with parsed outcomes", async () => {
     prismaMock.engagement.findFirst.mockResolvedValue({
       id: "eng-1",
       totalSessions: 5,
@@ -52,9 +52,11 @@ describe("GET /api/coach/engagements/[id]/sessions", () => {
           status: "COMPLETED",
           occurredAt: new Date("2026-02-01T10:00:00.000Z"),
           topic: "Driving Unit Performance",
-          outcome: "In Progress",
-          durationMinutes: 60,
-          privateNotes: "note-1",
+          outcomes: JSON.stringify(["Action plan created", "Resources provided"]),
+          nextSteps: "Next session scheduled",
+          engagementLevel: 4,
+          actionCommitment: "Last session's action(s) completed",
+          notes: "note-1",
           createdAt: new Date("2026-02-01T10:30:00.000Z"),
           updatedAt: new Date("2026-02-01T10:30:00.000Z"),
           engagementId: "eng-1",
@@ -75,5 +77,6 @@ describe("GET /api/coach/engagements/[id]/sessions", () => {
     expect(body.engagementId).toBe("eng-1");
     expect(body.items).toHaveLength(1);
     expect(body.items[0].sessionNumber).toBe(1);
+    expect(body.items[0].outcomes).toEqual(["Action plan created", "Resources provided"]);
   });
 });

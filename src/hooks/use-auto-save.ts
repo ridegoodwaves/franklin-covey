@@ -14,7 +14,7 @@ interface UseAutoSaveParams<T> {
 
 interface UseAutoSaveResult {
   saveStatus: SaveStatus;
-  flush: () => Promise<void>;
+  flush: () => Promise<boolean>;
   hasPendingChanges: boolean;
   isSaving: boolean;
   hasError: boolean;
@@ -28,7 +28,6 @@ export function useAutoSave<T>({
   identity = "default",
 }: UseAutoSaveParams<T>): UseAutoSaveResult {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
-  const [hasPendingChanges, setHasPendingChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hasError, setHasError] = useState(false);
   const timerRef = useRef<number | null>(null);
@@ -36,10 +35,13 @@ export function useAutoSave<T>({
   const isSavingRef = useRef(false);
   const hasErrorRef = useRef(false);
   const dataRef = useRef<T>(data);
-  const lastSavedSerializedRef = useRef<string>(JSON.stringify(data));
-  const hasPendingChangesRef = useRef(false);
+  const onSaveRef = useRef(onSave);
+  const enabledRef = useRef(enabled);
 
   const serialized = useMemo(() => JSON.stringify(data), [data]);
+  const [lastSavedSerialized, setLastSavedSerialized] = useState(serialized);
+  const lastSavedSerializedRef = useRef<string>(serialized);
+  const hasPendingChanges = enabled && serialized !== lastSavedSerialized;
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -48,15 +50,28 @@ export function useAutoSave<T>({
     }
   }, []);
 
-  const executeSave = useCallback(async () => {
-    if (!enabled) return;
-    if (isSavingRef.current) return;
-    const currentSerialized = JSON.stringify(dataRef.current);
-    if (currentSerialized === lastSavedSerializedRef.current) {
-      hasPendingChangesRef.current = false;
-      setHasPendingChanges(false);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
+  useEffect(() => {
+    onSaveRef.current = onSave;
+  }, [onSave]);
+
+  useEffect(() => {
+    enabledRef.current = enabled;
+  }, [enabled]);
+
+  const executeSave = useCallback(async (): Promise<boolean> => {
+    if (!enabledRef.current) return true;
+    if (isSavingRef.current) return !hasErrorRef.current;
+
+    const snapshot = dataRef.current;
+    const snapshotSerialized = JSON.stringify(snapshot);
+
+    if (snapshotSerialized === lastSavedSerializedRef.current) {
       if (!hasErrorRef.current) setSaveStatus("idle");
-      return;
+      return true;
     }
 
     isSavingRef.current = true;
@@ -66,29 +81,33 @@ export function useAutoSave<T>({
     setSaveStatus("saving");
 
     try {
-      await onSave(dataRef.current);
-      lastSavedSerializedRef.current = JSON.stringify(dataRef.current);
-      hasPendingChangesRef.current = false;
-      setHasPendingChanges(false);
+      await onSaveRef.current(snapshot);
+      lastSavedSerializedRef.current = snapshotSerialized;
+      setLastSavedSerialized(snapshotSerialized);
+
       setSaveStatus("saved");
       window.setTimeout(() => {
         if (!isSavingRef.current && !hasErrorRef.current && mountedRef.current) {
-          setSaveStatus("idle");
+          if (JSON.stringify(dataRef.current) === lastSavedSerializedRef.current) {
+            setSaveStatus("idle");
+          }
         }
       }, 1200);
+      return true;
     } catch {
       hasErrorRef.current = true;
       setHasError(true);
       setSaveStatus("error");
+      return false;
     } finally {
       isSavingRef.current = false;
       setIsSaving(false);
     }
-  }, [enabled, onSave]);
+  }, []);
 
-  const flush = useCallback(async () => {
+  const flush = useCallback(async (): Promise<boolean> => {
     clearTimer();
-    await executeSave();
+    return executeSave();
   }, [clearTimer, executeSave]);
 
   useEffect(() => {
@@ -99,48 +118,48 @@ export function useAutoSave<T>({
   }, []);
 
   useEffect(() => {
-    dataRef.current = data;
     if (!enabled) {
       clearTimer();
-      hasPendingChangesRef.current = false;
-      setHasPendingChanges(false);
       hasErrorRef.current = false;
       setHasError(false);
       setSaveStatus("idle");
       lastSavedSerializedRef.current = serialized;
+      setLastSavedSerialized(serialized);
       return;
     }
 
     if (!mountedRef.current) return;
     if (serialized === lastSavedSerializedRef.current) return;
+    if (isSaving) return;
 
-    hasPendingChangesRef.current = true;
-    setHasPendingChanges(true);
     clearTimer();
     timerRef.current = window.setTimeout(() => {
       void executeSave();
     }, debounceMs);
-  }, [data, debounceMs, enabled, executeSave, serialized, clearTimer]);
+  }, [clearTimer, debounceMs, enabled, executeSave, isSaving, serialized]);
 
   useEffect(() => {
     clearTimer();
-    hasPendingChangesRef.current = false;
-    setHasPendingChanges(false);
     hasErrorRef.current = false;
     setHasError(false);
     isSavingRef.current = false;
     setIsSaving(false);
     setSaveStatus("idle");
-    lastSavedSerializedRef.current = JSON.stringify(dataRef.current);
-  }, [identity, clearTimer]);
+    const nextSerialized = JSON.stringify(dataRef.current);
+    lastSavedSerializedRef.current = nextSerialized;
+    setLastSavedSerialized(nextSerialized);
+  }, [clearTimer, identity]);
 
   useEffect(() => {
     return () => {
-      if (enabled && hasPendingChangesRef.current) {
+      if (
+        enabledRef.current &&
+        JSON.stringify(dataRef.current) !== lastSavedSerializedRef.current
+      ) {
         void executeSave();
       }
     };
-  }, [enabled, executeSave]);
+  }, [executeSave]);
 
   return {
     saveStatus,

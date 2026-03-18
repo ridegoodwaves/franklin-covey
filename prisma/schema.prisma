@@ -313,21 +313,23 @@ model Engagement {
 }
 
 model Session {
-  id              String        @id @default(cuid())
-  engagementId    String
-  engagement      Engagement    @relation(fields: [engagementId], references: [id], onDelete: Cascade)
-  sessionNumber   Int
-  status          SessionStatus
-  occurredAt      DateTime?
-  topic           String?
-  outcome         String?
-  durationMinutes Int?
-  privateNotes    String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  createdBy       String?
-  updatedBy       String?
-  archivedAt      DateTime?
+  id               String        @id @default(cuid())
+  engagementId     String
+  engagement       Engagement    @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  sessionNumber    Int
+  status           SessionStatus
+  occurredAt       DateTime?
+  topic            String?
+  outcomes         String?
+  nextSteps        String?
+  engagementLevel  Int?
+  actionCommitment String?
+  notes            String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  createdBy        String?
+  updatedBy        String?
+  archivedAt       DateTime?
 
   @@unique([engagementId, sessionNumber])
 }

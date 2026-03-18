@@ -47,15 +47,48 @@ export const ALL_SESSION_TOPICS = [
 export const SESSION_TOPICS = ALL_SESSION_TOPICS;
 
 export const SESSION_OUTCOMES = [
-  "Action Plan Created",
-  "Goal Achieved",
-  "In Progress",
-  "Needs Follow-up",
-  "Participant Satisfied",
-  "Referred to Resources",
+  "Action plan created",
+  "Action plan updated",
+  "Resources provided",
+  "Participant committed to an action",
+  "Engagement concluded / final session",
 ] as const;
 
-export const DURATION_OPTIONS = [15, 30, 45, 60, 90] as const;
+export const NEXT_STEPS_OPTIONS = [
+  "Next session scheduled",
+  "Next session not scheduled",
+  "Program concluded, no next session",
+] as const;
+
+export const ENGAGEMENT_LEVEL_OPTIONS = [
+  {
+    value: 1,
+    label: "1 = Disengaged",
+    description:
+      "Unprepared, no examples of behavioral change, did not engage in meaningful conversation.",
+  },
+  { value: 2, label: "2 = Partially Engaged", description: undefined },
+  {
+    value: 3,
+    label: "3 = Moderately Engaged",
+    description: "Prepared, some examples of behavioral change, open conversation.",
+  },
+  { value: 4, label: "4 = Highly Engaged", description: undefined },
+  {
+    value: 5,
+    label: "5 = Exceptionally Engaged",
+    description:
+      "Well prepared, shared clear examples of behavioral change, engaged in meaningful conversation.",
+  },
+] as const;
+
+export const ACTION_COMMITMENT_OPTIONS = [
+  "Last session's action(s) completed",
+  "Last session's action(s) partially completed",
+  "Last session's action(s) not completed",
+  "No actions were committed to in the last session",
+  "Not applicable (first session / no prior session)",
+] as const;
 
 // Updated workshop decisions:
 // - Day 0 for nudge timing = cohort start date
@@ -89,7 +122,9 @@ export type MlpSessionTopic = (typeof MLP_SESSION_TOPICS)[number];
 export type ExecutiveSessionTopic = (typeof EXECUTIVE_SESSION_TOPICS)[number];
 export type SessionTopic = MlpSessionTopic | ExecutiveSessionTopic;
 export type SessionOutcome = (typeof SESSION_OUTCOMES)[number];
-export type DurationOption = (typeof DURATION_OPTIONS)[number];
+export type NextStepsOption = (typeof NEXT_STEPS_OPTIONS)[number];
+export type EngagementLevel = 1 | 2 | 3 | 4 | 5;
+export type ActionCommitmentOption = (typeof ACTION_COMMITMENT_OPTIONS)[number];
 export type ProgramType = keyof typeof PROGRAM_TYPES;
 
 export function isValidTopicForProgram(programCode: ProgramCode, topic: string): boolean {

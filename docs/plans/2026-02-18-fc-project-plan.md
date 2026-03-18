@@ -333,7 +333,7 @@ Phase 2 roadmap (April+) is available upon request — covers platform hardening
 | Task | Owner | Notes |
 |------|-------|-------|
 | Coach magic-link access + coach dashboard route enforcement | Amit | Coach access comms sent once session logging is active (Mar 16) |
-| Session logging API (COMPLETED, FORFEITED_CANCELLED, FORFEITED_NOT_USED) | Amit | Topic + Outcome dropdowns; forfeiture labels preserved; private notes remain coach-only |
+| Session logging API (COMPLETED, FORFEITED_CANCELLED, FORFEITED_NOT_USED) | Amit | Topic + outcomes + next steps + engagement level + action-commitment; notes visible to coaches + admins/ops only |
 | Coach dashboard + engagement detail + session logging form | Amit | Supports retroactive entry for Mar 12–16 activity window |
 | Bulk CSV import + execution | Amit | Import execution moved here from Mar 9 to protect admin visibility scope |
 

@@ -65,7 +65,7 @@ Nothing in progress — clean transition point between slices.
 
 4. **Wire coach portal frontend** (~2-3 days)
    - Dashboard with real engagement data
-   - Session logging form (topic/outcome dropdowns, duration, private notes, auto-save)
+   - Session logging form (topic, multi-select outcomes, next steps, engagement level, action-commitment, notes, auto-save)
    - Engagement timeline
    - "Book Next Session" button → `meetingBookingUrl`
 

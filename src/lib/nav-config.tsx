@@ -67,7 +67,7 @@ export function AdminPortalIcon() {
 // ─── Nav Item Arrays (single source of truth) ────────────────────────────────
 
 export const COACH_NAV_ITEMS = [
-  { label: "Coaching Program Overview", href: "/coach/dashboard", icon: <NavDashboardIcon /> },
+  { label: "Coach's Portal", href: "/coach/dashboard", icon: <NavDashboardIcon /> },
   { label: "My Engagements", href: "/coach/engagements", icon: <NavEngagementsIcon /> },
   { label: "Profile", href: "/coach/profile", icon: <NavProfileIcon />, disabled: true },
 ];

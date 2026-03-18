@@ -78,8 +78,8 @@ flowchart TD
 | Participant identity | Name, email, cohort | Supabase (encrypted at rest) | Yes |
 | Participant eligibility gate | Imported participant email + cohort window | Supabase (`Participant` + engagement eligibility rules) | Yes |
 | Coach profile | Name, bio, location, credentials, booking URL | Supabase | Minimal |
-| Session notes | Topic, outcome, duration | Supabase | No |
-| Coach private notes | Free-text, coach-only | Supabase (RLS: coach-only read) | Minimal |
+| Session notes | Topic, outcomes, next steps, engagement level, action-commitment | Supabase | No |
+| Coaching notes | Free-text, visible to coaches + admins/ops (never participant-facing) | Supabase (RLS-scoped by role) | Minimal |
 | Engagement status | INVITED → COMPLETED state | Supabase | No |
 | Organization scope | Org-bound programs/cohorts/participants/coach memberships | Supabase | No |
 

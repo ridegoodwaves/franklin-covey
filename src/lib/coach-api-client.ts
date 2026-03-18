@@ -75,17 +75,21 @@ export interface CreateCoachSessionInput {
   status: SessionStatus;
   occurredAt: string | null;
   topic: string | null;
-  outcome: string | null;
-  durationMinutes: number | null;
-  privateNotes: string | null;
+  outcomes: string[] | null;
+  nextSteps: string | null;
+  engagementLevel: number | null;
+  actionCommitment: string | null;
+  notes: string | null;
 }
 
 export interface UpdateCoachSessionInput {
   occurredAt?: string | null;
   topic?: string | null;
-  outcome?: string | null;
-  durationMinutes?: number | null;
-  privateNotes?: string | null;
+  outcomes?: string[] | null;
+  nextSteps?: string | null;
+  engagementLevel?: number | null;
+  actionCommitment?: string | null;
+  notes?: string | null;
 }
 
 export async function fetchCoachDashboard(
